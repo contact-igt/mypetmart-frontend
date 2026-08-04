@@ -7,18 +7,22 @@ import { FAQ_QUESTIONS } from "@/data/contact-data";
  */
 export function CommonQuestions() {
   return (
-    <section className="section-block !pt-0 bg-cream-bg">
-      <div className="site-container">
-        <h2 className="display-heading text-2xl text-text-primary sm:text-3xl">
+    <section className="bg-[#FFF5E8] pb-12 pt-14 sm:py-16 lg:pb-22 lg:pt-20">
+      <div className="mx-auto w-full max-w-[1230px] px-6 sm:px-8 lg:px-0">
+        <h2
+          className="text-[2.35rem] leading-none tracking-[-0.03em] text-text-primary sm:text-[2.75rem] lg:text-[3rem]"
+          style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}
+        >
           Common questions
         </h2>
-        <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ul className="mt-8 grid grid-cols-1 gap-x-5 gap-y-7 sm:grid-cols-2 lg:mt-9 lg:gap-y-9">
           {FAQ_QUESTIONS.map((question) => (
             <li
               key={question}
-              className="body-copy flex items-center gap-2 rounded-[var(--radius-card)] bg-white px-5 py-4 text-text-primary"
+              className="flex min-h-[58px] items-center gap-7 rounded-b-[24px] rounded-t-[8px] bg-[#FFFAF3] px-7 py-3 text-[1.1rem] leading-tight text-text-primary shadow-[0_15px_18px_rgba(92,57,34,0.06)] sm:text-[1.2rem]"
+              style={{ fontFamily: "var(--font-display-italic)" }}
             >
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-orange" aria-hidden="true" />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-text-primary" aria-hidden="true" />
               {question}
             </li>
           ))}

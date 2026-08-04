@@ -1,12 +1,16 @@
 {
   "name": "mypetmart",
   "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "version": "0.1.0",
   "packageManager": "pnpm@11.18.0",
   "engines": {
     "node": ">=24 <25"
   },
   "scripts": {
+    "dev": "npm run dev --workspace=@mypetmart/web",
     "dev:web": "pnpm --filter @mypetmart/web dev",
     "build:web": "pnpm --filter @mypetmart/web build",
     "lint:web": "pnpm --filter @mypetmart/web lint",

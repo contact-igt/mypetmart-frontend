@@ -1,5 +1,5 @@
+import Image from "next/image";
 import { NewsletterCard } from "@/components/newsletter-card";
-import { SiteLogo } from "@/components/site-logo";
 import {
   PhoneIcon,
   MailIcon,
@@ -17,58 +17,48 @@ const SOCIAL_LINKS = [
 
 export function SiteFooter() {
   return (
-    <footer className="relative">
+    <footer className="relative overflow-hidden bg-cream-bg text-white">
+      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 top-[52px] bg-deep-brown" />
       <NewsletterCard />
 
-      <div className="bg-deep-brown pt-24 pb-8 text-white sm:pt-28">
-        <div className="site-container">
-          <div className="flex flex-col gap-10 border-b border-white/15 pb-10 md:flex-row md:items-start md:justify-between">
-            <div className="max-w-xs">
-              <SiteLogo tone="inverted" />
+      <div className="relative z-10 px-6 pb-5 pt-20 sm:px-10 lg:px-0 lg:pb-5 lg:pt-[19rem]">
+        <div className="mx-auto max-w-[1100px]">
+          <div className="grid gap-10 border-b border-white/35 pb-10 xl:grid-cols-[390px_1fr_390px] xl:items-center xl:gap-16 xl:pb-9">
+            <div>
+              <Image
+                src="/assest/logo2.png"
+                alt="My Pet Mart"
+                width={1336}
+                height={936}
+                className="h-auto w-[210px] object-contain sm:w-[240px]"
+              />
             </div>
 
-            <div className="space-y-3">
-              <p className="eyebrow text-white/70">Get in touch</p>
-              <ul className="body-copy space-y-2 text-sm text-white/90">
-                <li className="flex items-center gap-2">
-                  <PhoneIcon width={16} height={16} />
-                  <span>+91 94440 25511</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <MailIcon width={16} height={16} />
-                  <span>mypetmartstore@gmail.com</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <PinIcon width={16} height={16} className="mt-0.5 shrink-0" />
-                  <span>12A, JR Enclave, MGR Nagar, Ayyapakkam, Chennai – 600077</span>
-                </li>
+            <address className="not-italic text-white/80">
+              <ul className="space-y-3 text-[0.9rem] leading-[1.35] lg:text-[1rem] lg:leading-[1.28]">
+                <li className="flex items-center gap-3"><PhoneIcon width={17} height={17} className="shrink-0" /><span>+91 94440 25511</span></li>
+                <li className="flex items-center gap-3"><MailIcon width={17} height={17} className="shrink-0" /><span>mypetmartstore@gmail.com</span></li>
+                <li className="flex items-start gap-3"><PinIcon width={17} height={17} className="mt-0.5 shrink-0" /><span>12A, JR Enclave, MGR Nagar,<br />Ayyapakkam, Chennai – 600077</span></li>
               </ul>
-            </div>
+            </address>
 
-            <div className="max-w-xs md:text-right">
-              <p className="body-copy text-sm text-white/80">
-                Thoughtfully selected pet-care essentials that make grooming,
-                walking and everyday life easier for pet parents.
+            <div className="lg:pt-4">
+              <p className="max-w-[285px] text-[0.8rem] leading-[1.65] text-white/70">
+                Thoughtfully selected pet-care essentials that make grooming, walking and everyday life easier for pet parents across India.
               </p>
-              <div className="mt-4 flex gap-2 md:justify-end">
+              <div className="mt-9 flex gap-4">
                 {SOCIAL_LINKS.map(({ label, icon: Icon }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    aria-label={label}
-                    title={label}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors duration-150 ease-out hover:bg-white/20"
-                  >
-                    <Icon width={16} height={16} />
+                  <button key={label} type="button" aria-label={label} title={label} className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors duration-150 hover:bg-white/20">
+                    <Icon width={20} height={20} />
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 pt-6 text-xs text-white/70 sm:flex-row sm:items-center sm:justify-between">
-            <p>&copy; {new Date().getFullYear()} My Pet Mart. Made with love for pet parents.</p>
-            <p>Payments: UPI &middot; Visa &middot; Mastercard</p>
+          <div className="flex flex-col gap-3 pt-4 text-[0.82rem] leading-tight text-white/60 sm:flex-row sm:items-center sm:justify-between lg:pt-5 lg:text-[0.95rem]">
+            <p>© {new Date().getFullYear()} My Pet Mart. Made with love for pet parents.</p>
+            <p>Payments: UPI · Visa · Mastercard · Cash on Delivery</p>
           </div>
         </div>
       </div>

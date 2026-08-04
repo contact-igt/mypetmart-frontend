@@ -198,6 +198,25 @@ export function StarIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function ShieldCheckIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M12 3.5 19 6v5.3c0 4.4-2.8 7.6-7 9.2-4.2-1.6-7-4.8-7-9.2V6l7-2.5Z" />
+      <path d="m8.8 11.8 2.1 2.1 4.3-4.3" />
+    </svg>
+  );
+}
+
+export function TruckIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M3.5 5.5h11v10h-11z" />
+      <path d="M14.5 9h3.2l2.3 2.8v3.7h-5.5z" />
+      <circle cx="7.5" cy="17" r="1.5" />
+      <circle cx="17" cy="17" r="1.5" />
+    </svg>
+  );
+}
 export function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg

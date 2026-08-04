@@ -47,7 +47,7 @@
   --color-focus-ring: var(--color-deep-brown); /* chosen for contrast across every warm surface, not just cream */
 
   /* Typography */
-  --font-display: var(--font-fredoka), "Baloo 2", ui-rounded, system-ui, sans-serif;
+  --font-display: var(--font-baloo), ui-rounded, system-ui, sans-serif;
   --font-display-italic: var(--font-fraunces), "Playfair Display", Georgia, serif;
   --font-body: var(--font-inter), "Plus Jakarta Sans", system-ui, sans-serif;
 

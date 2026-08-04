@@ -1,12 +1,9 @@
 import type { ReactNode } from "react";
 
 /**
- * Header icon slot for a feature that isn't built yet (search, wishlist,
- * account, cart). Rendered as a real, focusable, keyboard-operable button —
- * not a dead link — so the layout and interaction rhythm are correct today
- * and only the click behaviour needs wiring once the backing module (auth,
- * cart, product search) exists. Same non-functional-icon-slot pattern
- * docs/DESIGN_SYSTEM.md §18 specifies for wishlist.
+ * Header icon slot for a feature that is not built yet (search, wishlist,
+ * account, cart). Buttons remain focusable and keyboard-operable so the
+ * visual shell does not create inaccessible controls.
  */
 export function IconButton({
   label,
@@ -21,7 +18,7 @@ export function IconButton({
 }) {
   const variantClass =
     variant === "solid"
-      ? "h-11 w-11 bg-deep-brown text-white hover:opacity-90"
+      ? "h-8 w-14 bg-deep-brown text-white hover:opacity-90"
       : "h-10 w-10 text-text-primary hover:bg-white/60";
   const displayClass = hideBelowSm ? "hidden sm:inline-flex" : "inline-flex";
 

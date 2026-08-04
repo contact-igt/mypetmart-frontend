@@ -30,10 +30,10 @@ function FilterPill({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`pill-label border transition-colors duration-150 ease-out ${
+      className={`inline-flex h-9 items-center rounded-full border px-[14px] text-[13px] font-medium normal-case tracking-normal transition-colors duration-150 ease-out ${
         active
           ? "border-deep-brown bg-deep-brown text-white"
-          : "border-border-subtle bg-white text-text-primary hover:border-deep-brown"
+          : "border-[#E7CFB9] bg-[#FFF8EF] text-text-primary hover:border-deep-brown"
       }`}
     >
       {children}
@@ -49,8 +49,8 @@ function AllPill({ active, onClick, label }: { active: boolean; onClick: () => v
       aria-pressed={active}
       aria-label={`All ${label}`}
       title={`All ${label}`}
-      className={`h-8 w-8 shrink-0 rounded-full border transition-colors duration-150 ease-out ${
-        active ? "border-deep-brown bg-deep-brown" : "border-border-subtle bg-white"
+      className={`h-9 w-11 shrink-0 rounded-full border transition-colors duration-150 ease-out ${
+        active ? "border-deep-brown bg-deep-brown" : "border-[#E7CFB9] bg-[#FFF8EF]"
       }`}
     />
   );
@@ -92,9 +92,9 @@ export function ShopExplorer() {
   };
 
   return (
-    <section className="section-block !pt-0 bg-cream-bg">
-      <div className="site-container grid gap-10 lg:grid-cols-[280px_1fr]">
-        <aside className="warm-card h-fit">
+    <section className="relative overflow-hidden bg-cream-bg py-14 lg:py-[4.25rem]">
+      <div className="mx-auto grid w-full max-w-[1274px] gap-8 px-6 sm:px-8 lg:grid-cols-[270px_1fr] xl:grid-cols-[294px_1fr] lg:gap-6 xl:gap-[34px] lg:px-0">
+        <aside className="h-fit min-h-[768px] rounded-[26px] border border-[#E7CFB9] bg-[#FFF8EF] p-6">
           <div>
             <span className="eyebrow text-text-primary/60">Search</span>
             <div className="relative mt-2">
@@ -109,12 +109,12 @@ export function ShopExplorer() {
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search products…"
                 aria-label="Search products"
-                className="field-control pl-10 text-sm"
+                className="h-10 w-full rounded-full border border-[#E7CFB9] bg-white pl-10 pr-4 text-sm text-text-primary outline-none placeholder:text-text-primary/40"
               />
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-7">
             <span className="eyebrow text-text-primary/60">Pet</span>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <AllPill active={pet === "all"} onClick={() => setPet("all")} label="pets" />
@@ -127,7 +127,7 @@ export function ShopExplorer() {
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-7">
             <span className="eyebrow text-text-primary/60">Category</span>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <AllPill
@@ -155,7 +155,7 @@ export function ShopExplorer() {
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-7">
             <span className="eyebrow text-text-primary/60">Max price: ₹2,500</span>
             <input
               type="range"
@@ -164,19 +164,19 @@ export function ShopExplorer() {
               defaultValue={2500}
               disabled
               aria-label="Maximum price (coming soon)"
-              className="mt-3 w-full accent-deep-brown opacity-50"
+              className="mt-3 h-[17px] w-full appearance-none bg-white accent-white"
             />
           </div>
 
-          <div className="mt-6">
+          <div className="mt-7">
             <span className="eyebrow text-text-primary/60">Minimum rating</span>
-            <div className="mt-2 flex flex-wrap items-center gap-2 opacity-50">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <span
                 aria-hidden="true"
-                className="h-8 w-8 shrink-0 rounded-full border border-border-subtle bg-deep-brown"
+                className="h-9 w-[52px] shrink-0 rounded-full border border-deep-brown bg-deep-brown"
               />
               {["3+★", "4+★", "4.5+★"].map((label) => (
-                <span key={label} className="pill-label border border-border-subtle bg-white text-text-primary">
+                <span key={label} className="inline-flex h-9 items-center rounded-full border border-[#E7CFB9] bg-[#FFF8EF] px-[14px] text-[13px] font-medium text-text-primary">
                   {label}
                 </span>
               ))}
@@ -186,10 +186,10 @@ export function ShopExplorer() {
             </p>
           </div>
 
-          <div className="mt-6 flex flex-col gap-2 opacity-50">
+          <div className="mt-6 flex flex-col gap-2">
             {["New arrivals only", "On sale", "In stock"].map((label) => (
               <label key={label} className="body-copy flex items-center gap-2 text-sm">
-                <input type="checkbox" disabled className="h-4 w-4" />
+                <input type="checkbox" className="h-4 w-4 accent-deep-brown" />
                 {label}
               </label>
             ))}
@@ -198,23 +198,20 @@ export function ShopExplorer() {
           <button
             type="button"
             onClick={clearFilters}
-            className="body-copy mt-6 text-sm font-semibold underline underline-offset-4"
+            className="mt-7 text-sm font-medium underline underline-offset-4"
           >
             Clear filters
           </button>
         </aside>
 
         <div>
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <p className="body-copy text-sm text-text-primary/70">
-              {filtered.length} product{filtered.length === 1 ? "" : "s"}
-            </p>
+          <div className="mb-6 flex items-center gap-4">
             <label className="relative">
               <span className="sr-only">Sort products</span>
               <select
                 value={sort}
                 onChange={(event) => setSort(event.target.value as SortOrder)}
-                className="field-control h-11 w-auto cursor-pointer pr-8 text-sm font-semibold"
+                className="h-[44px] w-[230px] cursor-pointer rounded-full border border-[#E7CFB9] bg-white px-5 text-sm font-medium text-text-primary outline-none"
               >
                 {(Object.keys(SORT_LABELS) as SortOrder[]).map((value) => (
                   <option key={value} value={value}>
@@ -226,7 +223,7 @@ export function ShopExplorer() {
           </div>
 
           {filtered.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 lg:gap-6">
               {filtered.map((product) => (
                 <ProductCard key={product.slug} product={product} />
               ))}
