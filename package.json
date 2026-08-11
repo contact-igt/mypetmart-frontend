@@ -5,15 +5,17 @@
     "apps/*"
   ],
   "version": "0.1.0",
-  "packageManager": "pnpm@11.18.0",
+  "packageManager": "npm@11.16.0",
   "engines": {
     "node": ">=24 <25"
   },
   "scripts": {
     "dev": "npm run dev --workspace=@mypetmart/web",
-    "dev:web": "pnpm --filter @mypetmart/web dev",
-    "build:web": "pnpm --filter @mypetmart/web build",
-    "lint:web": "pnpm --filter @mypetmart/web lint",
-    "typecheck:web": "pnpm --filter @mypetmart/web typecheck"
+    "dev:web": "npm run dev --workspace=@mypetmart/web",
+    "build:web": "npm run build --workspace=@mypetmart/web",
+    "lint:web": "npm run lint --workspace=@mypetmart/web",
+    "typecheck:web": "npm run typecheck --workspace=@mypetmart/web",
+    "test": "npm run test --workspace=@mypetmart/web",
+    "test:web": "npm run test --workspace=@mypetmart/web"
   }
 }

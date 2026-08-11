@@ -34,6 +34,8 @@ export const metadata: Metadata = {
   description: "Thoughtfully selected pet-care essentials.",
 };
 
+import { Providers } from "./providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -45,9 +47,11 @@ export default function RootLayout({
       className={`${bagelFatOne.variable} ${baloo.variable} ${fraunces.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SiteHeader />
-        {children}
-        <SiteFooter />
+        <Providers>
+          <SiteHeader />
+          {children}
+          <SiteFooter />
+        </Providers>
       </body>
     </html>
   );

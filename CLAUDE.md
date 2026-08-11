@@ -9,7 +9,7 @@ Source of truth order: proposal > UI references > this file > project brief.
 - Database: MySQL 8.4 + Prisma ORM
 - Auth: JWT access tokens + HTTP-only cookie refresh tokens + bcrypt
 - Storage: Cloudflare R2 for all images
-- Package manager: pnpm (managed by Corepack, Node 24 LTS)
+- Package manager: npm (Node 24 LTS)
 
 Full stack spec → `docs/PROJECT_BRIEF.md`
 
@@ -128,11 +128,11 @@ All open items → `docs/OPEN_ITEMS.md`
 - No gradient text, glassmorphism, emoji UI icons or decorative animation.
 
 ## Build commands (once apps are scaffolded)
-- `pnpm dev` — run both apps in watch mode
-- `pnpm build` — production build
-- `pnpm lint` — lint all workspaces
-- `pnpm typecheck` — TypeScript check all workspaces
-- `pnpm test` — run all tests
+- `npm run dev` — run both apps in watch mode
+- `npm run build` — production build
+- `npm run lint` — lint all workspaces
+- `npm run typecheck` — TypeScript check all workspaces
+- `npm test` — run all tests
 
 ## Audit loop (run after every module)
 1. Run lint + typecheck.

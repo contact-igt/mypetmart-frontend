@@ -11,6 +11,8 @@ const NAV_ITEMS = [
   { label: "Contact Us", href: "/contact" },
 ];
 
+import { useCustomerAuth } from "@/context/customer-auth-context";
+
 export function MobileNavPanel({
   open,
   onClose,
@@ -19,6 +21,10 @@ export function MobileNavPanel({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const { status } = useCustomerAuth();
+
+  const authLink = status === "authenticated" ? "/account" : "/signin";
+  const authLabel = status === "authenticated" ? "Account" : "Sign in";
 
   return (
     <div
@@ -56,9 +62,11 @@ export function MobileNavPanel({
           <IconButton label="Wishlist">
             <HeartIcon width={20} height={20} />
           </IconButton>
-          <IconButton label="Account">
-            <UserIcon width={20} height={20} />
-          </IconButton>
+          <Link href={authLink} onClick={onClose} className="inline-flex">
+            <IconButton label={authLabel}>
+              <UserIcon width={20} height={20} />
+            </IconButton>
+          </Link>
           <IconButton label="Cart">
             <BagIcon width={20} height={20} />
           </IconButton>

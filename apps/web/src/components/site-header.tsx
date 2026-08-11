@@ -13,8 +13,15 @@ import {
   CloseIcon,
 } from "@/components/icons";
 
+import Link from "next/link";
+import { useCustomerAuth } from "@/context/customer-auth-context";
+
 export function SiteHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { status } = useCustomerAuth();
+
+  const authLink = status === "authenticated" ? "/account" : "/signin";
+  const authLabel = status === "authenticated" ? "Account" : "Sign in";
 
   return (
     <header className="sticky top-0 z-50 border-t border-deep-brown bg-cream-bg">
@@ -30,9 +37,11 @@ export function SiteHeader() {
           <IconButton label="Wishlist">
             <HeartIcon width={18} height={18} />
           </IconButton>
-          <IconButton label="Account">
-            <UserIcon width={18} height={18} />
-          </IconButton>
+          <Link href={authLink} className="inline-flex">
+            <IconButton label={authLabel}>
+              <UserIcon width={18} height={18} />
+            </IconButton>
+          </Link>
           <IconButton label="Menu" variant="solid">
             <MenuIcon width={19} height={19} />
           </IconButton>

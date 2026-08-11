@@ -12,7 +12,7 @@ and admin management. Built by Invictus Global Tech.
 | Database    | MySQL 8.4 LTS · Prisma ORM                    |
 | Auth        | JWT · bcrypt · HTTP-only refresh tokens       |
 | Storage     | Cloudflare R2                                 |
-| Package mgr | pnpm (Corepack) · Node.js 24 LTS              |
+| Package mgr | npm · Node.js 24 LTS                         |
 
 ## Repository structure
 
@@ -26,7 +26,7 @@ and admin management. Built by Invictus Global Tech.
 ├── docs/                ← project documentation
 ├── project-reference/   ← locked source-of-truth files (do not modify)
 ├── CLAUDE.md            ← implementation rules for Claude Code
-├── package.json         ← monorepo root (pnpm workspace)
+├── package.json         ← monorepo root (npm workspace)
 └── .nvmrc / .node-version ← Node 24 pin
 ```
 
@@ -49,10 +49,10 @@ be modified, renamed or deleted.
 
 - [x] Git repository initialised
 - [x] fnm + Node 24.18.1 pinned
-- [x] pnpm 11.18.0 via Corepack
+- [x] npm 11.16.0
 - [x] Root `.gitignore`, `.nvmrc`, `.node-version`, `package.json`
 - [x] CLAUDE.md and core documentation
-- [ ] Monorepo workspace config (`pnpm-workspace.yaml`)
+- [ ] Monorepo workspace config (`package.json` workspaces)
 - [ ] `apps/web` — Next.js scaffold
 - [ ] `apps/api` — Express scaffold
 - [ ] `packages/shared`
@@ -65,19 +65,16 @@ be modified, renamed or deleted.
 
 ## Setup
 
-Requires Node 24 LTS (managed by fnm) and pnpm 11.18.0 (managed by Corepack).
+Requires Node 24 LTS (managed by fnm) and npm 11.16.0.
 
 ```bash
-# First-time: enable corepack and activate pnpm
-corepack enable
-corepack prepare pnpm@11.18.0 --activate
+npm install
 ```
 
-Application scaffolding has not been run yet. Do not run `pnpm install` until
-`apps/web`, `apps/api` and `packages/shared` are created.
+Use npm workspace commands from the repository root, for example
+`npm run dev --workspace=@mypetmart/web`.
 
 ## Documentation
-
 | File | Contents |
 |------|---------|
 | `docs/PROJECT_BRIEF.md` | Full scope, architecture, module plan |
