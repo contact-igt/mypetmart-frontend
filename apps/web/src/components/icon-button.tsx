@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
 /**
- * Header icon slot for a feature that is not built yet (search, wishlist,
- * account, cart). Buttons remain focusable and keyboard-operable so the
- * visual shell does not create inaccessible controls.
+ * Header icon slot for a feature that is not built yet (search, cart).
+ * Buttons remain focusable and keyboard-operable so the visual shell does
+ * not create inaccessible controls.
  */
 export function IconButton({
   label,

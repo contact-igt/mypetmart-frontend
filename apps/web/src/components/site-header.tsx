@@ -11,10 +11,12 @@ import {
   UserIcon,
   MenuIcon,
   CloseIcon,
+  BagIcon,
 } from "@/components/icons";
 
 import Link from "next/link";
 import { useCustomerAuth } from "@/context/customer-auth-context";
+import { useCart } from "@/context/cart-context";
 
 export function SiteHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -22,6 +24,9 @@ export function SiteHeader() {
 
   const authLink = status === "authenticated" ? "/account" : "/signin";
   const authLabel = status === "authenticated" ? "Account" : "Sign in";
+  const wishlistLink = status === "authenticated" ? "/wishlist" : "/signin";
+
+  const { itemCount } = useCart();
 
   return (
     <header className="sticky top-0 z-50 border-t border-deep-brown bg-cream-bg">
@@ -34,9 +39,23 @@ export function SiteHeader() {
           <IconButton label="Search">
             <SearchIcon width={18} height={18} />
           </IconButton>
-          <IconButton label="Wishlist">
-            <HeartIcon width={18} height={18} />
-          </IconButton>
+          <Link href={wishlistLink} className="inline-flex">
+            <IconButton label="Wishlist">
+              <HeartIcon width={18} height={18} />
+            </IconButton>
+          </Link>
+          <Link href="/cart" className="inline-flex relative" aria-label={itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"}>
+            <IconButton label="Cart">
+              <div className="relative">
+                <BagIcon width={18} height={18} />
+                {itemCount > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-orange px-1 text-[9px] font-bold text-white leading-none">
+                    {itemCount}
+                  </span>
+                )}
+              </div>
+            </IconButton>
+          </Link>
           <Link href={authLink} className="inline-flex">
             <IconButton label={authLabel}>
               <UserIcon width={18} height={18} />

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getApiBaseUrl } from "../config";
 import { AppAuthError, NetworkError } from "./auth-errors";
 import type { ApiResponse } from "./auth-types";

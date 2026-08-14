@@ -1,11 +1,12 @@
-// Category and product fixtures now live in a single shared source
-// (apps/web/src/data/) since Shop's filter sidebar and product grid reuse
-// the exact same data. Re-exported here so existing Home component imports
-// don't need to change.
+// Category fixtures live in a shared source (apps/web/src/data/) since Shop's
+// filter sidebar and Home's category grid reuse the exact same data.
+// Re-exported here so existing Home component imports don't need to change.
+//
+// Product data for Home's "Loved by pet parents" section is fetched live from
+// the real Storefront Product API (see featured-products.tsx) — it no longer
+// reads from the mock @/data/products fixture.
 export type { HomeCategory } from "@/data/categories";
 export { CATEGORIES, CATEGORY_PROMO_TEXT } from "@/data/categories";
-export type { Product as HomeProduct } from "@/data/products";
-export { FEATURED_PRODUCTS } from "@/data/products";
 
 export const GROOMING_BULLETS = [
   "Gentle bristles",

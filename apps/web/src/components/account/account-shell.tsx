@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCustomerAuth } from "@/context/customer-auth-context";
-import { UserIcon, ShieldCheckIcon, LogOutIcon } from "@/components/account/account-icons";
+import { UserIcon, ShieldCheckIcon, LogOutIcon, MapPinIcon, ShoppingBagIcon } from "@/components/account/account-icons";
 
 type AccountShellProps = {
   children: ReactNode;
@@ -52,6 +52,8 @@ export function AccountShell({ children, subtitle }: AccountShellProps) {
 
   const isOverviewActive = pathname === "/account";
   const isProfileActive = pathname === "/account/profile";
+  const isOrdersActive = pathname.startsWith("/account/orders");
+  const isAddressesActive = pathname.startsWith("/account/addresses");
 
   return (
     <main className="flex-1 bg-cream-bg py-8 md:py-12 min-h-[calc(100vh-144px)]">
@@ -100,6 +102,19 @@ export function AccountShell({ children, subtitle }: AccountShellProps) {
             </Link>
 
             <Link
+              href="/account/orders"
+              aria-current={isOrdersActive ? "page" : undefined}
+              className={`flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                isOrdersActive
+                  ? "bg-primary-orange text-white shadow-xs"
+                  : "text-deep-brown hover:bg-cream-bg hover:text-primary-orange"
+              }`}
+            >
+              <ShoppingBagIcon width={18} height={18} />
+              My Orders
+            </Link>
+
+            <Link
               href="/account/profile"
               aria-current={isProfileActive ? "page" : undefined}
               className={`flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
@@ -112,7 +127,21 @@ export function AccountShell({ children, subtitle }: AccountShellProps) {
               Profile
             </Link>
 
+            <Link
+              href="/account/addresses"
+              aria-current={isAddressesActive ? "page" : undefined}
+              className={`flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                isAddressesActive
+                  ? "bg-primary-orange text-white shadow-xs"
+                  : "text-deep-brown hover:bg-cream-bg hover:text-primary-orange"
+              }`}
+            >
+              <MapPinIcon width={18} height={18} />
+              Address Book
+            </Link>
+
             <div className="my-1 hidden border-t border-deep-brown/10 md:block" />
+
 
             <button
               type="button"

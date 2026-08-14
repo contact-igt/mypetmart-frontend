@@ -76,6 +76,16 @@ reports · inventory forecasting · automated report exports · blogs/backlinks/
 ongoing SEO · WhatsApp/SMS/email automation · paid plugins or unapproved
 paid services.
 
+**Override (2026-08-12): Wishlist V1 approved.** The blanket "wishlist"
+exclusion above is the original signed-proposal scope and is kept here for
+history — it no longer applies. Wishlist V1 (authenticated customer,
+product-level saves only) was separately approved on 2026-08-12 and has been
+implemented: backend `/api/v1/storefront/wishlist` routes, storefront
+ProductCard/header/mobile-nav heart controls, and the `/wishlist` page. Still
+excluded under the original scope and NOT built: guest Wishlist,
+variant-level Wishlist, admin Wishlist CRUD/analytics, and back-in-stock
+notifications — any of those still require separate approval.
+
 Full exclusion list → `docs/PROJECT_BRIEF.md`
 
 ## Unconfirmed public claims (do not publish as fact until approved)
