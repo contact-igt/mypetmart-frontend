@@ -1,4 +1,4 @@
-import { HeartIcon } from "@/components/icons";
+import type { SVGProps } from "react";
 
 export type PlaceholderTone =
   | "peach"
@@ -29,10 +29,55 @@ const TONE_ICON_CLASSES: Record<PlaceholderTone, string> = {
   cream: "text-text-primary/15",
 };
 
+export function PawIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      {...props}
+    >
+      {/* Toe pads */}
+      <circle cx="6" cy="11" r="1.75" />
+      <circle cx="10" cy="7.5" r="2.2" />
+      <circle cx="14" cy="7.5" r="2.2" />
+      <circle cx="18" cy="11" r="1.75" />
+      {/* Main pad */}
+      <path d="M12 11c-2.2 0-4 1.8-4 4.5s1.8 4 4 4 4-1.3 4-4-1.8-4.5-4-4.5Z" />
+    </svg>
+  );
+}
+
 /**
- * Temporary image slot — no licensed product/pet photography is available
- * yet. Renders as an accessible, clearly-labelled colour block matching the
- * reference layout's aspect ratio and radius, not a fabricated photo.
+ * Reusable Product Image Placeholder for MyPetMart storefront.
+ * Communicates visually using a recognized, friendly pet paw shape.
+ */
+export function ProductImagePlaceholder({
+  label,
+  tone = "peach",
+  className = "",
+  iconSize = 38,
+}: {
+  label: string;
+  tone?: PlaceholderTone;
+  className?: string;
+  iconSize?: number;
+}) {
+  return (
+    <div
+      role="img"
+      aria-label={`${label} - Image coming soon`}
+      title={`${label} - Image coming soon`}
+      className={`flex flex-col items-center justify-center rounded-[var(--radius-card)] p-4 text-center select-none ${TONE_CLASSES[tone]} ${className}`}
+    >
+      <PawIcon style={{ width: iconSize, height: iconSize }} className={TONE_ICON_CLASSES[tone]} />
+      <span className="sr-only">Product image unavailable</span>
+    </div>
+  );
+}
+
+/**
+ * Legacy wrapper to maintain backward-compatibility with other modules.
  */
 export function ImagePlaceholder({
   label,
@@ -44,12 +89,11 @@ export function ImagePlaceholder({
   className?: string;
 }) {
   return (
-    <div
-      role="img"
-      aria-label={label}
-      className={`flex items-center justify-center rounded-[var(--radius-card)] ${TONE_CLASSES[tone]} ${className ?? ""}`}
-    >
-      <HeartIcon width={28} height={28} className={TONE_ICON_CLASSES[tone]} />
-    </div>
+    <ProductImagePlaceholder
+      label={label}
+      tone={tone}
+      className={className}
+      iconSize={28}
+    />
   );
 }

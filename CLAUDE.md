@@ -9,7 +9,7 @@ Source of truth order: proposal > UI references > this file > project brief.
 - Database: MySQL 8.4 + Prisma ORM
 - Auth: JWT access tokens + HTTP-only cookie refresh tokens + bcrypt
 - Storage: Cloudflare R2 for all images
-- Package manager: pnpm (managed by Corepack, Node 24 LTS)
+- Package manager: npm (Node 24 LTS)
 
 Full stack spec → `docs/PROJECT_BRIEF.md`
 
@@ -76,6 +76,16 @@ reports · inventory forecasting · automated report exports · blogs/backlinks/
 ongoing SEO · WhatsApp/SMS/email automation · paid plugins or unapproved
 paid services.
 
+**Override (2026-08-12): Wishlist V1 approved.** The blanket "wishlist"
+exclusion above is the original signed-proposal scope and is kept here for
+history — it no longer applies. Wishlist V1 (authenticated customer,
+product-level saves only) was separately approved on 2026-08-12 and has been
+implemented: backend `/api/v1/storefront/wishlist` routes, storefront
+ProductCard/header/mobile-nav heart controls, and the `/wishlist` page. Still
+excluded under the original scope and NOT built: guest Wishlist,
+variant-level Wishlist, admin Wishlist CRUD/analytics, and back-in-stock
+notifications — any of those still require separate approval.
+
 Full exclusion list → `docs/PROJECT_BRIEF.md`
 
 ## Unconfirmed public claims (do not publish as fact until approved)
@@ -128,11 +138,11 @@ All open items → `docs/OPEN_ITEMS.md`
 - No gradient text, glassmorphism, emoji UI icons or decorative animation.
 
 ## Build commands (once apps are scaffolded)
-- `pnpm dev` — run both apps in watch mode
-- `pnpm build` — production build
-- `pnpm lint` — lint all workspaces
-- `pnpm typecheck` — TypeScript check all workspaces
-- `pnpm test` — run all tests
+- `npm run dev` — run both apps in watch mode
+- `npm run build` — production build
+- `npm run lint` — lint all workspaces
+- `npm run typecheck` — TypeScript check all workspaces
+- `npm test` — run all tests
 
 ## Audit loop (run after every module)
 1. Run lint + typecheck.
