@@ -8,7 +8,17 @@ import type { OrderDetailJSON } from "@/types/order";
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import { ProductImagePlaceholder } from "@/components/image-placeholder";
 import { ProceedToPaymentButton } from "@/components/payment/proceed-to-payment-button";
+import { RequestReturnForm } from "@/components/returns/request-return-form";
+import { ReturnApi } from "@/lib/return-api";
+import type { ReturnRequestJSON } from "@/types/return";
 import { StatusBadge } from "../orders-client";
+
+const RETURN_STATUS_LABELS: Record<string, string> = {
+  requested: "Return requested",
+  approved: "Return approved",
+  rejected: "Return rejected",
+  resolved: "Return resolved",
+};
 
 function formatDate(dateString: string): string {
   try {
@@ -34,6 +44,32 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
   const [isNotFound, setIsNotFound] = useState(!isValidId);
   const [error, setError] = useState<string | null>(null);
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
+  const [returnsByItem, setReturnsByItem] = useState<Map<number, ReturnRequestJSON[]>>(new Map());
+  const [returnsRefreshKey, setReturnsRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!isValidId) return;
+    let isSubscribed = true;
+    ReturnApi.list({ pageSize: 100 })
+      .then((result) => {
+        if (!isSubscribed) return;
+        const map = new Map<number, ReturnRequestJSON[]>();
+        for (const r of result.items) {
+          if (r.orderId !== numericId) continue;
+          const existing = map.get(r.orderItemId) ?? [];
+          existing.push(r);
+          map.set(r.orderItemId, existing);
+        }
+        setReturnsByItem(map);
+      })
+      .catch(() => {
+        // Non-critical for order-detail rendering — the "Request Return" CTA
+        // simply falls back to backend-enforced eligibility if this fails.
+      });
+    return () => {
+      isSubscribed = false;
+    };
+  }, [numericId, isValidId, returnsRefreshKey]);
 
   const handleImageError = (itemId: number) => {
     setImageErrors((prev) => {
@@ -231,6 +267,48 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
                       <p className="text-xs text-text-primary/75 mt-1">
                         Qty: {item.quantity} &times; ₹{item.unitPrice}
                       </p>
+
+                      {/* Keyed off order.status, not fulfilmentStatus — no Shipping
+                          module exists yet to ever set fulfilmentStatus away from
+                          "unfulfilled", so that field can never reflect a real
+                          delivery. order.status is what the real Admin "Order
+                          status" control actually advances (see return.service.ts
+                          on the backend for the matching authoritative check). */}
+                      {(order.status === "delivered" || order.status === "return_requested") && (
+                        <div className="mt-2">
+                          {(() => {
+                            const itemReturns = returnsByItem.get(item.id) ?? [];
+                            const activeReturns = itemReturns.filter((r) => r.status !== "rejected");
+                            const remaining = item.quantity - activeReturns.reduce((total, r) => total + r.quantity, 0);
+                            return (
+                              <div className="space-y-2">
+                                {activeReturns.map((activeReturn) => {
+                                  const refund = activeReturn.refunds[0];
+                                  return (
+                                    <div key={activeReturn.id} className="text-xs space-y-0.5">
+                                      <p className="font-bold text-deep-brown">
+                                        {activeReturn.resolution === "replacement" ? "Replacement" : "Refund"}: {RETURN_STATUS_LABELS[activeReturn.status] ?? activeReturn.status}
+                                        {" · "}
+                                        <span className="font-mono text-[11px] text-text-primary/60">{activeReturn.returnNumber}</span>
+                                      </p>
+                                      {refund && <p className="text-text-primary/75">Refund {refund.status}{refund.status === "succeeded" ? ` — ₹${refund.amount}` : ""}</p>}
+                                      {activeReturn.replacement && <p className="text-text-primary/75">Replacement {activeReturn.replacement.status.replace(/_/g, " ")}</p>}
+                                    </div>
+                                  );
+                                })}
+                                {remaining > 0 && (
+                                  <RequestReturnForm
+                                    orderId={order.id}
+                                    orderItemId={item.id}
+                                    purchasedQuantity={remaining}
+                                    onSubmitted={() => setReturnsRefreshKey((k) => k + 1)}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
 
                     {/* Line Total */}

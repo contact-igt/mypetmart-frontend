@@ -138,3 +138,22 @@ export function MapPinIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function ReturnIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      {...props}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9 15L4 10l5-5M4 10h11a5 5 0 015 5v0a5 5 0 01-5 5h-1"
+      />
+    </svg>
+  );
+}
+
