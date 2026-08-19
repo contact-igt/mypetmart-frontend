@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PaymentApi } from "@/lib/payment-api";
 import type { InitiatePaymentInput, PaymentInitiationResultJSON } from "@/types/payment";
 import { AppAuthError } from "@/lib/auth/auth-errors";
@@ -20,6 +21,7 @@ type ProceedToPaymentButtonProps = {
  * anything paid.
  */
 export function ProceedToPaymentButton({ input, className }: ProceedToPaymentButtonProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [handoff, setHandoff] = useState<PaymentInitiationResultJSON | null>(null);
@@ -42,6 +44,20 @@ export function ProceedToPaymentButton({ input, className }: ProceedToPaymentBut
       }
       setHandoff(result);
     } catch (err: unknown) {
+      if (err instanceof AppAuthError && err.code === "ORDER_ALREADY_PAID") {
+        // The backend just reconciled this order with PayU and found it was
+        // already paid on a previous attempt (the one that would otherwise
+        // resubmit the same txnid and get bounced by PayU's own duplicate
+        // check) — send the customer to their order status instead of
+        // showing a dead-end "try again" error.
+        setError("This order has already been paid. Redirecting you to your order status…");
+        const query = new URLSearchParams({ status: "success" });
+        if ("orderId" in input && input.orderId !== undefined) {
+          query.set("orderId", String(input.orderId));
+        }
+        router.push(`/order/payment/result?${query.toString()}`);
+        return;
+      }
       if (err instanceof AppAuthError) {
         setError(err.message || "Unable to start payment. Please try again.");
       } else {
