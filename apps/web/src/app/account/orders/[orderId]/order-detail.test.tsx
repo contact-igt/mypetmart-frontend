@@ -99,6 +99,32 @@ describe("Order Detail Page & Client Tests", () => {
           lineTotal: "1500.00",
         },
       ],
+      shipment: {
+        id: 91,
+        shipmentNumber: "SHP-000091",
+        sourceType: "order",
+        sourceId: 101,
+        orderId: 101,
+        replacementId: null,
+        provider: "ithink",
+        providerOrderId: "REF-91",
+        carrier: "Delhivery",
+        awbNumber: "AWB-123456",
+        serviceType: "Surface",
+        status: "delivered",
+        providerStatus: "Delivered",
+        providerStatusCode: "DL",
+        providerCost: "87.50",
+        currency: "INR",
+        package: { weightGrams: 500, lengthCm: "10.00", widthCm: "8.00", heightCm: "10.00" },
+        shippedAt: "2026-08-13T10:00:00Z",
+        deliveredAt: "2026-08-15T10:00:00Z",
+        cancelledAt: null,
+        rtoAt: null,
+        lastSyncedAt: "2026-08-15T10:00:00Z",
+        createdAt: "2026-08-12T11:00:00Z",
+        trackingEvents: [{ id: 1, status: "delivered", providerStatus: "Delivered", providerStatusCode: "DL", location: "Pune", message: "Handed to customer", eventAt: "2026-08-15T10:00:00Z" }],
+      },
     });
 
     render(
@@ -114,7 +140,9 @@ describe("Order Detail Page & Client Tests", () => {
       expect(screen.getByText(/SHAMP-500ML/)).toBeInTheDocument();
       expect(screen.getByText("Aarav Sharma")).toBeInTheDocument();
       expect(screen.getByText("Flat 402, Sunshine Apartments")).toBeInTheDocument();
-      expect(screen.getByText(/Pune/)).toBeInTheDocument();
+      expect(screen.getAllByText(/Pune/)[0]).toBeInTheDocument();
+      expect(screen.getByText("AWB-123456")).toBeInTheDocument();
+      expect(screen.getByText(/Handed to customer/)).toBeInTheDocument();
       expect(screen.getAllByText("₹1500.00")[0]).toBeInTheDocument();
       expect(screen.getByText("₹100.00")).toBeInTheDocument();
       expect(screen.getByText("₹1600.00")).toBeInTheDocument();

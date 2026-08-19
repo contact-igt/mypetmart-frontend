@@ -9,6 +9,7 @@ import { AppAuthError } from "@/lib/auth/auth-errors";
 import { ProductImagePlaceholder } from "@/components/image-placeholder";
 import { ProceedToPaymentButton } from "@/components/payment/proceed-to-payment-button";
 import { StatusBadge } from "@/app/account/orders/orders-client";
+import { ShipmentTracking } from "@/components/shipment-tracking";
 
 function formatDate(dateString: string): string {
   try {
@@ -173,6 +174,8 @@ export function GuestOrderClient({ token }: { token: string }) {
           )}
         </div>
       )}
+
+      <ShipmentTracking shipment={order.shipment} />
 
       {/* Grid: Order Items & Order Summary */}
       <div className="grid gap-6 lg:grid-cols-12 items-start">

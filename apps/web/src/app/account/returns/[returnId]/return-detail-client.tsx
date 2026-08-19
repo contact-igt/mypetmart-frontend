@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ReturnApi } from "@/lib/return-api";
 import type { ReturnRequestDetailJSON } from "@/types/return";
 import { AppAuthError } from "@/lib/auth/auth-errors";
+import { ShipmentTracking } from "@/components/shipment-tracking";
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return "—";
@@ -178,6 +179,7 @@ export function ReturnDetailClient({ returnIdStr }: { returnIdStr: string }) {
       )}
 
       {detail.replacement && (
+        <div className="space-y-4">
         <div className="rounded-2xl border border-deep-brown/15 bg-cream-bg p-6 shadow-xs space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-baloo text-base font-bold text-deep-brown">Replacement status</h3>
@@ -185,6 +187,8 @@ export function ReturnDetailClient({ returnIdStr }: { returnIdStr: string }) {
           </div>
           <p className="font-mono text-xs text-text-primary/60">{detail.replacement.replacementNumber}</p>
           <p className="text-xs text-text-primary/75">{REPLACEMENT_STATUS_COPY[detail.replacement.status]}</p>
+        </div>
+        <ShipmentTracking shipment={detail.replacement.shipment} emptyMessage="Your replacement shipment has not been prepared yet." />
         </div>
       )}
     </div>

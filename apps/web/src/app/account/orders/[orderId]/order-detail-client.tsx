@@ -12,6 +12,7 @@ import { RequestReturnForm } from "@/components/returns/request-return-form";
 import { ReturnApi } from "@/lib/return-api";
 import type { ReturnRequestJSON } from "@/types/return";
 import { StatusBadge } from "../orders-client";
+import { ShipmentTracking } from "@/components/shipment-tracking";
 
 const RETURN_STATUS_LABELS: Record<string, string> = {
   requested: "Return requested",
@@ -215,6 +216,8 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
           )}
         </div>
       )}
+
+      <ShipmentTracking shipment={order.shipment} />
 
       {/* Grid: Order Items & Order Summary */}
       <div className="grid gap-6 lg:grid-cols-12 items-start">
