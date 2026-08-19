@@ -13,6 +13,7 @@ export interface ReplacementJSON {
   stockConsumedAt: string | null;
   completedAt: string | null;
   createdAt: string;
+  shipment?: ShipmentJSON | null;
 }
 
 export interface ReturnRefundSummaryJSON {
@@ -74,3 +75,4 @@ export interface ListReturnsResultJSON {
   pageSize: number;
   total: number;
 }
+import type { ShipmentJSON } from "./shipment";
