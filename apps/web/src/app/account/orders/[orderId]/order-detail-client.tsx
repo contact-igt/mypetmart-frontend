@@ -21,6 +21,13 @@ const RETURN_STATUS_LABELS: Record<string, string> = {
   resolved: "Return resolved",
 };
 
+const RETURN_STATUS_LABELS: Record<string, string> = {
+  requested: "Return requested",
+  approved: "Return approved",
+  rejected: "Return rejected",
+  resolved: "Return resolved",
+};
+
 function formatDate(dateString: string): string {
   try {
     const d = new Date(dateString);
