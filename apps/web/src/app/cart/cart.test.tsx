@@ -93,6 +93,7 @@ const mockProductDetail: ProductDetail = {
   name: "Comfort Dog Collar",
   slug: "comfort-dog-collar",
   sku: "COLLAR-SIMPLE",
+  brand: null,
   description: "Collar description.",
   petType: "dog",
   price: "499.00",

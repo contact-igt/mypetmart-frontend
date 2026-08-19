@@ -27,6 +27,7 @@ const mockSimpleProduct: ProductDetail = {
   name: "Comfort Dog Collar",
   slug: "comfort-dog-collar",
   sku: "COLLAR-SIMPLE",
+  brand: "Comfy Co",
   description: "A super comfortable dog collar.",
   petType: "dog",
   price: "499.00",
@@ -75,6 +76,7 @@ const mockVariantProduct: ProductDetail = {
   name: "Premium Dog Food",
   slug: "premium-dog-food",
   sku: "FOOD-PARENT",
+  brand: null,
   description: "Highly nutritious dog food.",
   petType: "dog",
   price: "899.00",
@@ -216,6 +218,7 @@ describe("ProductDetail Storefront Component", () => {
     renderProductDetail(mockSimpleProduct);
 
     expect(screen.getByRole("heading", { name: "Comfort Dog Collar" })).toBeInTheDocument();
+    expect(screen.getByText("Comfy Co")).toBeInTheDocument();
     expect(screen.getByText("₹499")).toBeInTheDocument();
     expect(screen.getByText("₹599")).toBeInTheDocument(); // compare price
     expect(screen.getByText("COLLAR-SIMPLE")).toBeInTheDocument();

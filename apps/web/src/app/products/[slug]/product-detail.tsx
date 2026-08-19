@@ -275,6 +275,13 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
             </span>
           </div>
 
+          {/* Brand */}
+          {product.brand && (
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-text-muted">
+              {product.brand}
+            </p>
+          )}
+
           {/* Title and Wishlist */}
           <div className="flex justify-between items-start gap-4 mb-4">
             <h1

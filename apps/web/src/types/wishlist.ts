@@ -4,6 +4,7 @@ export interface WishlistProductSummary {
   id: number;
   name: string;
   slug: string;
+  brand: string | null;
   petType: "dog" | "cat" | "all";
   price: string;
   compareAtPrice: string | null;
