@@ -732,7 +732,7 @@ export function CheckoutClient() {
                     initialLongitude={formData.longitude}
                   />
 
-                  <form onSubmit={handleAddressSubmit} className="grid gap-4 sm:grid-cols-2">
+                  <form onSubmit={handleAddressSubmit} noValidate className="grid gap-4 sm:grid-cols-2">
                     {isAuthenticated && (
                       <div>
                         <label htmlFor="chk-label" className="block text-xs font-bold text-deep-brown uppercase tracking-wider mb-1">
@@ -775,6 +775,7 @@ export function CheckoutClient() {
                         <input
                           id="chk-contact-email"
                           type="email"
+                          autoComplete="email"
                           placeholder="e.g. guest@example.com"
                           value={formData.contactEmail}
                           onChange={(e) => handleFormFieldChange("contactEmail", e.target.value)}

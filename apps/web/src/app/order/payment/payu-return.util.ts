@@ -1,12 +1,14 @@
 import type { NextRequest } from "next/server";
 
 // Only the txnid PayU's own docs describe as its merchant-generated
-// transaction reference (see backend buildBusinessReference("payment", id) —
-// "PAY-000123") and the numeric orderId this app itself put in udf1 at
-// initiation time. Both are treated as display hints only, never as proof of
-// anything — this file's whole job is reading PayU's raw, untrusted return
-// payload without ever trusting it.
-const TXNID_PATTERN = /^PAY-\d{6,}$/;
+// transaction reference (see backend generatePayuTxnId(paymentId) —
+// "PAY-000123-1a2b3c4d5e", a zero-padded payment id plus a random hex
+// suffix that guarantees PayU-wide uniqueness across DB resets) and the
+// numeric orderId this app itself put in udf1 at initiation time. Both are
+// treated as display hints only, never as proof of anything — this file's
+// whole job is reading PayU's raw, untrusted return payload without ever
+// trusting it.
+const TXNID_PATTERN = /^PAY-\d{6,}-[0-9a-f]{10}$/;
 const ORDER_ID_PATTERN = /^\d{1,15}$/;
 
 export type PayuReturnFields = {
