@@ -1,4 +1,5 @@
 import type { CreateAddressInput } from "./address";
+import type { ShipmentJSON } from "./shipment";
 
 export interface OrderItemJSON {
   id: number;
@@ -64,6 +65,7 @@ export interface OrderDetailJSON extends OrderListItemJSON {
   cancelledAt: string | null;
   createdAt: string;
   updatedAt: string;
+  shipment?: ShipmentJSON | null;
 }
 
 // Order Creation's response: identical to OrderDetailJSON for a customer;

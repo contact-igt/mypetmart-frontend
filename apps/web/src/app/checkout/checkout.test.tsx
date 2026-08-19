@@ -184,7 +184,84 @@ describe("Checkout Order Handoff Tests", () => {
       });
     });
 
-    it("2 & 3. Guest Place Order sends shippingAddress with selected coordinates", async () => {
+    it("1b. Guest Contact Email field is required, type=email, autocomplete=email", async () => {
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, data: mockCartResponse }),
+      } as any);
+
+      render(<CheckoutClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
+      });
+
+      // Required via label asterisk + JS validation (validateAddressForm), consistent
+      // with every other field in this form and CLAUDE.md's inline-error convention —
+      // no native HTML `required` attribute is used anywhere on this form.
+      const emailInput = screen.getByLabelText(/Contact Email \*/i) as HTMLInputElement;
+      expect(emailInput).toHaveAttribute("type", "email");
+      expect(emailInput).toHaveAttribute("autocomplete", "email");
+    });
+
+    it("1c. Guest missing email blocks Preview submission with inline error", async () => {
+      const fetchMock = vi.mocked(fetch);
+      fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any);
+
+      render(<CheckoutClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
+      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
+      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
+      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
+      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
+      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
+      // Contact Email intentionally left blank
+
+      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Email is required")).toBeInTheDocument();
+      });
+
+      // No POST /checkout/preview call should have been made beyond the initial GET /cart
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("1d. Guest invalid email blocks Preview submission with inline error", async () => {
+      const fetchMock = vi.mocked(fetch);
+      fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any);
+
+      render(<CheckoutClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
+      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
+      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
+      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
+      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
+      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
+      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "not-an-email" } });
+
+      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Valid email is required")).toBeInTheDocument();
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("2 & 3 & 5 & 6. Guest Place Order sends shippingAddress + contactEmail to Preview and Order Create", async () => {
       const fetchMock = vi.mocked(fetch);
       fetchMock
         // GET /cart
@@ -214,6 +291,12 @@ describe("Checkout Order Handoff Tests", () => {
         expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
       });
 
+      // 5. Valid email sent to Checkout Preview
+      const previewCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/checkout/preview"));
+      expect(previewCall).toBeDefined();
+      const previewPayload = JSON.parse(previewCall![1]?.body as string);
+      expect(previewPayload.contactEmail).toBe("guest@example.com");
+
       fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
 
       await waitFor(() => {
@@ -224,6 +307,8 @@ describe("Checkout Order Handoff Tests", () => {
         // Verify shippingAddress payload format (manual address without coordinates)
         expect(payload.shippingAddress).toBeDefined();
         expect(payload.savedAddressId).toBeUndefined();
+        // 6. Valid email sent to Order Create
+        expect(payload.contactEmail).toBe("guest@example.com");
         expect(payload.placeId).toBeUndefined();
         expect(payload.formattedAddress).toBeUndefined();
         expect("latitude" in payload.shippingAddress).toBe(false);
@@ -376,6 +461,45 @@ describe("Checkout Order Handoff Tests", () => {
         refreshSession: vi.fn(),
         loadCurrentCustomer: vi.fn(),
       });
+    });
+
+    it("2. Authenticated customer does not see the guest Contact Email field", async () => {
+      vi.mocked(fetch)
+        // 1. GET /cart
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
+        // 2. GET /addresses
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            success: true,
+            data: [
+              {
+                id: 99,
+                userId: 10,
+                label: "Home",
+                recipientName: "Jordan Rivera",
+                phone: "+91 98765 43210",
+                line1: "221B Baker Street",
+                line2: null,
+                city: "Mumbai",
+                state: "Maharashtra",
+                postalCode: "400001",
+                country: "IN",
+                isDefault: true,
+              },
+            ],
+          }),
+        } as any)
+        // 3. POST /checkout/preview
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any);
+
+      render(<CheckoutClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Checkout Readiness Status")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText(/Contact Email \*/i)).not.toBeInTheDocument();
     });
 
     it("6 & 7. Customer saved Address sends savedAddressId only (no shippingAddress)", async () => {

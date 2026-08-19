@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCustomerAuth } from "@/context/customer-auth-context";
-import { UserIcon, ShieldCheckIcon, LogOutIcon, MapPinIcon, ShoppingBagIcon } from "@/components/account/account-icons";
+import { UserIcon, ShieldCheckIcon, LogOutIcon, MapPinIcon, ShoppingBagIcon, ReturnIcon } from "@/components/account/account-icons";
 
 type AccountShellProps = {
   children: ReactNode;
@@ -53,6 +53,7 @@ export function AccountShell({ children, subtitle }: AccountShellProps) {
   const isOverviewActive = pathname === "/account";
   const isProfileActive = pathname === "/account/profile";
   const isOrdersActive = pathname.startsWith("/account/orders");
+  const isReturnsActive = pathname.startsWith("/account/returns");
   const isAddressesActive = pathname.startsWith("/account/addresses");
 
   return (
@@ -112,6 +113,19 @@ export function AccountShell({ children, subtitle }: AccountShellProps) {
             >
               <ShoppingBagIcon width={18} height={18} />
               My Orders
+            </Link>
+
+            <Link
+              href="/account/returns"
+              aria-current={isReturnsActive ? "page" : undefined}
+              className={`flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                isReturnsActive
+                  ? "bg-primary-orange text-white shadow-xs"
+                  : "text-deep-brown hover:bg-cream-bg hover:text-primary-orange"
+              }`}
+            >
+              <ReturnIcon width={18} height={18} />
+              My Returns
             </Link>
 
             <Link
