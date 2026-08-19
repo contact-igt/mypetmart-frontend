@@ -726,11 +726,11 @@ export function CheckoutClient() {
                     )}
                   </div>
 
-                  <AddressLocationAssist 
+                  {/* <AddressLocationAssist 
                     onAddressSelect={handleLocationSelect} 
                     initialLatitude={formData.latitude}
                     initialLongitude={formData.longitude}
-                  />
+                  /> */}
 
                   <form onSubmit={handleAddressSubmit} noValidate className="grid gap-4 sm:grid-cols-2">
                     {isAuthenticated && (

@@ -1,4 +1,5 @@
-import { ImagePlaceholder } from "@/components/image-placeholder";
+import Image from "next/image";
+import Link from "next/link";
 import { GROOMING_DETAILED_BULLETS, GROOMING_STEPS } from "./home-data";
 import { ArrowRightIcon } from "@/components/icons";
 
@@ -37,16 +38,23 @@ export function GroomingStepsSection() {
               </li>
             ))}
           </ul>
-          <button type="button" className="button-primary mt-6">
+          <Link
+            href="/shop"
+            className="button-primary mt-6 inline-flex items-center gap-2"
+          >
             Meet the Grooming Brush <ArrowRightIcon width={16} height={16} />
-          </button>
+          </Link>
         </div>
         <div>
-          <ImagePlaceholder
-            label="Small dog being groomed with a mist brush, wrapped in a blanket"
-            tone="brown"
-            className="aspect-[4/5] w-full rotate-2"
-          />
+          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[22px] shadow-sm rotate-2">
+            <Image
+              src="/assest/grooming-feature.jpg"
+              alt="Small dog being groomed with a mist brush, wrapped in a blanket"
+              fill
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              className="object-cover"
+            />
+          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {GROOMING_STEPS.map((step, index) => (
               <span
@@ -62,3 +70,4 @@ export function GroomingStepsSection() {
     </section>
   );
 }
+
