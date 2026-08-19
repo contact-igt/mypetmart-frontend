@@ -57,9 +57,11 @@ export function MobileNavPanel({
         </ul>
 
         <div className="mt-3 flex items-center gap-2 border-t border-border-subtle pt-3">
-          <IconButton label="Search">
-            <SearchIcon width={20} height={20} />
-          </IconButton>
+          <Link href="/shop" onClick={onClose} className="inline-flex" aria-label="Search products">
+            <IconButton label="Search">
+              <SearchIcon width={20} height={20} />
+            </IconButton>
+          </Link>
           <Link href={wishlistLink} onClick={onClose} className="inline-flex">
             <IconButton label="Wishlist">
               <HeartIcon width={20} height={20} />

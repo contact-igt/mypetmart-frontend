@@ -36,9 +36,11 @@ export function SiteHeader() {
         <PrimaryNav className="hidden lg:block lg:justify-self-center" />
 
         <div className="hidden items-center gap-2 lg:flex lg:justify-self-end">
-          <IconButton label="Search">
-            <SearchIcon width={18} height={18} />
-          </IconButton>
+          <Link href="/shop" className="inline-flex" aria-label="Search products">
+            <IconButton label="Search">
+              <SearchIcon width={18} height={18} />
+            </IconButton>
+          </Link>
           <Link href={wishlistLink} className="inline-flex">
             <IconButton label="Wishlist">
               <HeartIcon width={18} height={18} />
