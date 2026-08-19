@@ -43,6 +43,7 @@ const formatPrice = (priceVal: number | string) => {
 interface NormalizedProduct {
   id: number | null;
   name: string;
+  brand: string | null;
   slug: string;
   price: string | number;
   compareAtPrice: string | number | null;
@@ -60,6 +61,7 @@ function normalizeProduct(p: ProductListItem | MockProduct): NormalizedProduct {
     return {
       id: p.id,
       name: p.name,
+      brand: p.brand,
       slug: p.slug,
       price: p.price,
       compareAtPrice: p.compareAtPrice,
@@ -75,6 +77,7 @@ function normalizeProduct(p: ProductListItem | MockProduct): NormalizedProduct {
     return {
       id: null,
       name: p.name,
+      brand: null,
       slug: p.slug,
       price: p.price,
       compareAtPrice: p.originalPrice > p.price ? p.originalPrice : null,
@@ -172,12 +175,19 @@ export function ProductCard({ product }: { product: ProductListItem | MockProduc
 
         <div className={`${cardSurfaceClass} min-h-[143px] p-5 transition-colors duration-200`}>
           <div className="flex flex-col justify-between h-full">
-            <h3
-              className="min-h-[3rem] text-[1.2rem] leading-[1.15] text-text-primary"
-              style={{ fontFamily: "var(--font-display-italic)" }}
-            >
-              {normalized.name}
-            </h3>
+            <div>
+              {normalized.brand && (
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-text-primary/50">
+                  {normalized.brand}
+                </p>
+              )}
+              <h3
+                className="min-h-[3rem] text-[1.2rem] leading-[1.15] text-text-primary"
+                style={{ fontFamily: "var(--font-display-italic)" }}
+              >
+                {normalized.name}
+              </h3>
+            </div>
 
             <div className="mt-3 flex items-baseline gap-2">
               <span

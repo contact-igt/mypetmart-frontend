@@ -25,6 +25,7 @@ const product: ProductListItem = {
   id: 101,
   name: "Comfort Dog Collar",
   slug: "comfort-dog-collar",
+  brand: null,
   petType: "dog",
   price: "499.00",
   compareAtPrice: null,
@@ -159,5 +160,48 @@ describe("ProductCard wishlist heart", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /add to wishlist/i })).toHaveAttribute("aria-pressed", "false");
     });
+  });
+});
+
+describe("ProductCard brand label", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+    AuthTokenStore.setAccessToken(null);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function renderCardWith(overrides: Partial<ProductListItem>) {
+    return render(
+      <CustomerAuthProvider>
+        <WishlistProvider>
+          <ProductCard product={{ ...product, ...overrides }} />
+        </WishlistProvider>
+      </CustomerAuthProvider>
+    );
+  }
+
+  it("shows the brand label when present", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
+    );
+
+    renderCardWith({ brand: "Royal Canin" });
+
+    expect(await screen.findByText("Royal Canin")).toBeInTheDocument();
+  });
+
+  it("renders normally with no brand label when brand is null", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
+    );
+
+    renderCardWith({ brand: null });
+
+    expect(await screen.findByRole("heading", { name: "Comfort Dog Collar" })).toBeInTheDocument();
+    expect(screen.queryByText("Royal Canin")).not.toBeInTheDocument();
   });
 });

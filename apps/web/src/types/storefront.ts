@@ -32,6 +32,7 @@ export interface ProductListItem {
   id: number;
   name: string;
   slug: string;
+  brand: string | null;
   petType: "dog" | "cat" | "all";
   price: string;
   compareAtPrice: string | null;
@@ -85,6 +86,7 @@ export interface ProductDetail {
   name: string;
   slug: string;
   sku: string;
+  brand: string | null;
   description: string | null;
   petType: "dog" | "cat" | "all";
   price: string;
