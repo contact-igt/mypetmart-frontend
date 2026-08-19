@@ -78,13 +78,18 @@ export function ContactFormSection() {
             <ContactDetail icon={<PinIcon width={18} height={18} />} label="Address" value={CONTACT_INFO.address} className="mt-4" />
           </div>
 
-          <div className="flex min-h-[92px] items-center justify-between rounded-[25px] bg-yellow-card px-6 py-5">
+          <a
+            href={CONTACT_INFO.instagramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-[92px] items-center justify-between rounded-[25px] bg-yellow-card px-6 py-5 transition-opacity hover:opacity-90"
+          >
             <div>
               <p className="text-[1.35rem] italic leading-none text-text-primary" style={{ fontFamily: "var(--font-display-italic)" }}>Follow the pack</p>
               <p className="mt-1 text-sm text-text-primary">{CONTACT_INFO.instagramHandle} on Instagram</p>
             </div>
             <InstagramIcon width={23} height={23} className="shrink-0 text-text-primary" />
-          </div>
+          </a>
         </div>
       </div>
     </section>

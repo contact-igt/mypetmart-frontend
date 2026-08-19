@@ -10,7 +10,9 @@ export const CONTACT_INFO = {
   phone: "+91 94440 25511",
   email: "mypetmartstore@gmail.com",
   address: "12A, JR Enclave, MGR Nagar, Ayyapakkam, Chennai – 600077, Tamil Nadu, India",
-  instagramHandle: "@mypetmart_",
+  instagramHandle: "@my.petmart",
+  instagramUrl: "https://www.instagram.com/my.petmart",
+  youtubeUrl: "https://www.youtube.com/@MypetMart-MPM",
 };
 
 export const ENQUIRY_TYPES = ["Product Question", "Order Question", "Something Else"];

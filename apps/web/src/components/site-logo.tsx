@@ -26,7 +26,7 @@ export function SiteLogo({
         width={1332}
         height={276}
         priority
-        className={`h-[60px] w-[280px] ${
+        className={`h-[48px] w-auto max-w-[215px] sm:h-[54px] sm:max-w-[245px] lg:h-[58px] lg:max-w-[270px] object-contain ${
           tone === "inverted" ? "brightness-0 invert" : ""
         }`}
       />

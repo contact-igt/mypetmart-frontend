@@ -1,4 +1,5 @@
-import { ImagePlaceholder } from "@/components/image-placeholder";
+import Image from "next/image";
+import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
 
 export function WalkingEssentials() {
@@ -23,24 +24,32 @@ export function WalkingEssentials() {
             360&deg; tangle-free rotation, independent leash control, reflective stitching for
             evening walks and a padded comfort handle.
           </p>
-          <button
-            type="button"
+          <Link
+            href="/shop"
             className="mt-6 inline-flex h-[var(--button-height)] items-center gap-2 rounded-full bg-white px-6 font-semibold text-text-primary transition-colors duration-150 ease-out hover:bg-cream-bg"
           >
             Meet the Dual Leash <ArrowRightIcon width={16} height={16} />
-          </button>
+          </Link>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <ImagePlaceholder
-            label="Golden retriever walking on a leash outdoors"
-            tone="peach"
-            className="aspect-[4/5] w-full"
-          />
-          <ImagePlaceholder
-            label="Puppy running on grass"
-            tone="mint"
-            className="aspect-[4/5] w-full sm:translate-y-4"
-          />
+          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[22px] shadow-sm">
+            <Image
+              src="/assest/walking-dual-leash.jpg"
+              alt="Two happy dogs walking on a dual leash"
+              fill
+              sizes="(min-width: 1024px) 25vw, 50vw"
+              className="object-cover"
+            />
+          </div>
+          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[22px] shadow-sm sm:translate-y-4">
+            <Image
+              src="/assest/walking-puppy-play.jpg"
+              alt="Happy golden puppy playing outdoors"
+              fill
+              sizes="(min-width: 1024px) 25vw, 50vw"
+              className="object-cover"
+            />
+          </div>
         </div>
       </div>
     </section>

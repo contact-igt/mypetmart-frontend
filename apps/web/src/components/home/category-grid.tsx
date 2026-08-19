@@ -5,10 +5,10 @@ import { ArrowRightIcon } from "@/components/icons";
 
 const CATEGORY_IMAGES: Record<string, string> = {
   Grooming: "/assest/Grooming.png",
-  "Walking Essentials": "/assest/Walking Essentials.png",
-  "Cat Essentials": "/assest/Cat Essentials.png",
-  "Paw Care": "/assest/Paw Care.png",
-  "Dog Essentials": "/assest/Dog Essentials.png",
+  "Walking Essentials": "/assest/walking-essentials.png",
+  "Cat Essentials": "/assest/cat-essentials.png",
+  "Paw Care": "/assest/paw-care.png",
+  "Dog Essentials": "/assest/dog-essentials.png",
 };
 
 function CategoryTile({ category, className }: { category: HomeCategory; className?: string }) {
@@ -131,7 +131,23 @@ export function CategoryGrid() {
         <div className="mt-4 grid grid-cols-1 gap-4 md:max-w-[736px] md:grid-cols-3">
           <CategoryTile category={pawCare} className="md:h-[11.25rem]" />
           <CategoryTile category={dogEssentials} className="md:h-[11.25rem]" />
-          <div className="hidden rounded-[22px] bg-deep-brown md:block md:h-[11.25rem]" aria-hidden="true" />
+          <Link
+            href="/shop"
+            className="group hidden flex-col justify-between rounded-[22px] bg-deep-brown p-5 text-white transition-all duration-150 ease-out hover:bg-deep-brown/95 md:flex md:h-[11.25rem]"
+          >
+            <span className="eyebrow text-[9px] tracking-[0.18em] text-white/80">Full Catalog</span>
+            <div className="flex items-end justify-between">
+              <p
+                className="display-heading text-[1.35rem] leading-tight text-white"
+                style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}
+              >
+                Shop All Products
+              </p>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white transition-transform duration-150 group-hover:translate-x-1">
+                <ArrowRightIcon width={16} height={16} />
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
     </section>

@@ -17,9 +17,11 @@ export function WhyMyPetMart() {
               className={`warm-card ${index % 2 === 1 ? "bg-peach-hero" : "bg-white"}`}
             >
               <span
-                className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-deep-brown"
+                className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-deep-brown text-xs font-bold text-white"
                 aria-hidden="true"
-              />
+              >
+                0{index + 1}
+              </span>
               <p className="body-copy font-semibold text-text-primary">{card.title}</p>
               <p className="body-copy mt-1 text-sm text-text-primary/70">{card.description}</p>
             </div>

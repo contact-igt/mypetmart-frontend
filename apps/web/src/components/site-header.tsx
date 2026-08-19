@@ -36,9 +36,11 @@ export function SiteHeader() {
         <PrimaryNav className="hidden lg:block lg:justify-self-center" />
 
         <div className="hidden items-center gap-2 lg:flex lg:justify-self-end">
-          <IconButton label="Search">
-            <SearchIcon width={18} height={18} />
-          </IconButton>
+          <Link href="/shop" className="inline-flex" aria-label="Search products">
+            <IconButton label="Search">
+              <SearchIcon width={18} height={18} />
+            </IconButton>
+          </Link>
           <Link href={wishlistLink} className="inline-flex">
             <IconButton label="Wishlist">
               <HeartIcon width={18} height={18} />
@@ -66,20 +68,39 @@ export function SiteHeader() {
           </IconButton>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMobileNavOpen((value) => !value)}
-          aria-expanded={mobileNavOpen}
-          aria-controls="mobile-nav-panel"
-          aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full text-text-primary hover:bg-white/60 lg:hidden"
-        >
-          {mobileNavOpen ? (
-            <CloseIcon width={20} height={20} />
-          ) : (
-            <MenuIcon width={20} height={20} />
-          )}
-        </button>
+        <div className="flex items-center gap-1 lg:hidden">
+          <Link
+            href="/cart"
+            className="relative inline-flex"
+            aria-label={itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"}
+          >
+            <IconButton label="Cart">
+              <div className="relative">
+                <BagIcon width={20} height={20} />
+                {itemCount > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-orange px-1 text-[9px] font-bold text-white leading-none">
+                    {itemCount}
+                  </span>
+                )}
+              </div>
+            </IconButton>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen((value) => !value)}
+            aria-expanded={mobileNavOpen}
+            aria-controls="mobile-nav-panel"
+            aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-text-primary hover:bg-white/60"
+          >
+            {mobileNavOpen ? (
+              <CloseIcon width={20} height={20} />
+            ) : (
+              <MenuIcon width={20} height={20} />
+            )}
+          </button>
+        </div>
       </div>
 
       <MobileNavPanel open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />

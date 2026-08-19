@@ -349,11 +349,11 @@ export function AddressBookClient() {
               </button>
             </div>
 
-            <AddressLocationAssist 
+            {/* <AddressLocationAssist 
               onAddressSelect={handleLocationSelect} 
               initialLatitude={formData.latitude}
               initialLongitude={formData.longitude}
-            />
+            /> */}
 
             <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
               <div>

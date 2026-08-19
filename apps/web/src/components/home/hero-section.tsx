@@ -1,9 +1,24 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRightIcon, SearchIcon, ShieldCheckIcon, TruckIcon } from "@/components/icons";
 
 export function HeroSection() {
+  const router = useRouter();
+
+  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const query = (formData.get("q") as string)?.trim();
+    if (query) {
+      router.push(`/shop?search=${encodeURIComponent(query)}`);
+    } else {
+      router.push("/shop");
+    }
+  };
+
   return (
     <section className="relative isolate overflow-hidden bg-orange-hero">
       <Image
@@ -68,7 +83,7 @@ export function HeroSection() {
       /> */}
 
       <div className="relative z-10 mx-auto max-w-[1080px] px-6 pb-12 pt-5 sm:px-10 lg:pb-[10rem] xl:max-w-[1500px]">
-        <form onSubmit={(event) => event.preventDefault()} className="mx-auto w-full max-w-[30rem] lg:max-w-[34rem]">
+        <form onSubmit={handleSearchSubmit} className="mx-auto w-full max-w-[30rem] lg:max-w-[34rem]">
           <label htmlFor="hero-search" className="sr-only">
             Search products
           </label>
@@ -119,12 +134,12 @@ export function HeroSection() {
             </p>
 
             <div className="mt-10 flex flex-wrap gap-3">
-              <button type="button" className="button-primary  h-12 min-w-[13.25rem] px-6 text-base cusror-pointer">
+              <Link href="/shop" className="button-primary h-12 min-w-[13.25rem] px-6 text-base inline-flex items-center justify-center gap-2 cursor-pointer">
                 Shop Bestsellers <ArrowRightIcon width={16} height={16} />
-              </button>
-              <button type="button" className="button-secondary h-12 min-w-[13.25rem] px-6 text-base border-text-primary/100 hover:border-text-primary/50 focus-visible:border-text-primary/50 cursor-pointer">
+              </Link>
+              <Link href="/shop" className="button-secondary h-12 min-w-[13.25rem] px-6 text-base border-text-primary/100 hover:border-text-primary/50 focus-visible:border-text-primary/50 cursor-pointer inline-flex items-center justify-center">
                 Explore All Products
-              </button>
+              </Link>
             </div>
 
             <ul className="mt-8 flex flex-wrap gap-2" aria-label="My Pet Mart highlights">

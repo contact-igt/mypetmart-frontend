@@ -5,14 +5,20 @@ import {
   MailIcon,
   PinIcon,
   InstagramIcon,
-  FacebookIcon,
-  TwitterIcon,
+  YouTubeIcon,
 } from "@/components/icons";
 
 const SOCIAL_LINKS = [
-  { label: "Instagram", icon: InstagramIcon },
-  { label: "Facebook", icon: FacebookIcon },
-  { label: "Twitter", icon: TwitterIcon },
+  {
+    label: "Instagram",
+    href: "https://www.instagram.com/my.petmart",
+    icon: InstagramIcon,
+  },
+  {
+    label: "YouTube",
+    href: "https://www.youtube.com/@MypetMart-MPM",
+    icon: YouTubeIcon,
+  },
 ];
 
 export function SiteFooter() {
@@ -47,10 +53,18 @@ export function SiteFooter() {
                 Thoughtfully selected pet-care essentials that make grooming, walking and everyday life easier for pet parents across India.
               </p>
               <div className="mt-9 flex gap-4">
-                {SOCIAL_LINKS.map(({ label, icon: Icon }) => (
-                  <button key={label} type="button" aria-label={label} title={label} className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors duration-150 hover:bg-white/20">
+                {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={label}
+                    title={label}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition-colors duration-150 hover:bg-white/20"
+                  >
                     <Icon width={20} height={20} />
-                  </button>
+                  </a>
                 ))}
               </div>
             </div>

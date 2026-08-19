@@ -29,10 +29,10 @@ const TONES: Record<string, PlaceholderTone> = {
 
 const MOCK_IMAGES: Record<string, string> = {
   Grooming: "/assest/Grooming.png",
-  "Walking Essentials": "/assest/Walking Essentials.png",
-  "Paw Care": "/assest/Paw Care.png",
-  "Dog Essentials": "/assest/Dog Essentials.png",
-  "Cat Essentials": "/assest/Cat Essentials.png",
+  "Walking Essentials": "/assest/walking-essentials.png",
+  "Paw Care": "/assest/paw-care.png",
+  "Dog Essentials": "/assest/dog-essentials.png",
+  "Cat Essentials": "/assest/cat-essentials.png",
 };
 
 const formatPrice = (priceVal: number | string) => {
