@@ -13,6 +13,7 @@ import { useWishlist } from "@/context/wishlist-context";
 
 const CARD_SURFACES: Record<string, string> = {
   grooming: "bg-[#F7D09D]",
+  dog: "bg-mint-sage",
   "walking-essentials": "bg-[#FFF8EF]",
   "paw-care": "bg-[#F4BD84]",
   "dog-essentials": "bg-[#F3C496]",
@@ -136,7 +137,7 @@ export function ProductCard({ product }: { product: ProductListItem | MockProduc
   return (
     <Link href={`/products/${normalized.slug}`} className="group block focus:outline-none">
       <article className="overflow-hidden rounded-[26px] bg-[#FFF8EF] shadow-[0_10px_22px_rgba(88,51,29,0.04)] transition-transform duration-200 group-hover:-translate-y-1">
-        <div className="relative aspect-[4/5] overflow-hidden bg-cream-bg">
+        <div className="relative aspect-square overflow-hidden bg-white">
           {normalized.imageUrl && !imageError ? (
             <Image
               src={normalized.imageUrl}

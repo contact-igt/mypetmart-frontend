@@ -46,7 +46,7 @@ export function GroomingStepsSection() {
           </Link>
         </div>
         <div>
-          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[22px] shadow-sm rotate-2">
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[22px] shadow-sm rotate-2">
             <Image
               src="/assest/grooming-feature.jpg"
               alt="Small dog being groomed with a mist brush, wrapped in a blanket"

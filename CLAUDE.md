@@ -86,6 +86,19 @@ excluded under the original scope and NOT built: guest Wishlist,
 variant-level Wishlist, admin Wishlist CRUD/analytics, and back-in-stock
 notifications — any of those still require separate approval.
 
+**Override (2026-08-20): Newsletter subscribe V1 approved.** The blanket
+"subscriptions" / "WhatsApp/SMS/email automation" exclusions above no longer
+block newsletter list-building. Scope approved: capture + double opt-in only
+— footer subscribe form (`/api/v1/storefront/newsletter/subscribe`), a
+verification email, `/newsletter/verify` (confirm) and `/newsletter/unsubscribe`
+(explicit-click, never auto-fires) pages, and a read-only admin subscriber
+list. Reference implementation: `invictus-projects/pixeleye-blog-admin`
+(backend + admin) and `invictus-projects/pixeleye-web-frontend` (storefront),
+scoped down to this project's approved depth. Still excluded and NOT built:
+admin campaign composer, a background delivery worker, and any automated
+outbound send beyond the single transactional verification email — those
+still require separate approval.
+
 Full exclusion list → `docs/PROJECT_BRIEF.md`
 
 ## Unconfirmed public claims (do not publish as fact until approved)

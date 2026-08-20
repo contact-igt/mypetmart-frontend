@@ -1,24 +1,8 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowRightIcon, SearchIcon, ShieldCheckIcon, TruckIcon } from "@/components/icons";
+import { ArrowRightIcon, ShieldCheckIcon, TruckIcon } from "@/components/icons";
 
 export function HeroSection() {
-  const router = useRouter();
-
-  const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const query = (formData.get("q") as string)?.trim();
-    if (query) {
-      router.push(`/shop?search=${encodeURIComponent(query)}`);
-    } else {
-      router.push("/shop");
-    }
-  };
-
   return (
     <section className="relative isolate overflow-hidden bg-orange-hero">
       <Image
@@ -82,29 +66,9 @@ export function HeroSection() {
         className="pointer-events-none absolute -right-[30rem] bottom-[-32rem] z-0 hidden w-[54rem] lg:block"
       /> */}
 
-      <div className="relative z-10 mx-auto max-w-[1080px] px-6 pb-12 pt-5 sm:px-10 lg:pb-[10rem] xl:max-w-[1500px]">
-        <form onSubmit={handleSearchSubmit} className="mx-auto w-full max-w-[30rem] lg:max-w-[34rem]">
-          <label htmlFor="hero-search" className="sr-only">
-            Search products
-          </label>
-          <div className="relative">
-            <SearchIcon
-              width={15}
-              height={15}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-primary/55"
-            />
-            <input
-              id="hero-search"
-              name="q"
-              type="search"
-              placeholder="Search for grooming, leashes, paw care..."
-              className="h-12 w-full rounded-full border-0 bg-white pl-10 pr-4 text-m shadow-none placeholder:text-text-primary/45 focus-visible:ring-2 focus-visible:ring-deep-brown"
-            />
-          </div>
-        </form>
-
+      <div className="site-container relative z-10 pb-12 pt-5 lg:pb-20">
         <div className="grid items-center gap-8 pt-12 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:gap-5 lg:pt-16">
-          <div className="relative z-10 flex max-w-[26rem] flex-col items-start xl:translate-x-[13.5vw] xl:max-w-[612.52px]">
+          <div className="relative z-10 flex max-w-[38rem] flex-col items-start">
             <span className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-4 text-[13px] font-medium uppercase tracking-[0.02em] text-text-primary">
               <Image
                 src="/assest/SVG7.png"
@@ -118,10 +82,14 @@ export function HeroSection() {
 
             <h1 className="display-heading mt-5 text-[3.75rem] leading-[0.94] tracking-[-0.045em] text-text-primary sm:text-[4.5rem] lg:text-[4.85rem] xl:text-[100px] xl:leading-[100px] xl:tracking-[-2.56px]" style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}>
               <span className="block">Better</span>
-              <span className="block text-white">little</span>
-              <span className="block text-white">things</span>
-              <span className="block">for</span>
-              <span className="block">happier</span>
+              <span className="block text-white lg:whitespace-nowrap">
+                <span className="block lg:inline">little</span>{" "}
+                <span className="block lg:inline">things</span>
+              </span>
+              <span className="block lg:whitespace-nowrap">
+                <span className="block lg:inline">for</span>{" "}
+                <span className="block lg:inline">happier</span>
+              </span>
               <span className="block">pets.</span>
             </h1>
 
@@ -137,7 +105,7 @@ export function HeroSection() {
               <Link href="/shop" className="button-primary h-12 min-w-[13.25rem] px-6 text-base inline-flex items-center justify-center gap-2 cursor-pointer">
                 Shop Bestsellers <ArrowRightIcon width={16} height={16} />
               </Link>
-              <Link href="/shop" className="button-secondary h-12 min-w-[13.25rem] px-6 text-base border-text-primary/100 hover:border-text-primary/50 focus-visible:border-text-primary/50 cursor-pointer inline-flex items-center justify-center">
+              <Link href="/shop" className="button-secondary h-12 min-w-[13.25rem] border-deep-brown bg-deep-brown px-6 text-base text-white hover:border-terracotta hover:bg-terracotta focus-visible:border-terracotta focus-visible:bg-terracotta cursor-pointer inline-flex items-center justify-center">
                 Explore All Products
               </Link>
             </div>
@@ -155,7 +123,7 @@ export function HeroSection() {
             </ul>
           </div>
 
-          <div className="relative isolate mx-auto w-full max-w-[42rem] lg:max-w-[52vw] xl:translate-x-[4vw] xl:translate-y-5 xl:max-w-[50rem]">
+          <div className="relative isolate mx-auto w-full max-w-[42rem] lg:max-w-[50rem] lg:translate-x-[4%] xl:translate-y-5">
             <Image
               src="/assest/Gradient1.png"
               alt=""

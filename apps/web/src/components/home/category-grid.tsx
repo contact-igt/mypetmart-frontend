@@ -51,7 +51,7 @@ export function CategoryGrid() {
   const [grooming, walking, cat, pawCare, dogEssentials] = CATEGORIES;
 
   return (
-    <section className="relative isolate overflow-hidden bg-cream-bg py-16 sm:py-20 lg:py-24">
+    <section className="section-block relative isolate overflow-hidden bg-cream-bg pb-12 md:pb-20">
       <Image
         src="/assest/Vector5.png"
         alt=""
@@ -94,7 +94,7 @@ export function CategoryGrid() {
           strokeWidth="1.5"
         />
       </svg>
-      <div className="relative z-10 mx-auto max-w-[1100px] px-6 sm:px-8">
+      <div className="site-container relative z-10">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-6">
           <div>
             <span className="inline-flex h-6 items-center rounded-full bg-peach-hero px-3 text-[10px] font-semibold uppercase tracking-[0.02em] text-text-primary">
