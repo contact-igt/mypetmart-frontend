@@ -42,7 +42,7 @@ function SectionHeader() {
 
 export function FeaturedProductsSkeleton() {
   return (
-    <section className="section-block bg-cream-bg">
+    <section className="section-block bg-cream-bg pt-0">
       <div className="site-container">
         <SectionHeader />
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -76,7 +76,7 @@ export async function FeaturedProducts() {
   }
 
   return (
-    <section className="section-block bg-cream-bg">
+    <section className="section-block bg-cream-bg pt-0">
       <div className="site-container">
         <SectionHeader />
 

@@ -23,12 +23,11 @@ const SOCIAL_LINKS = [
 
 export function SiteFooter() {
   return (
-    <footer className="relative overflow-hidden bg-cream-bg text-white">
-      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 top-[52px] bg-deep-brown" />
+    <footer className="relative overflow-hidden bg-deep-brown text-white">
       <NewsletterCard />
 
-      <div className="relative z-10 px-6 pb-5 pt-20 sm:px-10 lg:px-0 lg:pb-5 lg:pt-[19rem]">
-        <div className="mx-auto max-w-[1100px]">
+      <div className="relative z-10 pb-10 pt-14 sm:pt-16 lg:pb-12 lg:pt-16">
+        <div className="site-container">
           <div className="grid gap-10 border-b border-white/35 pb-10 xl:grid-cols-[390px_1fr_390px] xl:items-center xl:gap-16 xl:pb-9">
             <div>
               <Image

@@ -1,11 +1,43 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
+import { NewsletterApi } from "@/lib/newsletter-api";
+import { AppAuthError } from "@/lib/auth/auth-errors";
 
-/** Visual-only newsletter sign-up until the email service is connected. */
+type SubmitState = "idle" | "submitting" | "success" | "error";
+
 export function NewsletterCard() {
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<SubmitState>("idle");
+  const [message, setMessage] = useState("");
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (state === "submitting" || state === "success") return;
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setState("error");
+      setMessage("Enter your email address.");
+      return;
+    }
+
+    setState("submitting");
+    setMessage("");
+
+    try {
+      const result = await NewsletterApi.subscribe(trimmedEmail, "footer");
+      setState("success");
+      setMessage(result.message);
+    } catch (error) {
+      setState("error");
+      setMessage(error instanceof AppAuthError ? error.message : "Something went wrong. Please try again.");
+    }
+  }
+
   return (
-    <div className="relative z-10 mx-auto w-full max-w-[1100px] px-5 lg:-mb-[16.25rem] lg:px-0">
+    <div className="site-container relative z-10 pt-10 sm:pt-12 lg:pt-14">
       <div className="relative min-h-[290px] overflow-hidden rounded-[30px] bg-orange-hero px-7 py-10 sm:px-12 lg:h-[313px] lg:px-[3.2rem] lg:py-12">
         <Image
           src="/assest/Vector6.png"
@@ -29,20 +61,38 @@ export function NewsletterCard() {
             </p>
           </div>
 
-          <form onSubmit={(event) => event.preventDefault()} className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-            <label htmlFor="newsletter-email" className="sr-only">Email address</label>
-            <input
-              id="newsletter-email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@paws.com"
-              className="h-[45px] min-w-0 flex-1 rounded-full border-0 bg-white px-5 text-[0.9rem] text-text-primary outline-none placeholder:text-[#9CA3AF] focus:ring-2 focus:ring-deep-brown/30"
-            />
-            <button type="submit" className="inline-flex h-[45px] shrink-0 items-center justify-center rounded-full bg-deep-brown px-6 text-[0.9rem] font-semibold text-white transition-opacity duration-150 hover:opacity-90">
-              Subscribe
-            </button>
-          </form>
+          <div className="w-full">
+            {state === "success" ? (
+              <p className="text-[0.9rem] font-semibold text-text-primary">{message}</p>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+                <label htmlFor="newsletter-email" className="sr-only">Email address</label>
+                <input
+                  id="newsletter-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@paws.com"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  disabled={state === "submitting"}
+                  className="h-[45px] w-full min-w-0 flex-none rounded-full border-0 bg-white px-5 text-[0.9rem] text-text-primary outline-none placeholder:text-[#9CA3AF] focus:ring-2 focus:ring-deep-brown/30 sm:flex-1"
+                />
+                <button
+                  type="submit"
+                  disabled={state === "submitting"}
+                  className="inline-flex h-[45px] shrink-0 items-center justify-center rounded-full bg-deep-brown px-6 text-[0.9rem] font-semibold text-white transition-opacity duration-150 hover:opacity-90 disabled:opacity-60"
+                >
+                  {state === "submitting" ? "Subscribing…" : "Subscribe"}
+                </button>
+              </form>
+            )}
+            {state === "error" && message && (
+              <p className="mt-2 text-[0.8rem] font-medium text-terracotta" role="alert">
+                {message}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

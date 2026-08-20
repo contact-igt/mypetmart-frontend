@@ -204,4 +204,30 @@ describe("ProductCard brand label", () => {
     expect(await screen.findByRole("heading", { name: "Comfort Dog Collar" })).toBeInTheDocument();
     expect(screen.queryByText("Royal Canin")).not.toBeInTheDocument();
   });
+
+  it("covers the square image frame without padding and uses the dog theme", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
+    );
+
+    const { container } = renderCardWith({
+      category: { id: 1, name: "Dog", slug: "dog", petType: "dog" },
+      primaryImage: {
+        id: 1,
+        url: "/product.jpg",
+        alt: "Full product",
+        contentType: "image/jpeg",
+        sizeBytes: null,
+        width: 1500,
+        height: 1500,
+        sortOrder: 0,
+        isPrimary: true,
+      },
+    });
+
+    expect(await screen.findByAltText("Full product")).toHaveClass("object-cover");
+    expect(screen.getByAltText("Full product")).not.toHaveClass("p-3");
+    expect(container.querySelector(".aspect-square")).toBeInTheDocument();
+    expect(container.querySelector(".bg-mint-sage")).toBeInTheDocument();
+  });
 });

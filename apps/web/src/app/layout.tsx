@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bagel_Fat_One, Baloo_2, Fraunces, Inter } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import "slick-carousel/slick/slick.css";
 import "./globals.css";
 
 const bagelFatOne = Bagel_Fat_One({
