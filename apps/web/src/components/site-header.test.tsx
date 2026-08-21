@@ -86,6 +86,7 @@ describe("SiteHeader Wishlist link", () => {
     });
 
     const accountButton = screen.getByTitle("Account menu");
+    expect(within(accountButton).getByText("Account")).toBeInTheDocument();
     fireEvent.click(accountButton);
     expect(within(accountButton.closest("details")!).getByRole("link", { name: "Sign In" })).toHaveAttribute("href", "/signin");
   });
@@ -110,10 +111,12 @@ describe("SiteHeader Wishlist link", () => {
     fireEvent.click(accountButton);
     const accountMenu = within(accountButton.closest("details")!);
 
-    expect(accountMenu.getByRole("link", { name: "My Profile" })).toHaveAttribute("href", "/account/profile");
-    expect(accountMenu.getByRole("link", { name: "Cart" })).toHaveAttribute("href", "/cart");
+    expect(accountMenu.getByText("Hi, Test Customer")).toBeInTheDocument();
+    expect(accountMenu.getByRole("link", { name: "Overview" })).toHaveAttribute("href", "/account");
     expect(accountMenu.getByRole("link", { name: "My Orders" })).toHaveAttribute("href", "/account/orders");
-    expect(accountMenu.getByRole("link", { name: "Returns" })).toHaveAttribute("href", "/account/returns");
+    expect(accountMenu.getByRole("link", { name: "My Returns" })).toHaveAttribute("href", "/account/returns");
+    expect(accountMenu.getByRole("link", { name: "Profile" })).toHaveAttribute("href", "/account/profile");
+    expect(accountMenu.getByRole("link", { name: "Address Book" })).toHaveAttribute("href", "/account/addresses");
     expect(accountMenu.getByRole("button", { name: "Sign Out" })).toBeInTheDocument();
   });
 });

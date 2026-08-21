@@ -21,8 +21,8 @@ export function ContactHero() {
       </div>
 
       <div className="grid xl:h-[365px] xl:grid-cols-[1.1fr_.9fr]">
-        <div className="flex bg-peach-hero px-6 py-16 sm:px-12 xl:items-start xl:pb-10 xl:pt-[4.9rem] xl:pl-[max(2rem,calc((105vw-1100px)/2))] xl:pr-12">
-          <div className="max-w-[38rem]">
+        <div className="flex bg-peach-hero px-6 py-16 md:px-10 xl:items-start xl:pb-10 xl:pt-[4.9rem] xl:pl-[max(var(--gutter-desktop),calc((100vw-var(--content-max-width))/2+var(--gutter-desktop)))] xl:pr-12">
+          <div className="motion-enter max-w-[38rem]">
             <span className="inline-flex h-[30px] items-center rounded-full bg-white px-4 text-[11px] font-medium uppercase tracking-[0.02em] text-text-primary">
               Contact
             </span>
@@ -58,7 +58,7 @@ export function ContactHero() {
             fill
             priority
             sizes="(min-width: 1024px) 50vw, 100vw"
-            className="object-cover"
+            className="motion-enter motion-enter-delay-1 object-cover"
           />
         </div>
       </div>

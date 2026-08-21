@@ -189,7 +189,7 @@ function ShopExplorerContent() {
     <>
       <ShopHero totalProducts={totalProducts} />
       <section className="relative overflow-hidden bg-cream-bg py-14 lg:py-[4.25rem]">
-        <div className="mx-auto grid w-full max-w-[1274px] gap-8 px-6 sm:px-8 lg:grid-cols-[270px_1fr] xl:grid-cols-[294px_1fr] lg:gap-6 xl:gap-[34px] lg:px-0">
+        <div className="site-container grid gap-8 lg:grid-cols-[270px_1fr] xl:grid-cols-[294px_1fr] lg:gap-6 xl:gap-[34px]">
           
           {/* Mobile Collapse Header */}
           <div className="lg:hidden flex items-center justify-between border-b border-[#E7CFB9] pb-4">

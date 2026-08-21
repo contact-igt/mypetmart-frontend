@@ -68,7 +68,7 @@ export function HeroSection() {
 
       <div className="site-container relative z-10 pb-12 pt-5 lg:pb-20">
         <div className="grid items-center gap-8 pt-12 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:gap-5 lg:pt-16">
-          <div className="relative z-10 flex max-w-[38rem] flex-col items-start">
+          <div className="motion-enter relative z-10 flex max-w-[38rem] flex-col items-start">
             <span className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-4 text-[13px] font-medium uppercase tracking-[0.02em] text-text-primary">
               <Image
                 src="/assest/SVG7.png"
@@ -102,10 +102,10 @@ export function HeroSection() {
             </p>
 
             <div className="mt-10 flex flex-wrap gap-3">
-              <Link href="/shop" className="button-primary h-12 min-w-[13.25rem] px-6 text-base inline-flex items-center justify-center gap-2 cursor-pointer">
+              <Link href="/shop" className="button-primary motion-press h-12 min-w-[13.25rem] px-6 text-base inline-flex items-center justify-center gap-2 cursor-pointer">
                 Shop Bestsellers <ArrowRightIcon width={16} height={16} />
               </Link>
-              <Link href="/shop" className="button-secondary h-12 min-w-[13.25rem] border-deep-brown bg-deep-brown px-6 text-base text-white hover:border-terracotta hover:bg-terracotta focus-visible:border-terracotta focus-visible:bg-terracotta cursor-pointer inline-flex items-center justify-center">
+              <Link href="/shop" className="button-secondary motion-press h-12 min-w-[13.25rem] border-deep-brown bg-deep-brown px-6 text-base text-white hover:border-terracotta hover:bg-terracotta focus-visible:border-terracotta focus-visible:bg-terracotta cursor-pointer inline-flex items-center justify-center">
                 Explore All Products
               </Link>
             </div>
@@ -137,7 +137,7 @@ export function HeroSection() {
               width={3992}
               height={2834}
               priority
-              className="relative z-10 h-auto w-full"
+              className="motion-enter motion-enter-delay-1 relative z-10 h-auto w-full"
             />
           </div>
         </div>

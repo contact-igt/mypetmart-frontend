@@ -54,9 +54,14 @@ export function AccountClient() {
               </h2>
               <Link
                 href="/account/profile"
-                className="text-xs font-bold text-primary-orange hover:underline"
+                className="group inline-flex items-center gap-1.5 text-xs font-bold text-primary-orange hover:underline"
               >
-                View Full Profile &rarr;
+                View Full Profile
+                <ArrowRightIcon
+                  width={14}
+                  height={14}
+                  className="transition-transform group-hover:translate-x-0.5"
+                />
               </Link>
             </div>
 

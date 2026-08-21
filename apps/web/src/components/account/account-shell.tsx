@@ -58,7 +58,7 @@ export function AccountShell({ children, subtitle }: AccountShellProps) {
 
   return (
     <main className="flex-1 bg-cream-bg py-8 md:py-12 min-h-[calc(100vh-144px)]">
-      <div className="mx-auto max-w-[1100px] px-5 sm:px-8">
+      <div className="site-container">
         {/* Welcome Header */}
         <div className="border-b border-deep-brown/15 pb-6">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
@@ -83,11 +83,11 @@ export function AccountShell({ children, subtitle }: AccountShellProps) {
         </div>
 
         {/* Layout Grid */}
-        <div className="mt-8 flex flex-col gap-8 md:flex-row md:items-start">
+        <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start">
           {/* Navigation */}
           <nav
             aria-label="Account navigation"
-            className="flex flex-row overflow-x-auto gap-2 p-1.5 rounded-2xl border border-deep-brown/15 bg-white shadow-xs md:w-60 md:shrink-0 md:flex-col md:p-3"
+            className="flex flex-row overflow-x-auto gap-2 p-1.5 rounded-2xl border border-deep-brown/15 bg-white shadow-xs lg:w-60 lg:shrink-0 lg:flex-col lg:p-3"
           >
             <Link
               href="/account"
@@ -154,7 +154,7 @@ export function AccountShell({ children, subtitle }: AccountShellProps) {
               Address Book
             </Link>
 
-            <div className="my-1 hidden border-t border-deep-brown/10 md:block" />
+            <div className="my-1 hidden border-t border-deep-brown/10 lg:block" />
 
 
             <button

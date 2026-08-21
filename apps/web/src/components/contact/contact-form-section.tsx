@@ -21,7 +21,7 @@ export function ContactFormSection() {
         <path d="M 1040 285 C 1110 275, 1105 344, 1070 342" fill="none" stroke="#E8A27A" strokeDasharray="4 6" strokeWidth="1.5" />
       </svg>
 
-      <div className="relative z-10 mx-auto grid max-w-[1180px] gap-10 px-6 sm:px-8 xl:grid-cols-[1.42fr_1fr] xl:gap-[4.5rem]">
+      <div className="site-container relative z-10 grid gap-10 xl:grid-cols-[1.42fr_1fr] xl:gap-[4.5rem]">
         <form onSubmit={(event) => event.preventDefault()}>
           <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
             <div>
@@ -57,14 +57,14 @@ export function ContactFormSection() {
             I agree to be contacted about my enquiry. We respect your inbox.
           </label>
 
-          <button type="submit" className="button-primary mt-6 h-[54px] w-full text-base">
+          <button type="submit" className="button-primary motion-press mt-6 h-[54px] w-full text-base">
             Send message <ArrowRightIcon width={17} height={17} />
           </button>
         </form>
 
         <div className="flex flex-col gap-5">
           <div className="relative h-[145px] overflow-hidden rounded-[25px]">
-            <Image src="/assest/cat.png" alt="Close-up of a ginger cat" fill sizes="(min-width: 1024px) 34vw, 100vw" className="object-cover" />
+            <Image src="/assest/pet-mail-cat.png" alt="Ginger cat resting beside a paper envelope" fill sizes="(min-width: 1024px) 34vw, 100vw" className="object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/35 via-transparent to-black/20" />
             <span className="absolute left-6 top-6 inline-flex h-[30px] items-center rounded-full bg-white px-4 text-[11px] font-medium uppercase tracking-[0.02em] text-text-primary">Say hi</span>
             <p className="absolute bottom-6 left-6 text-[2rem] leading-none text-text-primary" style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}>

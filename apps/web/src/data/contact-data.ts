@@ -1,10 +1,8 @@
 /**
  * Contact page fixture content — mirrors the footer's contact details
  * (site-footer.tsx) plus the Contact-only elements (enquiry types, FAQ).
- * FAQ items intentionally carry no answer copy: several of the reference's
- * questions touch unconfirmed claims (COD, pan-India shipping, delivery
- * timeframes — CLAUDE.md's unconfirmed-claims list) and must not assert a
- * specific answer until confirmed. See docs/DESIGN_SYSTEM.md §18.
+ * FAQ answers avoid fixed promises for COD, pan-India shipping, and delivery
+ * timeframes because those claims are not yet confirmed.
  */
 export const CONTACT_INFO = {
   phone: "+91 94440 25511",
@@ -17,9 +15,21 @@ export const CONTACT_INFO = {
 
 export const ENQUIRY_TYPES = ["Product Question", "Order Question", "Something Else"];
 
-export const FAQ_QUESTIONS = [
-  "How long does delivery take?",
-  "Is Cash on Delivery available?",
-  "How do I return an item?",
-  "Do you ship pan-India?",
+export const FAQ_ITEMS = [
+  {
+    question: "How long does delivery take?",
+    answer: "Delivery timing depends on your location and the courier service. Share your delivery postcode with our team for the latest estimate before ordering.",
+  },
+  {
+    question: "Is Cash on Delivery available?",
+    answer: "Available payment methods are shown during checkout. If Cash on Delivery is not listed for your order, please choose one of the displayed online payment options.",
+  },
+  {
+    question: "How do I return an item?",
+    answer: "Sign in, open My Orders, choose the delivered order, and submit a refund or replacement request for the eligible item. You can follow its status under Returns.",
+  },
+  {
+    question: "Do you ship pan-India?",
+    answer: "Serviceability depends on the delivery postcode. Enter your shipping address at checkout or contact us with your postcode so we can confirm coverage.",
+  },
 ];

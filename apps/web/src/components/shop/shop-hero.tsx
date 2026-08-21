@@ -8,7 +8,7 @@ export function ShopHero({ totalProducts }: ShopHeroProps) {
   return (
     <section className="overflow-hidden bg-cream-bg">
       <div className="grid xl:h-[402px] xl:grid-cols-[1.65fr_1fr]">
-        <div className="flex bg-peach-hero px-6 py-16 sm:px-12 xl:items-start xl:pb-10 xl:pt-[6.45rem] xl:pl-[max(2rem,calc((103vw-1100px)/2))] xl:pr-12">
+        <div className="flex bg-peach-hero px-6 py-16 md:px-10 xl:items-start xl:pb-10 xl:pt-[6.45rem] xl:pl-[max(var(--gutter-desktop),calc((100vw-var(--content-max-width))/2+var(--gutter-desktop)))] xl:pr-12">
           <div>
             <span className="inline-flex h-[30px] items-center rounded-full bg-white px-4 text-[11px] font-medium uppercase tracking-[0.02em] text-text-primary">
               The shop
@@ -50,4 +50,4 @@ export function ShopHero({ totalProducts }: ShopHeroProps) {
       </div>
     </section>
   );
-}
+}
