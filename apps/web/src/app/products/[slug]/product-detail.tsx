@@ -3,9 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { HeartIcon } from "@/components/icons";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ChevronIcon, HeartIcon } from "@/components/icons";
 import { ProductImagePlaceholder, type PlaceholderTone } from "@/components/image-placeholder";
+import { PlayableVideoCard, type VideoCardProduct } from "@/components/playable-video-card";
+import { TestimonialVideoCard, type TestimonialVideoCardProduct } from "@/components/testimonial-video-card";
+import { TESTIMONIAL_VIDEOS } from "@/data/testimonials";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/cart-context";
@@ -20,10 +23,59 @@ const TONES: Record<string, PlaceholderTone> = {
   "dog-essentials": "brown",
 };
 
+type ProductMedia = {
+  src: string;
+  type: "image" | "video";
+  alt: string;
+};
+
+const GROOMING_MEDIA: ProductMedia[] = Array.from({ length: 4 }, (_, index) => ({
+    src: `/assest/grooming_brush_${index + 1}.mp4`,
+    type: "video",
+    alt: `Mist-powered grooming brush demonstration ${index + 1}`,
+}));
+
+const LEASH_MEDIA: ProductMedia[] = Array.from({ length: 3 }, (_, index) => ({
+    src: `/assest/2leashes_${index + 1}.mp4`,
+    type: "video",
+    alt: `Ultimate dual dog leash demonstration ${index + 1}`,
+}));
+
+const PAW_PAD_MEDIA: ProductMedia[] = Array.from({ length: 2 }, (_, index) => ({
+    src: `/assest/paws_${index + 1}.jpg`,
+    type: "image",
+    alt: `Dog anti-slip paw pads product view ${index + 1}`,
+}));
+
+const PRODUCT_MEDIA: Record<string, ProductMedia[]> = {
+  "pet-grooming-brush": GROOMING_MEDIA,
+  "mist-powered-pet-grooming-brush": GROOMING_MEDIA,
+  "double-leash-double-joy": LEASH_MEDIA,
+  "ultimate-dual-dog-leash": LEASH_MEDIA,
+  "dog-anti-slip-pads": PAW_PAD_MEDIA,
+  "dog-anti-slip-paw-pads": PAW_PAD_MEDIA,
+};
+
+// Deterministic (no Math.random/Date — must match between server and client
+// render) rotation through the shared testimonial pool, so each product page
+// doesn't show the exact same four clips in the exact same order.
+function pickProductTestimonials(productId: number, count: number): string[] {
+  const offset = productId % TESTIMONIAL_VIDEOS.length;
+  return Array.from(
+    { length: Math.min(count, TESTIMONIAL_VIDEOS.length) },
+    (_, i) => TESTIMONIAL_VIDEOS[(offset + i) % TESTIMONIAL_VIDEOS.length],
+  );
+}
+
 const formatPrice = (priceVal: number | string) => {
   const num = typeof priceVal === "number" ? priceVal : parseFloat(priceVal);
   return isNaN(num) ? "0" : num.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 };
+
+// useLayoutEffect measures and applies the rail height cap before the browser
+// paints, so the tall unmeasured list never flashes on screen. It's a no-op
+// warning-generating call during SSR, so it falls back to useEffect there.
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export function ProductDetailClient({ product }: { product: ProductDetail }) {
   const router = useRouter();
@@ -38,6 +90,18 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
   const [quantity, setQuantity] = useState(1);
   const [brokenImageIds, setBrokenImageIds] = useState<Set<number>>(new Set());
 
+  // Thumbnail rail: vertical slider on desktop, horizontal strip on mobile.
+  // Flexbox align-items:stretch alone can't cap the rail to the main image's
+  // height — a taller thumbnail list just grows the row instead of scrolling
+  // internally — so the main image's rendered height is measured and applied
+  // as an explicit cap.
+  const mainImageRef = useRef<HTMLDivElement>(null);
+  const thumbRailRef = useRef<HTMLDivElement>(null);
+  const thumbButtonRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  const [railMaxHeight, setRailMaxHeight] = useState<number | null>(null);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
   // Cart interaction states
   const [cartStatus, setCartStatus] = useState<"idle" | "adding" | "success" | "error">("idle");
   const [cartError, setCartError] = useState<string | null>(null);
@@ -47,6 +111,59 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
   const wishlistPending = isPending(productId);
 
   const tone = TONES[product.category.slug] || "peach";
+  // Dynamic Product Video assignments (Phase B) take priority; the hardcoded
+  // PRODUCT_MEDIA map is a legacy fallback for Products not yet migrated to a
+  // real Admin video assignment — never rendered alongside the dynamic list.
+  const dynamicProductVideos = product.productVideos ?? [];
+  const legacyProductMedia = PRODUCT_MEDIA[product.slug] ?? [];
+  const hasDynamicProductVideos = dynamicProductVideos.length > 0;
+  const showLegacyProductMedia = !hasDynamicProductVideos && legacyProductMedia.length > 0;
+
+  // Product-specific Customer Stories (Phase D) — genuine testimonial_video
+  // assignments explicitly tied to this Product. Never the generic rotated
+  // pool below: when real ones exist for this Product, they take over and
+  // the generic section is suppressed to avoid two testimonial-shaped
+  // sections back to back.
+  const testimonialVideos = product.testimonialVideos ?? [];
+  const hasTestimonialVideos = testimonialVideos.length > 0;
+  // A variant Product's compareAtPrice belongs to one specific variant — never
+  // attach it to the generic "From" starting price shown here (mirrors the
+  // same suppression the main price block above already applies before a
+  // variant is selected).
+  const testimonialCardProduct: TestimonialVideoCardProduct = {
+    name: product.name,
+    slug: product.slug,
+    price: typeof product.price === "number" ? product.price : parseFloat(product.price),
+    compareAtPrice: product.hasVariants
+      ? null
+      : product.compareAtPrice != null
+        ? typeof product.compareAtPrice === "number"
+          ? product.compareAtPrice
+          : parseFloat(product.compareAtPrice)
+        : null,
+    hasVariants: product.hasVariants,
+  };
+
+  const productTestimonials = pickProductTestimonials(product.id, 4);
+
+  // "Add to cart" from inside a demo-video lightbox is a fixed quantity-1,
+  // no-variant quick-add — separate from the main panel's quantity/variant
+  // state above. Only offered for simple products: a video lightbox has no
+  // room for a real variant picker, and silently adding the wrong variant
+  // would be worse than not offering it.
+  const videoCardProduct: VideoCardProduct | undefined = product.hasVariants
+    ? undefined
+    : {
+        name: product.name,
+        price: typeof product.price === "number" ? product.price : parseFloat(product.price),
+        compareAtPrice:
+          product.compareAtPrice != null
+            ? typeof product.compareAtPrice === "number"
+              ? product.compareAtPrice
+              : parseFloat(product.compareAtPrice)
+            : null,
+        onAddToCart: () => addToCart(product.id, 1),
+      };
 
   const handleWishlistClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -128,6 +245,48 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
     });
   };
 
+  const updateRailScrollState = () => {
+    const el = thumbRailRef.current;
+    if (!el) return;
+    setCanScrollUp(el.scrollTop > 1);
+    setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+  };
+
+  const scrollRail = (direction: "up" | "down") => {
+    const el = thumbRailRef.current;
+    if (!el) return;
+    const amount = el.clientHeight * 0.8 || 160;
+    el.scrollBy({ top: direction === "down" ? amount : -amount, behavior: "smooth" });
+  };
+
+  // Track the main image's rendered height and cap the rail to it, so extra
+  // thumbnails scroll inside the rail instead of growing the page. Measured
+  // synchronously before paint (useLayoutEffect) so refreshing never shows a
+  // tall list that then visibly collapses down to size.
+  useIsomorphicLayoutEffect(() => {
+    const el = mainImageRef.current;
+    if (!el) return;
+    setRailMaxHeight(el.getBoundingClientRect().height);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setRailMaxHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Recompute whether the rail can scroll after the image list changes or
+  // the measured cap changes (e.g. on breakpoint/viewport resize).
+  useEffect(() => {
+    updateRailScrollState();
+  }, [product.images, railMaxHeight]);
+
+  // Keep the selected thumbnail visible inside the rail without scrolling the page.
+  useEffect(() => {
+    if (!selectedImage) return;
+    thumbButtonRefs.current.get(selectedImage.id)?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  }, [selectedImage]);
+
   const handleAddToCart = async () => {
     if (product.hasVariants && !selectedVariant) return;
 
@@ -187,8 +346,8 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
         {/* Left Column: Image Gallery */}
-        <div className="flex flex-col gap-4">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[26px] bg-[#FFF8EF] border border-border-subtle shadow-[0_10px_22px_rgba(88,51,29,0.02)]">
+        <div className="flex flex-col gap-4 lg:flex-row-reverse lg:items-stretch">
+          <div ref={mainImageRef} className="relative aspect-[4/5] overflow-hidden rounded-[26px] bg-[#FFF8EF] border border-border-subtle shadow-[0_10px_22px_rgba(88,51,29,0.02)] lg:flex-1">
             {mainImageToRender && !isMainImageBroken ? (
               <Image
                 src={mainImageToRender.url}
@@ -218,47 +377,86 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
 
           {/* Thumbnail Navigation */}
           {product.images && product.images.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto py-2 scrollbar-none snap-x snap-mandatory">
-              {product.images.map((img) => {
-                const isBroken = brokenImageIds.has(img.id);
-                const isSelected = selectedImage ? selectedImage.id === img.id : false;
-                return (
-                  <button
-                    key={img.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedImage(img);
-                      setCartStatus("idle");
-                      setCartError(null);
-                    }}
-                    aria-label={`View image ${img.sortOrder}`}
-                    aria-current={isSelected ? "true" : "false"}
-                    className={`relative aspect-square w-20 flex-shrink-0 cursor-pointer overflow-hidden rounded-[14px] border-2 transition-all duration-150 snap-start ${
-                      isSelected
-                        ? "border-primary-orange shadow-sm"
-                        : "border-border-subtle bg-[#FFF8EF] hover:border-text-primary/40"
-                    }`}
-                  >
-                    {isBroken ? (
-                      <ProductImagePlaceholder
-                        label={product.name}
-                        tone={tone}
-                        iconSize={16}
-                        className="h-full w-full rounded-md"
-                      />
-                    ) : (
-                      <Image
-                        src={img.url}
-                        alt={img.alt || `Thumbnail ${img.sortOrder}`}
-                        fill
-                        sizes="80px"
-                        className="object-cover"
-                        onError={() => handleImageError(img.id)}
-                      />
-                    )}
-                  </button>
-                );
-              })}
+            <div
+              className="flex flex-col gap-2 lg:w-20 lg:flex-shrink-0 lg:min-h-0 lg:max-h-[75vh]"
+              style={railMaxHeight != null ? { maxHeight: `${railMaxHeight}px` } : undefined}
+            >
+              <button
+                type="button"
+                onClick={() => scrollRail("up")}
+                disabled={!canScrollUp}
+                aria-label="Scroll product images up"
+                tabIndex={canScrollUp ? 0 : -1}
+                className={`hidden shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-white py-1 text-text-primary transition-opacity duration-150 lg:flex ${
+                  canScrollUp ? "opacity-100 hover:border-text-primary/40 cursor-pointer" : "pointer-events-none opacity-0"
+                }`}
+              >
+                <ChevronIcon className="h-4 w-4" />
+              </button>
+
+              <div
+                ref={thumbRailRef}
+                onScroll={updateRailScrollState}
+                className="flex gap-3 overflow-x-auto py-2 scrollbar-none snap-x snap-mandatory lg:flex-1 lg:min-h-0 lg:flex-col lg:snap-none lg:overflow-x-visible lg:overflow-y-auto lg:py-0"
+              >
+                {product.images.map((img) => {
+                  const isBroken = brokenImageIds.has(img.id);
+                  const isSelected = selectedImage ? selectedImage.id === img.id : false;
+                  return (
+                    <button
+                      key={img.id}
+                      ref={(el) => {
+                        if (el) thumbButtonRefs.current.set(img.id, el);
+                        else thumbButtonRefs.current.delete(img.id);
+                      }}
+                      type="button"
+                      onClick={() => {
+                        setSelectedImage(img);
+                        setCartStatus("idle");
+                        setCartError(null);
+                      }}
+                      aria-label={`View image ${img.sortOrder}`}
+                      aria-current={isSelected ? "true" : "false"}
+                      className={`relative aspect-square w-20 flex-shrink-0 cursor-pointer overflow-hidden rounded-[14px] border-2 transition-all duration-150 snap-start ${
+                        isSelected
+                          ? "border-primary-orange shadow-sm"
+                          : "border-border-subtle bg-[#FFF8EF] hover:border-text-primary/40"
+                      }`}
+                    >
+                      {isBroken ? (
+                        <ProductImagePlaceholder
+                          label={product.name}
+                          tone={tone}
+                          iconSize={16}
+                          className="h-full w-full rounded-md"
+                        />
+                      ) : (
+                        <Image
+                          src={img.url}
+                          alt={img.alt || `Thumbnail ${img.sortOrder}`}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                          onError={() => handleImageError(img.id)}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => scrollRail("down")}
+                disabled={!canScrollDown}
+                aria-label="Scroll product images down"
+                tabIndex={canScrollDown ? 0 : -1}
+                className={`hidden shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-white py-1 text-text-primary transition-opacity duration-150 lg:flex ${
+                  canScrollDown ? "opacity-100 hover:border-text-primary/40 cursor-pointer" : "pointer-events-none opacity-0"
+                }`}
+              >
+                <ChevronIcon className="h-4 w-4 rotate-180" />
+              </button>
             </div>
           )}
         </div>
@@ -321,6 +519,23 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
               </span>
             )}
           </div>
+
+          {/* Key Features */}
+          {product.features.length > 0 && (
+            <div className="mb-6">
+              <span className="block text-sm font-semibold text-text-primary mb-2">
+                Key Features
+              </span>
+              <ul className="flex flex-col gap-1.5">
+                {product.features.map((feature) => (
+                  <li key={feature.id} className="flex items-start gap-2 text-sm text-text-primary/80">
+                    <span className="mt-0.5 text-primary-orange" aria-hidden="true">✓</span>
+                    <span>{feature.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Stock State */}
           <div className="mb-8" aria-live="polite">
@@ -520,6 +735,138 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
           })()}
         </div>
       </div>
+
+      {(hasDynamicProductVideos || showLegacyProductMedia) && (
+        <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-media-heading">
+          <div className="mb-7 max-w-2xl">
+            <span className="pill-label bg-white text-text-primary">See it in action</span>
+            <h2
+              id="product-media-heading"
+              className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
+              style={{ fontFamily: "var(--font-display-italic)" }}
+            >
+              Made for real pet moments.
+            </h2>
+          </div>
+
+          {hasDynamicProductVideos ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {dynamicProductVideos.map((assignment) => (
+                <figure
+                  key={assignment.id}
+                  className="overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm"
+                >
+                  <video
+                    src={assignment.media.publicUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    aria-label={assignment.title || "Product video"}
+                    className="aspect-video w-full bg-deep-brown object-contain"
+                  >
+                    Your browser does not support video playback.
+                  </video>
+                  {(assignment.title || assignment.caption) && (
+                    <figcaption className="p-3 sm:p-4">
+                      {assignment.title && <p className="text-sm font-semibold text-text-primary">{assignment.title}</p>}
+                      {assignment.caption && <p className="mt-1 text-xs text-text-muted">{assignment.caption}</p>}
+                    </figcaption>
+                  )}
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {legacyProductMedia.map((media) =>
+                media.type === "video" ? (
+                  <figure key={media.src} className="aspect-[9/16]">
+                    <PlayableVideoCard
+                      src={media.src}
+                      label={media.alt}
+                      aspect="h-full"
+                      className="h-full"
+                      product={videoCardProduct}
+                    />
+                  </figure>
+                ) : (
+                  <figure
+                    key={media.src}
+                    className="relative aspect-square overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm"
+                  >
+                    <Image
+                      src={media.src}
+                      alt={media.alt}
+                      fill
+                      sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover"
+                    />
+                  </figure>
+                ),
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {hasTestimonialVideos && (
+        <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-testimonial-heading">
+          <div className="mb-7 max-w-2xl">
+            <span className="pill-label bg-white text-text-primary">Customer stories</span>
+            <h2
+              id="product-testimonial-heading"
+              className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
+              style={{ fontFamily: "var(--font-display-italic)" }}
+            >
+              What pet parents say about this product.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {testimonialVideos.map((assignment) => (
+              <TestimonialVideoCard
+                key={assignment.id}
+                testimonial={{
+                  id: assignment.id,
+                  mediaUrl: assignment.media.publicUrl,
+                  title: assignment.title,
+                  caption: assignment.caption,
+                }}
+                product={testimonialCardProduct}
+                variant="commerce"
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!hasTestimonialVideos && (
+        <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-testimonials-heading">
+          <div className="mb-7 max-w-2xl">
+            <span className="pill-label bg-white text-text-primary">Real pet parents</span>
+            <h2
+              id="product-testimonials-heading"
+              className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
+              style={{ fontFamily: "var(--font-display-italic)" }}
+            >
+              Hear from pet parents shopping with us.
+            </h2>
+            <p className="body-copy mt-3 text-text-muted">
+              General customer stories from across My Pet Mart — not reviews of this specific product.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+            {productTestimonials.map((src, index) => (
+              <PlayableVideoCard
+                key={src}
+                src={src}
+                label={`Pet parent testimonial ${index + 1}`}
+                caption="Pet parent story"
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

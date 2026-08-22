@@ -112,7 +112,7 @@ export function CartClient() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[1100px] px-5 py-12 sm:px-8 text-center" aria-live="polite">
+      <div className="site-container py-12 text-center" aria-live="polite">
         <div className="inline-flex h-10 w-10 animate-spin rounded-full border-4 border-primary-orange border-t-transparent"></div>
         <p className="mt-4 text-text-muted font-medium text-sm">Loading your shopping cart...</p>
       </div>
@@ -121,13 +121,13 @@ export function CartClient() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-[1100px] px-5 py-12 sm:px-8 text-center" aria-live="assertive">
-        <div className="rounded-2xl bg-[#FFF0ED] border border-red-100 p-8 max-w-md mx-auto">
+      <div className="site-container py-12 text-center" aria-live="assertive">
+        <div className="motion-enter rounded-2xl bg-[#FFF0ED] border border-red-100 p-8 max-w-md mx-auto">
           <p className="text-terracotta font-semibold mb-4">{error}</p>
           <button
             type="button"
             onClick={handleRetry}
-            className="px-5 py-2.5 bg-primary-orange text-white rounded-xl text-sm font-semibold hover:bg-terracotta transition-colors"
+            className="motion-press px-5 py-2.5 bg-primary-orange text-white rounded-xl text-sm font-semibold hover:bg-terracotta transition-colors"
           >
             Retry Loading
           </button>
@@ -138,8 +138,8 @@ export function CartClient() {
 
   if (cart.items.length === 0) {
     return (
-      <div className="mx-auto max-w-[1100px] px-5 py-16 sm:px-8 text-center" aria-live="polite">
-        <div className="max-w-md mx-auto rounded-3xl bg-white border border-border-subtle p-10 shadow-[0_8px_20px_rgba(88,51,29,0.02)]">
+      <div className="site-container py-16 text-center" aria-live="polite">
+        <div className="motion-enter max-w-md mx-auto rounded-3xl bg-white border border-border-subtle p-10 shadow-[0_8px_20px_rgba(88,51,29,0.02)]">
           <span className="text-4xl block mb-4">🛒</span>
           <h1
             className="text-2xl text-text-primary leading-tight font-medium mb-3"
@@ -152,7 +152,7 @@ export function CartClient() {
           </p>
           <Link
             href="/shop"
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-primary-orange px-6 text-sm font-semibold text-white hover:bg-terracotta transition-colors"
+            className="motion-press inline-flex h-11 items-center justify-center rounded-xl bg-primary-orange px-6 text-sm font-semibold text-white hover:bg-terracotta transition-colors"
           >
             Continue Shopping
           </Link>
@@ -162,10 +162,10 @@ export function CartClient() {
   }
 
   return (
-    <div className="mx-auto max-w-[1100px] px-5 py-8 sm:px-8">
+    <div className="site-container py-8">
       {/* Title */}
       <h1
-        className="text-3xl sm:text-4xl text-text-primary leading-tight font-medium mb-8"
+        className="motion-enter text-3xl sm:text-4xl text-text-primary leading-tight font-medium mb-8"
         style={{ fontFamily: "var(--font-display-italic)" }}
       >
         Shopping Cart
@@ -202,7 +202,7 @@ export function CartClient() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
         {/* Cart items list */}
-        <div className="flex flex-col gap-4">
+        <div className="motion-enter motion-enter-delay-1 flex flex-col gap-4">
           {cart.items.map((item) => {
             const isUpdating = updatingItemIds.has(item.cartItemId);
             const isRemoving = removingItemIds.has(item.cartItemId);
@@ -385,7 +385,7 @@ export function CartClient() {
         </div>
 
         {/* Summary side panel */}
-        <div className="rounded-3xl bg-white border border-border-subtle p-5 sm:p-6 shadow-[0_6px_20px_rgba(88,51,29,0.02)]">
+        <div className="motion-enter motion-enter-delay-2 rounded-3xl bg-white border border-border-subtle p-5 sm:p-6 shadow-[0_6px_20px_rgba(88,51,29,0.02)]">
           <h2
             className="text-xl text-text-primary leading-tight font-medium mb-4"
             style={{ fontFamily: "var(--font-display-italic)" }}
@@ -407,7 +407,7 @@ export function CartClient() {
             <Link
               href={isCheckoutDisabled ? "#" : "/checkout"}
               aria-disabled={isCheckoutDisabled}
-              className={`h-11 inline-flex items-center justify-center rounded-xl bg-primary-orange hover:bg-terracotta text-white font-semibold text-sm tracking-wide transition-all cursor-pointer select-none ${
+              className={`motion-press h-11 inline-flex items-center justify-center rounded-xl bg-primary-orange hover:bg-terracotta text-white font-semibold text-sm tracking-wide transition-all cursor-pointer select-none ${
                 isCheckoutDisabled ? "opacity-40 pointer-events-none" : "opacity-100"
               }`}
             >
@@ -418,7 +418,7 @@ export function CartClient() {
               type="button"
               onClick={handleClearCart}
               disabled={isClearing || updatingItemIds.size > 0 || removingItemIds.size > 0}
-              className="h-11 inline-flex items-center justify-center rounded-xl border border-border-subtle text-text-primary font-semibold text-sm hover:border-text-primary/50 transition-all cursor-pointer disabled:opacity-50"
+              className="motion-press h-11 inline-flex items-center justify-center rounded-xl border border-border-subtle text-text-primary font-semibold text-sm hover:border-text-primary/50 transition-all cursor-pointer disabled:opacity-50"
             >
               {isClearing ? "Clearing Cart..." : "Clear Cart"}
             </button>

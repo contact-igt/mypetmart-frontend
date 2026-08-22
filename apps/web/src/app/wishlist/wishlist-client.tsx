@@ -33,7 +33,7 @@ export function WishlistClient() {
 
   return (
     <main className="flex-1 bg-cream-bg py-8 md:py-12 min-h-[calc(100vh-144px)]">
-      <div className="mx-auto max-w-[1100px] px-5 sm:px-8">
+      <div className="site-container">
         <div className="border-b border-deep-brown/15 pb-6">
           <span className="text-xs font-bold uppercase tracking-wider text-primary-orange">
             Saved for later

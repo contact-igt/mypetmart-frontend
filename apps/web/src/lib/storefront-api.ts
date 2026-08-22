@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from "./config";
-import type { Category, PaginatedProductList, ProductListQuery, ProductDetail } from "@/types/storefront";
+import type { Category, PaginatedProductList, ProductListQuery, ProductDetail, StoreProfile } from "@/types/storefront";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -42,10 +42,16 @@ async function storefrontFetch<T>(path: string, searchParams?: Record<string, st
   return body.data;
 }
 
-export async function getStorefrontCategories(petType?: "dog" | "cat" | "all"): Promise<Category[]> {
+export async function getStorefrontCategories(
+  petType?: "dog" | "cat" | "all",
+  options?: { showOnHomepage?: boolean },
+): Promise<Category[]> {
   const params: Record<string, string | undefined> = {};
   if (petType && petType !== "all") {
     params.petType = petType;
+  }
+  if (options?.showOnHomepage) {
+    params.showOnHomepage = "true";
   }
   return storefrontFetch<Category[]>("/storefront/categories", params);
 }
@@ -58,11 +64,16 @@ export async function getStorefrontProducts(query: ProductListQuery): Promise<Pa
     category: query.category,
     petType: query.petType === "all" ? undefined : query.petType,
     sort: query.sort,
+    featured: query.featured ? "true" : undefined,
   };
   return storefrontFetch<PaginatedProductList>("/storefront/products", params);
 }
 
 export async function getStorefrontProductBySlug(slug: string): Promise<ProductDetail> {
   return storefrontFetch<ProductDetail>(`/storefront/products/${slug}`);
+}
+
+export async function getStorefrontStoreProfile(): Promise<StoreProfile> {
+  return storefrontFetch<StoreProfile>("/storefront/store-profile");
 }
 

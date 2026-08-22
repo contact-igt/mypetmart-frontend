@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { Check } from "lucide-react";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useCart } from "@/context/cart-context";
 import { PaymentApi } from "@/lib/payment-api";
@@ -217,7 +218,7 @@ export function PaymentResultClient({ status, txnid, orderId }: PaymentResultCli
     return (
       <div className="rounded-2xl border border-deep-brown/15 bg-white p-8 text-center shadow-xs space-y-5">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-mint-sage">
-          <span className="text-2xl">&#10003;</span>
+          <Check size={30} strokeWidth={2.5} aria-hidden="true" />
         </div>
         <div>
           <h1 className="font-baloo text-2xl font-extrabold text-deep-brown">Payment confirmed</h1>

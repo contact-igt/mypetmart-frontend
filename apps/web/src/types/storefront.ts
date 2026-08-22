@@ -61,6 +61,34 @@ export interface ProductListQuery {
   category?: string;
   petType?: "dog" | "cat" | "all";
   sort?: ProductSort;
+  featured?: boolean;
+}
+
+export interface ProductFeature {
+  id: number;
+  productId: number;
+  label: string;
+  displayOrder: number;
+}
+
+export type ProductMediaRole = "product_video" | "testimonial_video";
+
+export interface ProductMediaAssignment {
+  id: number;
+  mediaAssetId: number;
+  mediaRole: ProductMediaRole;
+  title: string | null;
+  caption: string | null;
+  displayOrder: number;
+  active: boolean;
+  media: {
+    id: number;
+    publicUrl: string;
+    mimeType: string;
+    mediaType: "image" | "video";
+    title: string | null;
+    originalName: string;
+  };
 }
 
 export interface ProductVariant {
@@ -106,6 +134,9 @@ export interface ProductDetail {
   heightCm: string | null;
   variants: ProductVariant[];
   images: ProductImage[];
+  features: ProductFeature[];
+  productVideos: ProductMediaAssignment[];
+  testimonialVideos: ProductMediaAssignment[];
 }
 
 export type CartAvailabilityReason =
@@ -177,6 +208,17 @@ export interface CartMergeReport {
 export interface CartMergeResult {
   cart: Cart;
   mergeReport: CartMergeReport;
+}
+
+// Public-safe subset of the backend's admin-managed StoreProfile
+// (mypetmart-backend/src/models/SettingsModels/settings.types.ts) — only the
+// 4 fields the storefront is allowed to display, served by
+// GET /storefront/store-profile.
+export interface StoreProfile {
+  storeName: string;
+  supportEmail: string;
+  supportPhone: string;
+  address: string;
 }
 
 

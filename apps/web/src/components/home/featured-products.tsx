@@ -4,23 +4,18 @@ import { ArrowRightIcon } from "@/components/icons";
 import { getStorefrontProducts } from "@/lib/storefront-api";
 import type { ProductListItem } from "@/types/storefront";
 
-// The storefront product-list endpoint has no `featured` query parameter, so this
-// fetches an ordinary "newest" page and then prefers items whose real `featured`
-// flag (returned on every ProductListItem) is set, filling any remaining slots
-// with the next-newest items. No unsupported backend filter is invented.
 const HOME_FEATURED_PRODUCT_COUNT = 6;
-const HOME_FEATURED_FETCH_POOL_SIZE = 12;
 
 async function getHomeFeaturedProducts(): Promise<ProductListItem[]> {
   const { items } = await getStorefrontProducts({
     page: 1,
-    pageSize: HOME_FEATURED_FETCH_POOL_SIZE,
+    pageSize: HOME_FEATURED_PRODUCT_COUNT,
     sort: "newest",
+    featured: true,
   });
-
-  const featured = items.filter((item) => item.featured);
-  const rest = items.filter((item) => !item.featured);
-  return [...featured, ...rest].slice(0, HOME_FEATURED_PRODUCT_COUNT);
+  // pageSize already bounds this server-side; sliced again defensively so the
+  // section's supported slot count can never be exceeded.
+  return items.slice(0, HOME_FEATURED_PRODUCT_COUNT);
 }
 
 function SectionHeader() {

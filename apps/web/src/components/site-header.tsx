@@ -14,7 +14,13 @@ import {
   MenuIcon,
   CloseIcon,
 } from "@/components/icons";
-import { LogOutIcon, ReturnIcon, ShoppingBagIcon } from "@/components/account/account-icons";
+import {
+  LogOutIcon,
+  MapPinIcon,
+  ReturnIcon,
+  ShieldCheckIcon,
+  ShoppingBagIcon,
+} from "@/components/account/account-icons";
 
 import Link from "next/link";
 import { useCustomerAuth } from "@/context/customer-auth-context";
@@ -25,9 +31,23 @@ export function SiteHeader() {
   const accountMenuRef = useRef<HTMLDetailsElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const { status, logout } = useCustomerAuth();
+  const { status, customer, logout } = useCustomerAuth();
 
   const wishlistLink = status === "authenticated" ? "/wishlist" : "/signin";
+
+  const firstName = customer?.name?.trim().split(/\s+/)[0];
+  const accountLabel =
+    status === "authenticated"
+      ? `Hi, ${firstName || customer?.name || "Account"}`
+      : status === "loading"
+        ? ""
+        : "Sign In";
+  const accountMenuAriaLabel =
+    status === "authenticated"
+      ? `Open account menu for ${firstName || customer?.name || "your account"}`
+      : status === "loading"
+        ? "Account menu"
+        : "Sign in to MyPetMart";
 
   const { itemCount } = useCart();
 
@@ -104,11 +124,13 @@ export function SiteHeader() {
           </Link>
           <details ref={accountMenuRef} className="group relative">
             <summary
-              aria-label="Account menu"
-              title="Account menu"
-              className="inline-flex h-10 cursor-pointer list-none items-center justify-center gap-1 rounded-full px-2.5 text-text-primary transition-colors duration-150 ease-out hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 [&::-webkit-details-marker]:hidden"
+              data-testid="account-menu-trigger"
+              aria-label={accountMenuAriaLabel}
+              title={accountMenuAriaLabel}
+              className="inline-flex h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-full px-3 text-text-primary transition-colors duration-150 ease-out hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 [&::-webkit-details-marker]:hidden"
             >
               <UserIcon width={18} height={18} />
+              <span className="hidden text-sm font-semibold xl:inline">{accountLabel}</span>
               <ChevronDown
                 size={14}
                 strokeWidth={1.8}
@@ -119,34 +141,47 @@ export function SiteHeader() {
 
             <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-deep-brown/15 bg-white p-2 shadow-[0_14px_40px_rgba(62,35,25,0.18)]">
               <nav aria-label="Account menu" className="flex flex-col">
-                <Link href="/account/profile" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
-                  <UserIcon width={17} height={17} /> My Profile
-                </Link>
-                <Link href="/cart" onClick={closeAccountMenu} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
-                  <span className="flex items-center gap-3"><ShoppingCart size={17} strokeWidth={1.8} /> Cart</span>
-                  {itemCount > 0 && <span className="rounded-full bg-primary-orange px-2 py-0.5 text-[10px] font-bold text-white">{itemCount}</span>}
-                </Link>
-                <Link href="/account/orders" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
-                  <ShoppingBagIcon width={17} height={17} /> My Orders
-                </Link>
-                <Link href="/account/returns" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
-                  <ReturnIcon width={17} height={17} /> Returns
-                </Link>
-                <div className="my-1 border-t border-deep-brown/10" />
                 {status === "authenticated" ? (
-                  <button
-                    type="button"
-                    disabled={loggingOut}
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-terracotta transition-colors hover:bg-terracotta/10 disabled:opacity-50"
-                  >
-                    <LogOutIcon width={17} height={17} />
-                    {loggingOut ? "Signing out..." : "Sign Out"}
-                  </button>
+                  <>
+                    <p className="truncate px-3 py-2 text-sm font-bold text-deep-brown">
+                      Hi, {customer?.name ?? "Pet Parent"}
+                    </p>
+                    <div className="mb-1 border-t border-deep-brown/10" />
+                    <Link href="/account" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
+                      <UserIcon width={17} height={17} /> Overview
+                    </Link>
+                    <Link href="/account/orders" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
+                      <ShoppingBagIcon width={17} height={17} /> My Orders
+                    </Link>
+                    <Link href="/account/returns" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
+                      <ReturnIcon width={17} height={17} /> My Returns
+                    </Link>
+                    <Link href="/account/profile" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
+                      <ShieldCheckIcon width={17} height={17} /> Profile
+                    </Link>
+                    <Link href="/account/addresses" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
+                      <MapPinIcon width={17} height={17} /> Address Book
+                    </Link>
+                    <div className="my-1 border-t border-deep-brown/10" />
+                    <button
+                      type="button"
+                      disabled={loggingOut}
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-terracotta transition-colors hover:bg-terracotta/10 disabled:opacity-50"
+                    >
+                      <LogOutIcon width={17} height={17} />
+                      {loggingOut ? "Signing out..." : "Sign Out"}
+                    </button>
+                  </>
                 ) : (
-                  <Link href="/signin" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-primary-orange hover:bg-cream-bg">
-                    <UserIcon width={17} height={17} /> Sign In
-                  </Link>
+                  <>
+                    <Link href="/signin" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-primary-orange hover:bg-cream-bg">
+                      <UserIcon width={17} height={17} /> Sign In
+                    </Link>
+                    <Link href="/signup" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
+                      <UserIcon width={17} height={17} /> Create Account
+                    </Link>
+                  </>
                 )}
               </nav>
             </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowRightIcon } from "@/components/account/account-icons";
 import { ReturnApi } from "@/lib/return-api";
 import type { ListReturnsResultJSON, ReturnStatus } from "@/types/return";
 import { AppAuthError } from "@/lib/auth/auth-errors";
@@ -99,7 +100,7 @@ export function ReturnsClient() {
             <Link
               key={r.id}
               href={`/account/returns/${r.id}`}
-              className="block rounded-2xl border border-deep-brown/15 bg-white p-5 sm:p-6 shadow-xs hover:border-deep-brown/30 transition-all"
+              className="group block rounded-2xl border border-deep-brown/15 bg-white p-5 sm:p-6 shadow-xs hover:border-deep-brown/30 transition-all"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -125,7 +126,14 @@ export function ReturnsClient() {
                   </p>
                   <p className="text-[11px] text-text-primary/60 mt-0.5">Requested {formatDate(r.requestedAt)}</p>
                 </div>
-                <span className="text-xs font-bold text-primary-orange">View Details &rarr;</span>
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-orange">
+                  View Details
+                  <ArrowRightIcon
+                    width={14}
+                    height={14}
+                    className="transition-transform group-hover:translate-x-0.5"
+                  />
+                </span>
               </div>
             </Link>
           );

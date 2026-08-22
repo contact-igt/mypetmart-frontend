@@ -81,7 +81,7 @@
   /* Motion */
   --duration-hover: 150ms; /* CLAUDE.md hard rule: hover transitions ≤150ms */
   --easing-standard: ease-out; /* implementation default — no motion visible in a static PDF, §17 */
-  --easing-entrance: ease-out;
+  --easing-entrance: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @layer base {
@@ -163,7 +163,60 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+
+    .motion-enter {
+      animation-name: gentle-fade;
+      animation-duration: 160ms !important;
+    }
+
+    .motion-press {
+      transition-property: opacity !important;
+      transition-duration: 150ms !important;
+    }
+
+    .motion-press:active {
+      opacity: 0.9;
+      transform: none;
+    }
   }
+}
+
+@keyframes gentle-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gentle-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.motion-enter {
+  animation: gentle-enter 280ms var(--easing-entrance) both;
+}
+
+.motion-enter-delay-1 {
+  animation-delay: 60ms;
+}
+
+.motion-enter-delay-2 {
+  animation-delay: 120ms;
+}
+
+.motion-press {
+  transition-property: transform, background-color, border-color, color, opacity;
+  transition-duration: 160ms;
+  transition-timing-function: var(--easing-entrance);
+}
+
+.motion-press:active {
+  transform: scale(0.97);
 }
 
 @layer components {

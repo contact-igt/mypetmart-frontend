@@ -113,6 +113,9 @@ const mockProductDetail: ProductDetail = {
   heightCm: null,
   variants: [],
   images: [],
+  features: [],
+  productVideos: [],
+  testimonialVideos: [],
 };
 
 function jsonResponse(body: unknown, ok = true, status = 200) {
