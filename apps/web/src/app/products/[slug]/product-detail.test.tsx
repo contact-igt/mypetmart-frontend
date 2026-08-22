@@ -532,4 +532,33 @@ describe("ProductDetail Storefront Component", () => {
       expect(screen.getByText("Only 3 unit(s) are currently available.")).toBeInTheDocument();
     });
   });
+
+  it("18. Shows only the media assigned to the current product", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const groomingView = renderProductDetail({
+      ...mockSimpleProduct,
+      slug: "pet-grooming-brush",
+    });
+
+    const groomingVideos = groomingView.container.querySelectorAll("video");
+    expect(groomingVideos).toHaveLength(4);
+    expect(groomingVideos[0].querySelector("source")).toHaveAttribute(
+      "src",
+      "/assest/grooming_brush_1.mp4"
+    );
+
+    groomingView.unmount();
+
+    renderProductDetail({
+      ...mockSimpleProduct,
+      slug: "dog-anti-slip-pads",
+    });
+
+    expect(screen.getByAltText("Dog anti-slip paw pads product view 1")).toBeInTheDocument();
+    expect(screen.getByAltText("Dog anti-slip paw pads product view 2")).toBeInTheDocument();
+    expect(document.querySelectorAll("video")).toHaveLength(0);
+  });
 });

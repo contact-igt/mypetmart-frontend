@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronIcon, HeartIcon } from "@/components/icons";
 import { ProductImagePlaceholder, type PlaceholderTone } from "@/components/image-placeholder";
+import { PlayableVideoCard } from "@/components/playable-video-card";
+import { TESTIMONIAL_VIDEOS } from "@/data/testimonials";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/cart-context";
@@ -19,6 +21,50 @@ const TONES: Record<string, PlaceholderTone> = {
   "paw-care": "peach",
   "dog-essentials": "brown",
 };
+
+type ProductMedia = {
+  src: string;
+  type: "image" | "video";
+  alt: string;
+};
+
+const GROOMING_MEDIA: ProductMedia[] = Array.from({ length: 4 }, (_, index) => ({
+    src: `/assest/grooming_brush_${index + 1}.mp4`,
+    type: "video",
+    alt: `Mist-powered grooming brush demonstration ${index + 1}`,
+}));
+
+const LEASH_MEDIA: ProductMedia[] = Array.from({ length: 3 }, (_, index) => ({
+    src: `/assest/2leashes_${index + 1}.mp4`,
+    type: "video",
+    alt: `Ultimate dual dog leash demonstration ${index + 1}`,
+}));
+
+const PAW_PAD_MEDIA: ProductMedia[] = Array.from({ length: 2 }, (_, index) => ({
+    src: `/assest/paws_${index + 1}.jpg`,
+    type: "image",
+    alt: `Dog anti-slip paw pads product view ${index + 1}`,
+}));
+
+const PRODUCT_MEDIA: Record<string, ProductMedia[]> = {
+  "pet-grooming-brush": GROOMING_MEDIA,
+  "mist-powered-pet-grooming-brush": GROOMING_MEDIA,
+  "double-leash-double-joy": LEASH_MEDIA,
+  "ultimate-dual-dog-leash": LEASH_MEDIA,
+  "dog-anti-slip-pads": PAW_PAD_MEDIA,
+  "dog-anti-slip-paw-pads": PAW_PAD_MEDIA,
+};
+
+// Deterministic (no Math.random/Date — must match between server and client
+// render) rotation through the shared testimonial pool, so each product page
+// doesn't show the exact same four clips in the exact same order.
+function pickProductTestimonials(productId: number, count: number): string[] {
+  const offset = productId % TESTIMONIAL_VIDEOS.length;
+  return Array.from(
+    { length: Math.min(count, TESTIMONIAL_VIDEOS.length) },
+    (_, i) => TESTIMONIAL_VIDEOS[(offset + i) % TESTIMONIAL_VIDEOS.length],
+  );
+}
 
 const formatPrice = (priceVal: number | string) => {
   const num = typeof priceVal === "number" ? priceVal : parseFloat(priceVal);
@@ -64,6 +110,8 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
   const wishlistPending = isPending(productId);
 
   const tone = TONES[product.category.slug] || "peach";
+  const productMedia = PRODUCT_MEDIA[product.slug] ?? [];
+  const productTestimonials = pickProductTestimonials(product.id, 4);
 
   const handleWishlistClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -618,6 +666,71 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
           })()}
         </div>
       </div>
+
+      {productMedia.length > 0 && (
+        <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-media-heading">
+          <div className="mb-7 max-w-2xl">
+            <span className="pill-label bg-white text-text-primary">See it in action</span>
+            <h2
+              id="product-media-heading"
+              className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
+              style={{ fontFamily: "var(--font-display-italic)" }}
+            >
+              Made for real pet moments.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {productMedia.map((media) =>
+              media.type === "video" ? (
+                <figure key={media.src} className="aspect-[9/16]">
+                  <PlayableVideoCard src={media.src} label={media.alt} aspect="h-full" className="h-full" />
+                </figure>
+              ) : (
+                <figure
+                  key={media.src}
+                  className="relative aspect-square overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm"
+                >
+                  <Image
+                    src={media.src}
+                    alt={media.alt}
+                    fill
+                    sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
+                    className="object-cover"
+                  />
+                </figure>
+              ),
+            )}
+          </div>
+        </section>
+      )}
+
+      <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-testimonials-heading">
+        <div className="mb-7 max-w-2xl">
+          <span className="pill-label bg-white text-text-primary">Real pet parents</span>
+          <h2
+            id="product-testimonials-heading"
+            className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
+            style={{ fontFamily: "var(--font-display-italic)" }}
+          >
+            Hear from pet parents shopping with us.
+          </h2>
+          <p className="body-copy mt-3 text-text-muted">
+            General customer stories from across My Pet Mart — not reviews of this specific product.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+          {productTestimonials.map((src, index) => (
+            <PlayableVideoCard
+              key={src}
+              src={src}
+              label={`Pet parent testimonial ${index + 1}`}
+              caption="Pet parent story"
+            />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
