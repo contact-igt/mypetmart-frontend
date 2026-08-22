@@ -180,4 +180,15 @@ export interface CartMergeResult {
   mergeReport: CartMergeReport;
 }
 
+// Public-safe subset of the backend's admin-managed StoreProfile
+// (mypetmart-backend/src/models/SettingsModels/settings.types.ts) — only the
+// 4 fields the storefront is allowed to display, served by
+// GET /storefront/store-profile.
+export interface StoreProfile {
+  storeName: string;
+  supportEmail: string;
+  supportPhone: string;
+  address: string;
+}
+
 

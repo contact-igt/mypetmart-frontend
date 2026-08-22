@@ -6,6 +6,7 @@ import { ArrowRightIcon, InstagramIcon, MailIcon, PhoneIcon, PinIcon } from "@/c
 import { CONTACT_INFO, ENQUIRY_TYPES } from "@/data/contact-data";
 import { ContactApi, type ContactEnquirySubject } from "@/lib/contact-api";
 import { AppAuthError } from "@/lib/auth/auth-errors";
+import type { StoreProfile } from "@/types/storefront";
 
 const FIELD_CLASS = "mt-2 h-[50px] w-full rounded-[15px] border border-[#E7CCB4] bg-white/85 px-4 text-[15px] outline-none transition-colors focus:border-primary-orange";
 const LABEL_CLASS = "text-[12px] font-semibold uppercase tracking-[0.17em] text-text-primary";
@@ -23,7 +24,7 @@ const EMPTY_FORM = {
   consent: false,
 };
 
-export function ContactFormSection() {
+export function ContactFormSection({ storeProfile }: { storeProfile: StoreProfile }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [state, setState] = useState<SubmitState>("idle");
   const [message, setMessage] = useState("");
@@ -232,9 +233,20 @@ export function ContactFormSection() {
           </div>
 
           <div className="rounded-[25px] bg-white/35 px-6 py-6">
-            <ContactDetail icon={<PhoneIcon width={18} height={18} />} label="Phone" value={CONTACT_INFO.phone} />
-            <ContactDetail icon={<MailIcon width={18} height={18} />} label="Email" value={CONTACT_INFO.email} className="mt-4" />
-            <ContactDetail icon={<PinIcon width={18} height={18} />} label="Address" value={CONTACT_INFO.address} className="mt-4" />
+            <ContactDetail
+              icon={<PhoneIcon width={18} height={18} />}
+              label="Phone"
+              value={storeProfile.supportPhone}
+              href={storeProfile.supportPhone ? `tel:${storeProfile.supportPhone.replace(/\s+/g, "")}` : undefined}
+            />
+            <ContactDetail
+              icon={<MailIcon width={18} height={18} />}
+              label="Email"
+              value={storeProfile.supportEmail}
+              href={storeProfile.supportEmail ? `mailto:${storeProfile.supportEmail}` : undefined}
+              className="mt-4"
+            />
+            <ContactDetail icon={<PinIcon width={18} height={18} />} label="Address" value={storeProfile.address} className="mt-4" />
           </div>
 
           <a
@@ -255,13 +267,31 @@ export function ContactFormSection() {
   );
 }
 
-function ContactDetail({ icon, label, value, className = "" }: { icon: React.ReactNode; label: string; value: string; className?: string }) {
+function ContactDetail({
+  icon,
+  label,
+  value,
+  href,
+  className = "",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  href?: string;
+  className?: string;
+}) {
   return (
     <div className={`flex items-start gap-3 ${className}`}>
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-peach-hero text-text-primary">{icon}</span>
       <div className="pt-0.5">
         <p className="text-[12px] text-text-primary/75">{label}</p>
-        <p className="text-[16px] leading-[1.45] text-text-primary">{value}</p>
+        {href ? (
+          <a href={href} className="text-[16px] leading-[1.45] text-text-primary underline-offset-2 transition-colors hover:text-primary-orange hover:underline">
+            {value}
+          </a>
+        ) : (
+          <p className="text-[16px] leading-[1.45] text-text-primary whitespace-pre-line">{value}</p>
+        )}
       </div>
     </div>
   );

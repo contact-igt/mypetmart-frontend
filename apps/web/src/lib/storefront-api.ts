@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from "./config";
-import type { Category, PaginatedProductList, ProductListQuery, ProductDetail } from "@/types/storefront";
+import type { Category, PaginatedProductList, ProductListQuery, ProductDetail, StoreProfile } from "@/types/storefront";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -71,5 +71,9 @@ export async function getStorefrontProducts(query: ProductListQuery): Promise<Pa
 
 export async function getStorefrontProductBySlug(slug: string): Promise<ProductDetail> {
   return storefrontFetch<ProductDetail>(`/storefront/products/${slug}`);
+}
+
+export async function getStorefrontStoreProfile(): Promise<StoreProfile> {
+  return storefrontFetch<StoreProfile>("/storefront/store-profile");
 }
 
