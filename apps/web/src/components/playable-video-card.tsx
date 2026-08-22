@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Check, Share2, Volume2, VolumeX } from "lucide-react";
 import { CloseIcon } from "@/components/icons";
+import { discountPercent } from "@/lib/pricing";
 
 const currency = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 
@@ -14,11 +15,6 @@ export type VideoCardProduct = {
   compareAtPrice?: number | null;
   onAddToCart: () => Promise<unknown>;
 };
-
-function discountPercent(price: number, compareAtPrice?: number | null): number | null {
-  if (compareAtPrice == null || compareAtPrice <= price) return null;
-  return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);
-}
 
 /**
  * Shared testimonial/product-demo video card — shoppable-video-style card +

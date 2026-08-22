@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ProductDetailClient } from "./product-detail";
 import { CustomerAuthProvider } from "@/context/customer-auth-context";
@@ -69,6 +69,9 @@ const mockSimpleProduct: ProductDetail = {
       isPrimary: true,
     },
   ],
+  features: [],
+  productVideos: [],
+  testimonialVideos: [],
 };
 
 const mockVariantProduct: ProductDetail = {
@@ -131,6 +134,9 @@ const mockVariantProduct: ProductDetail = {
     },
   ],
   images: [],
+  features: [],
+  productVideos: [],
+  testimonialVideos: [],
 };
 
 function jsonResponse(body: unknown, ok = true, status = 200) {
@@ -543,7 +549,11 @@ describe("ProductDetail Storefront Component", () => {
       slug: "pet-grooming-brush",
     });
 
-    const groomingVideos = groomingView.container.querySelectorAll("video");
+    // Scoped to the "See it in action" section specifically — the always-present
+    // generic testimonials section below it also renders <video> elements, so an
+    // unscoped container-wide query would double-count them.
+    const productMediaSection = groomingView.container.querySelector("#product-media-heading")!.closest("section")!;
+    const groomingVideos = productMediaSection.querySelectorAll("video");
     expect(groomingVideos).toHaveLength(4);
     expect(groomingVideos[0].querySelector("source")).toHaveAttribute(
       "src",
@@ -552,13 +562,399 @@ describe("ProductDetail Storefront Component", () => {
 
     groomingView.unmount();
 
-    renderProductDetail({
+    const pawPadsView = renderProductDetail({
       ...mockSimpleProduct,
       slug: "dog-anti-slip-pads",
     });
 
     expect(screen.getByAltText("Dog anti-slip paw pads product view 1")).toBeInTheDocument();
     expect(screen.getByAltText("Dog anti-slip paw pads product view 2")).toBeInTheDocument();
-    expect(document.querySelectorAll("video")).toHaveLength(0);
+    const pawPadsMediaSection = pawPadsView.container.querySelector("#product-media-heading")!.closest("section")!;
+    expect(pawPadsMediaSection.querySelectorAll("video")).toHaveLength(0);
+  });
+
+  it("21. Dynamic Product Videos take priority over legacy PRODUCT_MEDIA and render publicUrl/title/caption", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      slug: "pet-grooming-brush", // legacy PRODUCT_MEDIA exists for this slug too
+      productVideos: [
+        {
+          id: 1,
+          mediaAssetId: 501,
+          mediaRole: "product_video",
+          title: "How it works",
+          caption: "See the mist-powered brush in action",
+          displayOrder: 0,
+          active: true,
+          media: { id: 501, publicUrl: "https://r2.example.com/demo-1.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "demo-1.mp4" },
+        },
+        {
+          id: 2,
+          mediaAssetId: 502,
+          mediaRole: "product_video",
+          title: null,
+          caption: null,
+          displayOrder: 1,
+          active: true,
+          media: { id: 502, publicUrl: "https://r2.example.com/demo-2.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "demo-2.mp4" },
+        },
+      ],
+    });
+
+    const productMediaSection = view.container.querySelector("#product-media-heading")!.closest("section")!;
+    const videos = productMediaSection.querySelectorAll("video");
+
+    // Priority: dynamic videos replace the legacy 4-video grooming fallback entirely.
+    expect(videos).toHaveLength(2);
+    expect(videos[0]).toHaveAttribute("src", "https://r2.example.com/demo-1.mp4");
+    expect(videos[1]).toHaveAttribute("src", "https://r2.example.com/demo-2.mp4");
+
+    // Title renders when present.
+    expect(screen.getByText("How it works")).toBeInTheDocument();
+    // Caption renders when present.
+    expect(screen.getByText("See the mist-powered brush in action")).toBeInTheDocument();
+
+    // The second assignment has no title/caption — no fabricated fallback text, no empty caption block.
+    expect(screen.queryByText("Product video")).not.toBeInTheDocument();
+  });
+
+  it("22. Falls back to legacy PRODUCT_MEDIA when there are zero dynamic Product Videos", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      slug: "pet-grooming-brush",
+      productVideos: [],
+    });
+
+    const productMediaSection = view.container.querySelector("#product-media-heading")!.closest("section")!;
+    expect(productMediaSection.querySelectorAll("video")).toHaveLength(4);
+  });
+
+  it("23. Hides the 'See it in action' section entirely when neither dynamic nor legacy media exist", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail(mockSimpleProduct); // slug has no legacy entry, productVideos: []
+
+    expect(document.querySelector("#product-media-heading")).not.toBeInTheDocument();
+  });
+
+  it("24. Does not render testimonialVideos in the 'See it in action' section", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      productVideos: [],
+      testimonialVideos: [
+        {
+          id: 9,
+          mediaAssetId: 601,
+          mediaRole: "testimonial_video",
+          title: "A real customer story",
+          caption: null,
+          displayOrder: 0,
+          active: true,
+          media: { id: 601, publicUrl: "https://r2.example.com/testimonial-1.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "testimonial-1.mp4" },
+        },
+      ],
+    });
+
+    // No legacy/dynamic product media for this slug, so "See it in action" is
+    // absent entirely — a testimonial-only Product must not surface it there.
+    expect(document.querySelector("#product-media-heading")).not.toBeInTheDocument();
+    // As of Phase D, this testimonial DOES render — in its own Customer Stories
+    // section (see test 26/28) — so the assertion here is scoped to proving it
+    // never leaks into "See it in action", not that it renders nowhere at all.
+    expect(document.querySelector("#product-testimonial-heading")).toBeInTheDocument();
+    const testimonialSection = view.container.querySelector("#product-testimonial-heading")!.closest("section")!;
+    expect(within(testimonialSection).getByText("A real customer story")).toBeInTheDocument();
+  });
+
+  it("25. Product Video renders with controls, playsInline, and metadata-only preload", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      productVideos: [
+        {
+          id: 1,
+          mediaAssetId: 501,
+          mediaRole: "product_video",
+          title: "Demo",
+          caption: null,
+          displayOrder: 0,
+          active: true,
+          media: { id: 501, publicUrl: "https://r2.example.com/demo-1.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "demo-1.mp4" },
+        },
+      ],
+    });
+
+    const video = view.container.querySelector("#product-media-heading")!.closest("section")!.querySelector("video")!;
+    expect(video).toHaveAttribute("controls");
+    expect(video).toHaveAttribute("playsinline");
+    expect(video).toHaveAttribute("preload", "metadata");
+    expect(video).not.toHaveAttribute("autoplay");
+  });
+
+  it("19. Shows the Key Features section in order when the Product has Features", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const productWithFeatures: ProductDetail = {
+      ...mockSimpleProduct,
+      features: [
+        { id: 1, productId: 101, label: "Soft padded construction", displayOrder: 0 },
+        { id: 2, productId: 101, label: "Adjustable fit", displayOrder: 1 },
+        { id: 3, productId: 101, label: "Easy to clean", displayOrder: 2 },
+      ],
+    };
+    renderProductDetail(productWithFeatures);
+
+    expect(screen.getByText("Key Features")).toBeInTheDocument();
+    const labels = screen.getAllByText(/Soft padded construction|Adjustable fit|Easy to clean/).map((el) => el.textContent);
+    expect(labels).toEqual(["Soft padded construction", "Adjustable fit", "Easy to clean"]);
+  });
+
+  it("20. Hides the Key Features section entirely when the Product has no Features", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail(mockSimpleProduct);
+
+    expect(screen.queryByText("Key Features")).not.toBeInTheDocument();
+  });
+
+  it("26. Renders a Product-specific Customer Stories section with multiple testimonial videos", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      price: "399.00",
+      compareAtPrice: "499.00",
+      testimonialVideos: [
+        {
+          id: 1,
+          mediaAssetId: 601,
+          mediaRole: "testimonial_video",
+          title: "A real customer story",
+          caption: "Shared with permission",
+          displayOrder: 0,
+          active: true,
+          media: { id: 601, publicUrl: "https://r2.example.com/testimonial-1.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "testimonial-1.mp4" },
+        },
+        {
+          id: 2,
+          mediaAssetId: 602,
+          mediaRole: "testimonial_video",
+          title: null,
+          caption: null,
+          displayOrder: 1,
+          active: true,
+          media: { id: 602, publicUrl: "https://r2.example.com/testimonial-2.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "testimonial-2.mp4" },
+        },
+      ],
+    });
+
+    expect(screen.getByText("Customer stories")).toBeInTheDocument();
+    const section = view.container.querySelector("#product-testimonial-heading")!.closest("section")!;
+    const videos = section.querySelectorAll("video");
+    expect(videos).toHaveLength(2);
+    expect(videos[0]).toHaveAttribute("src", "https://r2.example.com/testimonial-1.mp4");
+    expect(videos[1]).toHaveAttribute("src", "https://r2.example.com/testimonial-2.mp4");
+
+    // Title/caption render only when present — no fabricated text for the second clip.
+    expect(screen.getByText("A real customer story")).toBeInTheDocument();
+    expect(screen.getByText("Shared with permission")).toBeInTheDocument();
+
+    // Generic rotated testimonial section is suppressed once real ones exist.
+    expect(screen.queryByText("Hear from pet parents shopping with us.")).not.toBeInTheDocument();
+  });
+
+  it("27. Hides Customer Stories and keeps the generic testimonial section when testimonialVideos is empty", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({ ...mockSimpleProduct, testimonialVideos: [] });
+
+    expect(document.querySelector("#product-testimonial-heading")).not.toBeInTheDocument();
+    expect(screen.getByText("Hear from pet parents shopping with us.")).toBeInTheDocument();
+  });
+
+  it("28. Customer Stories does not render productVideos, and 'See it in action' does not render testimonialVideos", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      productVideos: [
+        {
+          id: 1,
+          mediaAssetId: 501,
+          mediaRole: "product_video",
+          title: "Demo",
+          caption: null,
+          displayOrder: 0,
+          active: true,
+          media: { id: 501, publicUrl: "https://r2.example.com/demo-video.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "demo-video.mp4" },
+        },
+      ],
+      testimonialVideos: [
+        {
+          id: 2,
+          mediaAssetId: 601,
+          mediaRole: "testimonial_video",
+          title: "Story",
+          caption: null,
+          displayOrder: 0,
+          active: true,
+          media: { id: 601, publicUrl: "https://r2.example.com/testimonial-video.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "testimonial-video.mp4" },
+        },
+      ],
+    });
+
+    const productMediaSection = view.container.querySelector("#product-media-heading")!.closest("section")!;
+    expect(productMediaSection.querySelectorAll("video")[0]).toHaveAttribute("src", "https://r2.example.com/demo-video.mp4");
+    expect(Array.from(productMediaSection.querySelectorAll("video")).some((el) => el.getAttribute("src") === "https://r2.example.com/testimonial-video.mp4")).toBe(false);
+
+    const testimonialSection = view.container.querySelector("#product-testimonial-heading")!.closest("section")!;
+    expect(testimonialSection.querySelectorAll("video")[0]).toHaveAttribute("src", "https://r2.example.com/testimonial-video.mp4");
+    expect(Array.from(testimonialSection.querySelectorAll("video")).some((el) => el.getAttribute("src") === "https://r2.example.com/demo-video.mp4")).toBe(false);
+  });
+
+  it("29. Simple Product: selling price displays, and MRP + auto-calculated discount show only when compareAtPrice > price", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      name: "Comfort Dog Collar",
+      slug: "comfort-dog-collar",
+      price: "399.00",
+      compareAtPrice: "499.00",
+      hasVariants: false,
+      testimonialVideos: [
+        {
+          id: 1,
+          mediaAssetId: 601,
+          mediaRole: "testimonial_video",
+          title: null,
+          caption: null,
+          displayOrder: 0,
+          active: true,
+          media: { id: 601, publicUrl: "https://r2.example.com/testimonial-1.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "testimonial-1.mp4" },
+        },
+      ],
+    });
+
+    const section = view.container.querySelector("#product-testimonial-heading")!.closest("section")!;
+    expect(section).toHaveTextContent("Comfort Dog Collar");
+    expect(section).toHaveTextContent("₹399");
+    expect(section).toHaveTextContent("₹499");
+    // (499-399)/499 * 100 = 20.04.. → rounds to 20
+    expect(section).toHaveTextContent("20% off");
+
+    // Buy Now links straight to this Product's own page, not checkout.
+    const buyNow = within(section).getByRole("link", { name: "Buy Now" });
+    expect(buyNow).toHaveAttribute("href", "/products/comfort-dog-collar");
+  });
+
+  it("30. Simple Product without a compare-at price shows selling price only, no discount", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      price: "399.00",
+      compareAtPrice: null,
+      testimonialVideos: [
+        {
+          id: 1,
+          mediaAssetId: 601,
+          mediaRole: "testimonial_video",
+          title: null,
+          caption: null,
+          displayOrder: 0,
+          active: true,
+          media: { id: 601, publicUrl: "https://r2.example.com/testimonial-1.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "testimonial-1.mp4" },
+        },
+      ],
+    });
+
+    const section = view.container.querySelector("#product-testimonial-heading")!.closest("section")!;
+    expect(section).toHaveTextContent("₹399");
+    expect(section.textContent).not.toMatch(/% off/);
+  });
+
+  it("31. Simple Product with compareAtPrice <= price shows no discount", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      price: "399.00",
+      compareAtPrice: "399.00",
+      testimonialVideos: [
+        {
+          id: 1,
+          mediaAssetId: 601,
+          mediaRole: "testimonial_video",
+          title: null,
+          caption: null,
+          displayOrder: 0,
+          active: true,
+          media: { id: 601, publicUrl: "https://r2.example.com/testimonial-1.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "testimonial-1.mp4" },
+        },
+      ],
+    });
+
+    const section = view.container.querySelector("#product-testimonial-heading")!.closest("section")!;
+    expect(section.textContent).not.toMatch(/% off/);
+  });
+
+  it("32. Variant Product shows 'From ₹price' and never a generic/misleading discount", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockVariantProduct,
+      testimonialVideos: [
+        {
+          id: 1,
+          mediaAssetId: 601,
+          mediaRole: "testimonial_video",
+          title: null,
+          caption: null,
+          displayOrder: 0,
+          active: true,
+          media: { id: 601, publicUrl: "https://r2.example.com/testimonial-1.mp4", mimeType: "video/mp4", mediaType: "video", title: null, originalName: "testimonial-1.mp4" },
+        },
+      ],
+    });
+
+    const section = view.container.querySelector("#product-testimonial-heading")!.closest("section")!;
+    expect(section).toHaveTextContent(`From ₹${Math.round(parseFloat(mockVariantProduct.price)).toLocaleString("en-IN")}`);
+    expect(section.textContent).not.toMatch(/% off/);
   });
 });

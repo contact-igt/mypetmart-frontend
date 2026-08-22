@@ -64,6 +64,33 @@ export interface ProductListQuery {
   featured?: boolean;
 }
 
+export interface ProductFeature {
+  id: number;
+  productId: number;
+  label: string;
+  displayOrder: number;
+}
+
+export type ProductMediaRole = "product_video" | "testimonial_video";
+
+export interface ProductMediaAssignment {
+  id: number;
+  mediaAssetId: number;
+  mediaRole: ProductMediaRole;
+  title: string | null;
+  caption: string | null;
+  displayOrder: number;
+  active: boolean;
+  media: {
+    id: number;
+    publicUrl: string;
+    mimeType: string;
+    mediaType: "image" | "video";
+    title: string | null;
+    originalName: string;
+  };
+}
+
 export interface ProductVariant {
   id: number;
   productId: number;
@@ -107,6 +134,9 @@ export interface ProductDetail {
   heightCm: string | null;
   variants: ProductVariant[];
   images: ProductImage[];
+  features: ProductFeature[];
+  productVideos: ProductMediaAssignment[];
+  testimonialVideos: ProductMediaAssignment[];
 }
 
 export type CartAvailabilityReason =

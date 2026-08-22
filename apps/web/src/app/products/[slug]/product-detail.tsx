@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronIcon, HeartIcon } from "@/components/icons";
 import { ProductImagePlaceholder, type PlaceholderTone } from "@/components/image-placeholder";
 import { PlayableVideoCard, type VideoCardProduct } from "@/components/playable-video-card";
+import { TestimonialVideoCard, type TestimonialVideoCardProduct } from "@/components/testimonial-video-card";
 import { TESTIMONIAL_VIDEOS } from "@/data/testimonials";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useWishlist } from "@/context/wishlist-context";
@@ -110,7 +111,39 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
   const wishlistPending = isPending(productId);
 
   const tone = TONES[product.category.slug] || "peach";
-  const productMedia = PRODUCT_MEDIA[product.slug] ?? [];
+  // Dynamic Product Video assignments (Phase B) take priority; the hardcoded
+  // PRODUCT_MEDIA map is a legacy fallback for Products not yet migrated to a
+  // real Admin video assignment — never rendered alongside the dynamic list.
+  const dynamicProductVideos = product.productVideos ?? [];
+  const legacyProductMedia = PRODUCT_MEDIA[product.slug] ?? [];
+  const hasDynamicProductVideos = dynamicProductVideos.length > 0;
+  const showLegacyProductMedia = !hasDynamicProductVideos && legacyProductMedia.length > 0;
+
+  // Product-specific Customer Stories (Phase D) — genuine testimonial_video
+  // assignments explicitly tied to this Product. Never the generic rotated
+  // pool below: when real ones exist for this Product, they take over and
+  // the generic section is suppressed to avoid two testimonial-shaped
+  // sections back to back.
+  const testimonialVideos = product.testimonialVideos ?? [];
+  const hasTestimonialVideos = testimonialVideos.length > 0;
+  // A variant Product's compareAtPrice belongs to one specific variant — never
+  // attach it to the generic "From" starting price shown here (mirrors the
+  // same suppression the main price block above already applies before a
+  // variant is selected).
+  const testimonialCardProduct: TestimonialVideoCardProduct = {
+    name: product.name,
+    slug: product.slug,
+    price: typeof product.price === "number" ? product.price : parseFloat(product.price),
+    compareAtPrice: product.hasVariants
+      ? null
+      : product.compareAtPrice != null
+        ? typeof product.compareAtPrice === "number"
+          ? product.compareAtPrice
+          : parseFloat(product.compareAtPrice)
+        : null,
+    hasVariants: product.hasVariants,
+  };
+
   const productTestimonials = pickProductTestimonials(product.id, 4);
 
   // "Add to cart" from inside a demo-video lightbox is a fixed quantity-1,
@@ -487,6 +520,23 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
             )}
           </div>
 
+          {/* Key Features */}
+          {product.features.length > 0 && (
+            <div className="mb-6">
+              <span className="block text-sm font-semibold text-text-primary mb-2">
+                Key Features
+              </span>
+              <ul className="flex flex-col gap-1.5">
+                {product.features.map((feature) => (
+                  <li key={feature.id} className="flex items-start gap-2 text-sm text-text-primary/80">
+                    <span className="mt-0.5 text-primary-orange" aria-hidden="true">✓</span>
+                    <span>{feature.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Stock State */}
           <div className="mb-8" aria-live="polite">
             {product.hasVariants && product.variants.length === 0 ? (
@@ -686,7 +736,7 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
         </div>
       </div>
 
-      {productMedia.length > 0 && (
+      {(hasDynamicProductVideos || showLegacyProductMedia) && (
         <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-media-heading">
           <div className="mb-7 max-w-2xl">
             <span className="pill-label bg-white text-text-primary">See it in action</span>
@@ -699,63 +749,124 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {productMedia.map((media) =>
-              media.type === "video" ? (
-                <figure key={media.src} className="aspect-[9/16]">
-                  <PlayableVideoCard
-                    src={media.src}
-                    label={media.alt}
-                    aspect="h-full"
-                    className="h-full"
-                    product={videoCardProduct}
-                  />
-                </figure>
-              ) : (
+          {hasDynamicProductVideos ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {dynamicProductVideos.map((assignment) => (
                 <figure
-                  key={media.src}
-                  className="relative aspect-square overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm"
+                  key={assignment.id}
+                  className="overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm"
                 >
-                  <Image
-                    src={media.src}
-                    alt={media.alt}
-                    fill
-                    sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
-                    className="object-cover"
-                  />
+                  <video
+                    src={assignment.media.publicUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    aria-label={assignment.title || "Product video"}
+                    className="aspect-video w-full bg-deep-brown object-contain"
+                  >
+                    Your browser does not support video playback.
+                  </video>
+                  {(assignment.title || assignment.caption) && (
+                    <figcaption className="p-3 sm:p-4">
+                      {assignment.title && <p className="text-sm font-semibold text-text-primary">{assignment.title}</p>}
+                      {assignment.caption && <p className="mt-1 text-xs text-text-muted">{assignment.caption}</p>}
+                    </figcaption>
+                  )}
                 </figure>
-              ),
-            )}
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {legacyProductMedia.map((media) =>
+                media.type === "video" ? (
+                  <figure key={media.src} className="aspect-[9/16]">
+                    <PlayableVideoCard
+                      src={media.src}
+                      label={media.alt}
+                      aspect="h-full"
+                      className="h-full"
+                      product={videoCardProduct}
+                    />
+                  </figure>
+                ) : (
+                  <figure
+                    key={media.src}
+                    className="relative aspect-square overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm"
+                  >
+                    <Image
+                      src={media.src}
+                      alt={media.alt}
+                      fill
+                      sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover"
+                    />
+                  </figure>
+                ),
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {hasTestimonialVideos && (
+        <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-testimonial-heading">
+          <div className="mb-7 max-w-2xl">
+            <span className="pill-label bg-white text-text-primary">Customer stories</span>
+            <h2
+              id="product-testimonial-heading"
+              className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
+              style={{ fontFamily: "var(--font-display-italic)" }}
+            >
+              What pet parents say about this product.
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {testimonialVideos.map((assignment) => (
+              <TestimonialVideoCard
+                key={assignment.id}
+                testimonial={{
+                  id: assignment.id,
+                  mediaUrl: assignment.media.publicUrl,
+                  title: assignment.title,
+                  caption: assignment.caption,
+                }}
+                product={testimonialCardProduct}
+                variant="commerce"
+              />
+            ))}
           </div>
         </section>
       )}
 
-      <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-testimonials-heading">
-        <div className="mb-7 max-w-2xl">
-          <span className="pill-label bg-white text-text-primary">Real pet parents</span>
-          <h2
-            id="product-testimonials-heading"
-            className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
-            style={{ fontFamily: "var(--font-display-italic)" }}
-          >
-            Hear from pet parents shopping with us.
-          </h2>
-          <p className="body-copy mt-3 text-text-muted">
-            General customer stories from across My Pet Mart — not reviews of this specific product.
-          </p>
-        </div>
+      {!hasTestimonialVideos && (
+        <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-testimonials-heading">
+          <div className="mb-7 max-w-2xl">
+            <span className="pill-label bg-white text-text-primary">Real pet parents</span>
+            <h2
+              id="product-testimonials-heading"
+              className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
+              style={{ fontFamily: "var(--font-display-italic)" }}
+            >
+              Hear from pet parents shopping with us.
+            </h2>
+            <p className="body-copy mt-3 text-text-muted">
+              General customer stories from across My Pet Mart — not reviews of this specific product.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-          {productTestimonials.map((src, index) => (
-            <PlayableVideoCard
-              key={src}
-              src={src}
-              label={`Pet parent testimonial ${index + 1}`}
-              caption="Pet parent story"
-            />
-          ))}
-        </div>
-      </section>
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
+            {productTestimonials.map((src, index) => (
+              <PlayableVideoCard
+                key={src}
+                src={src}
+                label={`Pet parent testimonial ${index + 1}`}
+                caption="Pet parent story"
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
