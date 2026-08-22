@@ -61,6 +61,7 @@ export interface ProductListQuery {
   category?: string;
   petType?: "dog" | "cat" | "all";
   sort?: ProductSort;
+  featured?: boolean;
 }
 
 export interface ProductVariant {

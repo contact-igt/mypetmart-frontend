@@ -13,6 +13,7 @@ import { ReturnApi } from "@/lib/return-api";
 import type { ReturnRequestJSON } from "@/types/return";
 import { StatusBadge } from "../orders-client";
 import { ShipmentTracking } from "@/components/shipment-tracking";
+import { OrderTracker } from "@/components/order-tracker";
 
 const RETURN_STATUS_LABELS: Record<string, string> = {
   requested: "Return requested",
@@ -186,7 +187,6 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge label={order.status} type="order" />
           <StatusBadge label={order.paymentStatus} type="payment" />
-          <StatusBadge label={order.fulfilmentStatus} type="fulfilment" />
         </div>
       </div>
 
@@ -216,6 +216,8 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
           )}
         </div>
       )}
+
+      <OrderTracker order={order} />
 
       <ShipmentTracking shipment={order.shipment} />
 

@@ -85,7 +85,7 @@ describe("Home Featured Products (Fix 3)", () => {
     vi.restoreAllMocks();
   });
 
-  it("fetches from the real Storefront Product API, not the mock fixture", async () => {
+  it("fetches from the real Storefront Product API using the featured=true filter, not the mock fixture or a locally-filtered pool", async () => {
     const list: PaginatedProductList = { items: [simpleItem, variantItem], total: 2, page: 1, pageSize: 12, totalPages: 1 };
     const fetchMock = vi.fn(async (...args: unknown[]) => {
       void args;
@@ -99,6 +99,23 @@ describe("Home Featured Products (Fix 3)", () => {
     const calledUrl = String((fetchMock.mock.calls[0] as unknown[])[0]);
     expect(calledUrl).toContain("/storefront/products");
     expect(calledUrl).toContain("sort=newest");
+    expect(calledUrl).toContain("featured=true");
+    expect(calledUrl).toContain("pageSize=6");
+  });
+
+  it("renders no more than the 6 supported Featured Product slots even if the API returns more", async () => {
+    const many: ProductListItem[] = Array.from({ length: 8 }, (_, i) => ({
+      ...simpleItem,
+      id: 600 + i,
+      name: `Featured Item ${i + 1}`,
+      slug: `featured-item-${i + 1}`,
+    }));
+    const list: PaginatedProductList = { items: many, total: 8, page: 1, pageSize: 6, totalPages: 2 };
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
+
+    await renderFeaturedProducts();
+
+    expect(screen.getAllByRole("article")).toHaveLength(6);
   });
 
   it("renders the real numeric Product id, so the Product Detail link and Wishlist heart both work", async () => {

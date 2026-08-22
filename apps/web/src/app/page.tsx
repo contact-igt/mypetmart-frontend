@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { HeroSection } from "@/components/home/hero-section";
-import { CategoryGrid } from "@/components/home/category-grid";
+import { CategoryGrid, CategoryGridSkeleton } from "@/components/home/category-grid";
 // import { GroomingFeatureStory } from "@/components/home/grooming-feature-story";
 import { FeaturedProducts, FeaturedProductsSkeleton } from "@/components/home/featured-products";
 import { GroomingStepsSection } from "@/components/home/grooming-steps-section";
@@ -12,7 +12,9 @@ export default function Home() {
   return (
     <main className="flex-1">
       <HeroSection />
-      <CategoryGrid />
+      <Suspense fallback={<CategoryGridSkeleton />}>
+        <CategoryGrid />
+      </Suspense>
       {/* <GroomingFeatureStory /> */}
       <Suspense fallback={<FeaturedProductsSkeleton />}>
         <FeaturedProducts />

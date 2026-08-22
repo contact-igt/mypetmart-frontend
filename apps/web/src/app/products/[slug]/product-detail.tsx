@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { HeartIcon } from "@/components/icons";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ChevronIcon, HeartIcon } from "@/components/icons";
 import { ProductImagePlaceholder, type PlaceholderTone } from "@/components/image-placeholder";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useWishlist } from "@/context/wishlist-context";
@@ -25,6 +25,11 @@ const formatPrice = (priceVal: number | string) => {
   return isNaN(num) ? "0" : num.toLocaleString("en-IN", { maximumFractionDigits: 0 });
 };
 
+// useLayoutEffect measures and applies the rail height cap before the browser
+// paints, so the tall unmeasured list never flashes on screen. It's a no-op
+// warning-generating call during SSR, so it falls back to useEffect there.
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 export function ProductDetailClient({ product }: { product: ProductDetail }) {
   const router = useRouter();
   const { status } = useCustomerAuth();
@@ -37,6 +42,18 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
   );
   const [quantity, setQuantity] = useState(1);
   const [brokenImageIds, setBrokenImageIds] = useState<Set<number>>(new Set());
+
+  // Thumbnail rail: vertical slider on desktop, horizontal strip on mobile.
+  // Flexbox align-items:stretch alone can't cap the rail to the main image's
+  // height — a taller thumbnail list just grows the row instead of scrolling
+  // internally — so the main image's rendered height is measured and applied
+  // as an explicit cap.
+  const mainImageRef = useRef<HTMLDivElement>(null);
+  const thumbRailRef = useRef<HTMLDivElement>(null);
+  const thumbButtonRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  const [railMaxHeight, setRailMaxHeight] = useState<number | null>(null);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
 
   // Cart interaction states
   const [cartStatus, setCartStatus] = useState<"idle" | "adding" | "success" | "error">("idle");
@@ -128,6 +145,48 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
     });
   };
 
+  const updateRailScrollState = () => {
+    const el = thumbRailRef.current;
+    if (!el) return;
+    setCanScrollUp(el.scrollTop > 1);
+    setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+  };
+
+  const scrollRail = (direction: "up" | "down") => {
+    const el = thumbRailRef.current;
+    if (!el) return;
+    const amount = el.clientHeight * 0.8 || 160;
+    el.scrollBy({ top: direction === "down" ? amount : -amount, behavior: "smooth" });
+  };
+
+  // Track the main image's rendered height and cap the rail to it, so extra
+  // thumbnails scroll inside the rail instead of growing the page. Measured
+  // synchronously before paint (useLayoutEffect) so refreshing never shows a
+  // tall list that then visibly collapses down to size.
+  useIsomorphicLayoutEffect(() => {
+    const el = mainImageRef.current;
+    if (!el) return;
+    setRailMaxHeight(el.getBoundingClientRect().height);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) setRailMaxHeight(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Recompute whether the rail can scroll after the image list changes or
+  // the measured cap changes (e.g. on breakpoint/viewport resize).
+  useEffect(() => {
+    updateRailScrollState();
+  }, [product.images, railMaxHeight]);
+
+  // Keep the selected thumbnail visible inside the rail without scrolling the page.
+  useEffect(() => {
+    if (!selectedImage) return;
+    thumbButtonRefs.current.get(selectedImage.id)?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  }, [selectedImage]);
+
   const handleAddToCart = async () => {
     if (product.hasVariants && !selectedVariant) return;
 
@@ -187,8 +246,8 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
         {/* Left Column: Image Gallery */}
-        <div className="flex flex-col gap-4">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[26px] bg-[#FFF8EF] border border-border-subtle shadow-[0_10px_22px_rgba(88,51,29,0.02)]">
+        <div className="flex flex-col gap-4 lg:flex-row-reverse lg:items-stretch">
+          <div ref={mainImageRef} className="relative aspect-[4/5] overflow-hidden rounded-[26px] bg-[#FFF8EF] border border-border-subtle shadow-[0_10px_22px_rgba(88,51,29,0.02)] lg:flex-1">
             {mainImageToRender && !isMainImageBroken ? (
               <Image
                 src={mainImageToRender.url}
@@ -218,47 +277,86 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
 
           {/* Thumbnail Navigation */}
           {product.images && product.images.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto py-2 scrollbar-none snap-x snap-mandatory">
-              {product.images.map((img) => {
-                const isBroken = brokenImageIds.has(img.id);
-                const isSelected = selectedImage ? selectedImage.id === img.id : false;
-                return (
-                  <button
-                    key={img.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedImage(img);
-                      setCartStatus("idle");
-                      setCartError(null);
-                    }}
-                    aria-label={`View image ${img.sortOrder}`}
-                    aria-current={isSelected ? "true" : "false"}
-                    className={`relative aspect-square w-20 flex-shrink-0 cursor-pointer overflow-hidden rounded-[14px] border-2 transition-all duration-150 snap-start ${
-                      isSelected
-                        ? "border-primary-orange shadow-sm"
-                        : "border-border-subtle bg-[#FFF8EF] hover:border-text-primary/40"
-                    }`}
-                  >
-                    {isBroken ? (
-                      <ProductImagePlaceholder
-                        label={product.name}
-                        tone={tone}
-                        iconSize={16}
-                        className="h-full w-full rounded-md"
-                      />
-                    ) : (
-                      <Image
-                        src={img.url}
-                        alt={img.alt || `Thumbnail ${img.sortOrder}`}
-                        fill
-                        sizes="80px"
-                        className="object-cover"
-                        onError={() => handleImageError(img.id)}
-                      />
-                    )}
-                  </button>
-                );
-              })}
+            <div
+              className="flex flex-col gap-2 lg:w-20 lg:flex-shrink-0 lg:min-h-0 lg:max-h-[75vh]"
+              style={railMaxHeight != null ? { maxHeight: `${railMaxHeight}px` } : undefined}
+            >
+              <button
+                type="button"
+                onClick={() => scrollRail("up")}
+                disabled={!canScrollUp}
+                aria-label="Scroll product images up"
+                tabIndex={canScrollUp ? 0 : -1}
+                className={`hidden shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-white py-1 text-text-primary transition-opacity duration-150 lg:flex ${
+                  canScrollUp ? "opacity-100 hover:border-text-primary/40 cursor-pointer" : "pointer-events-none opacity-0"
+                }`}
+              >
+                <ChevronIcon className="h-4 w-4" />
+              </button>
+
+              <div
+                ref={thumbRailRef}
+                onScroll={updateRailScrollState}
+                className="flex gap-3 overflow-x-auto py-2 scrollbar-none snap-x snap-mandatory lg:flex-1 lg:min-h-0 lg:flex-col lg:snap-none lg:overflow-x-visible lg:overflow-y-auto lg:py-0"
+              >
+                {product.images.map((img) => {
+                  const isBroken = brokenImageIds.has(img.id);
+                  const isSelected = selectedImage ? selectedImage.id === img.id : false;
+                  return (
+                    <button
+                      key={img.id}
+                      ref={(el) => {
+                        if (el) thumbButtonRefs.current.set(img.id, el);
+                        else thumbButtonRefs.current.delete(img.id);
+                      }}
+                      type="button"
+                      onClick={() => {
+                        setSelectedImage(img);
+                        setCartStatus("idle");
+                        setCartError(null);
+                      }}
+                      aria-label={`View image ${img.sortOrder}`}
+                      aria-current={isSelected ? "true" : "false"}
+                      className={`relative aspect-square w-20 flex-shrink-0 cursor-pointer overflow-hidden rounded-[14px] border-2 transition-all duration-150 snap-start ${
+                        isSelected
+                          ? "border-primary-orange shadow-sm"
+                          : "border-border-subtle bg-[#FFF8EF] hover:border-text-primary/40"
+                      }`}
+                    >
+                      {isBroken ? (
+                        <ProductImagePlaceholder
+                          label={product.name}
+                          tone={tone}
+                          iconSize={16}
+                          className="h-full w-full rounded-md"
+                        />
+                      ) : (
+                        <Image
+                          src={img.url}
+                          alt={img.alt || `Thumbnail ${img.sortOrder}`}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                          onError={() => handleImageError(img.id)}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => scrollRail("down")}
+                disabled={!canScrollDown}
+                aria-label="Scroll product images down"
+                tabIndex={canScrollDown ? 0 : -1}
+                className={`hidden shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-white py-1 text-text-primary transition-opacity duration-150 lg:flex ${
+                  canScrollDown ? "opacity-100 hover:border-text-primary/40 cursor-pointer" : "pointer-events-none opacity-0"
+                }`}
+              >
+                <ChevronIcon className="h-4 w-4 rotate-180" />
+              </button>
             </div>
           )}
         </div>

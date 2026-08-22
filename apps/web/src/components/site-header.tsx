@@ -35,6 +35,20 @@ export function SiteHeader() {
 
   const wishlistLink = status === "authenticated" ? "/wishlist" : "/signin";
 
+  const firstName = customer?.name?.trim().split(/\s+/)[0];
+  const accountLabel =
+    status === "authenticated"
+      ? `Hi, ${firstName || customer?.name || "Account"}`
+      : status === "loading"
+        ? ""
+        : "Sign In";
+  const accountMenuAriaLabel =
+    status === "authenticated"
+      ? `Open account menu for ${firstName || customer?.name || "your account"}`
+      : status === "loading"
+        ? "Account menu"
+        : "Sign in to MyPetMart";
+
   const { itemCount } = useCart();
 
   const closeAccountMenu = () => accountMenuRef.current?.removeAttribute("open");
@@ -110,12 +124,13 @@ export function SiteHeader() {
           </Link>
           <details ref={accountMenuRef} className="group relative">
             <summary
-              aria-label="Account menu"
-              title="Account menu"
+              data-testid="account-menu-trigger"
+              aria-label={accountMenuAriaLabel}
+              title={accountMenuAriaLabel}
               className="inline-flex h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-full px-3 text-text-primary transition-colors duration-150 ease-out hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 [&::-webkit-details-marker]:hidden"
             >
               <UserIcon width={18} height={18} />
-              <span className="hidden text-sm font-semibold xl:inline">Account</span>
+              <span className="hidden text-sm font-semibold xl:inline">{accountLabel}</span>
               <ChevronDown
                 size={14}
                 strokeWidth={1.8}
@@ -159,9 +174,14 @@ export function SiteHeader() {
                     </button>
                   </>
                 ) : (
-                  <Link href="/signin" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-primary-orange hover:bg-cream-bg">
-                    <UserIcon width={17} height={17} /> Sign In
-                  </Link>
+                  <>
+                    <Link href="/signin" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-primary-orange hover:bg-cream-bg">
+                      <UserIcon width={17} height={17} /> Sign In
+                    </Link>
+                    <Link href="/signup" onClick={closeAccountMenu} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-deep-brown hover:bg-cream-bg hover:text-primary-orange">
+                      <UserIcon width={17} height={17} /> Create Account
+                    </Link>
+                  </>
                 )}
               </nav>
             </div>
