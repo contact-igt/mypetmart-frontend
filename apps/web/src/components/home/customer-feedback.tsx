@@ -1,78 +1,29 @@
-"use client";
+import { getStorefrontProducts } from "@/lib/storefront-api";
+import { CustomerFeedbackSlider } from "./customer-feedback-slider";
 
-import { useRef } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import Slider, { type Settings } from "react-slick";
-import { PlayableVideoCard } from "@/components/playable-video-card";
-import { TESTIMONIAL_VIDEOS } from "@/data/testimonials";
+const TESTIMONIAL_PRODUCT_COUNT = 6;
 
-const SLIDER_SETTINGS: Settings = {
-  arrows: false,
-  infinite: true,
-  slidesToScroll: 1,
-  slidesToShow: 4,
-  speed: 500,
-  swipeToSlide: true,
-  waitForAnimate: false,
-  responsive: [
-    { breakpoint: 1280, settings: { slidesToShow: 3 } },
-    { breakpoint: 900, settings: { slidesToShow: 2 } },
-    { breakpoint: 640, settings: { slidesToShow: 1 } },
-  ],
-};
-
-export function CustomerFeedback() {
-  const sliderRef = useRef<Slider>(null);
-
+export function CustomerFeedbackSkeleton() {
   return (
     <section className="section-block bg-peach-hero py-16 sm:py-20">
       <div className="site-container">
-        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <span className="pill-label bg-white text-text-primary">Real pet parents</span>
-            <h2 className="display-heading mt-4 text-3xl text-text-primary sm:text-4xl">
-              Real pet parents.
-              <span className="accent ml-2">Real happy tails.</span>
-            </h2>
-            <p className="body-copy mt-3 max-w-lg text-text-primary/80">
-              Watch loving pet owners share their My Pet Mart experience.
-            </p>
-          </div>
-
-          <div className="flex shrink-0 justify-end gap-2">
-            <button
-              type="button"
-              aria-label="Previous testimonial"
-              onClick={() => sliderRef.current?.slickPrev()}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-deep-brown bg-white text-deep-brown transition-colors hover:bg-deep-brown hover:text-white"
-            >
-              <ArrowLeft size={20} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              aria-label="Next testimonial"
-              onClick={() => sliderRef.current?.slickNext()}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-deep-brown bg-white text-deep-brown transition-colors hover:bg-deep-brown hover:text-white"
-            >
-              <ArrowRight size={20} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-
-        <div className="testimonial-slider mt-8">
-          <Slider ref={sliderRef} {...SLIDER_SETTINGS}>
-            {TESTIMONIAL_VIDEOS.map((src, index) => (
-              <article key={src}>
-                <PlayableVideoCard
-                  src={src}
-                  label={`Pet parent testimonial ${index + 1}`}
-                  caption="Pet parent story"
-                />
-              </article>
-            ))}
-          </Slider>
+        <div className="mb-8 h-24 w-full max-w-lg animate-pulse rounded-2xl bg-white/40" />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="aspect-[9/16] animate-pulse rounded-[24px] bg-white/40" />
+          ))}
         </div>
       </div>
     </section>
   );
+}
+
+export async function CustomerFeedback() {
+  const { items } = await getStorefrontProducts({
+    page: 1,
+    pageSize: TESTIMONIAL_PRODUCT_COUNT,
+    sort: "newest",
+  });
+
+  return <CustomerFeedbackSlider products={items} />;
 }

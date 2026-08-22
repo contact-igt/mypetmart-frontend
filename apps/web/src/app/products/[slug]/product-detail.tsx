@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronIcon, HeartIcon } from "@/components/icons";
 import { ProductImagePlaceholder, type PlaceholderTone } from "@/components/image-placeholder";
-import { PlayableVideoCard } from "@/components/playable-video-card";
+import { PlayableVideoCard, type VideoCardProduct } from "@/components/playable-video-card";
 import { TESTIMONIAL_VIDEOS } from "@/data/testimonials";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useWishlist } from "@/context/wishlist-context";
@@ -112,6 +112,25 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
   const tone = TONES[product.category.slug] || "peach";
   const productMedia = PRODUCT_MEDIA[product.slug] ?? [];
   const productTestimonials = pickProductTestimonials(product.id, 4);
+
+  // "Add to cart" from inside a demo-video lightbox is a fixed quantity-1,
+  // no-variant quick-add — separate from the main panel's quantity/variant
+  // state above. Only offered for simple products: a video lightbox has no
+  // room for a real variant picker, and silently adding the wrong variant
+  // would be worse than not offering it.
+  const videoCardProduct: VideoCardProduct | undefined = product.hasVariants
+    ? undefined
+    : {
+        name: product.name,
+        price: typeof product.price === "number" ? product.price : parseFloat(product.price),
+        compareAtPrice:
+          product.compareAtPrice != null
+            ? typeof product.compareAtPrice === "number"
+              ? product.compareAtPrice
+              : parseFloat(product.compareAtPrice)
+            : null,
+        onAddToCart: () => addToCart(product.id, 1),
+      };
 
   const handleWishlistClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -684,7 +703,13 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
             {productMedia.map((media) =>
               media.type === "video" ? (
                 <figure key={media.src} className="aspect-[9/16]">
-                  <PlayableVideoCard src={media.src} label={media.alt} aspect="h-full" className="h-full" />
+                  <PlayableVideoCard
+                    src={media.src}
+                    label={media.alt}
+                    aspect="h-full"
+                    className="h-full"
+                    product={videoCardProduct}
+                  />
                 </figure>
               ) : (
                 <figure

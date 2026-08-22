@@ -6,7 +6,7 @@ import { FeaturedProducts, FeaturedProductsSkeleton } from "@/components/home/fe
 import { GroomingStepsSection } from "@/components/home/grooming-steps-section";
 import { WalkingEssentials } from "@/components/home/walking-essentials";
 import { WhyMyPetMart } from "@/components/home/why-mypetmart";
-import { CustomerFeedback } from "@/components/home/customer-feedback";
+import { CustomerFeedback, CustomerFeedbackSkeleton } from "@/components/home/customer-feedback";
 
 export default function Home() {
   return (
@@ -22,7 +22,9 @@ export default function Home() {
       <GroomingStepsSection />
       <WalkingEssentials />
       <WhyMyPetMart />
-      <CustomerFeedback />
+      <Suspense fallback={<CustomerFeedbackSkeleton />}>
+        <CustomerFeedback />
+      </Suspense>
     </main>
   );
 }
