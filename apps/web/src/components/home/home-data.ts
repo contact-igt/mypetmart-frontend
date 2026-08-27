@@ -1,11 +1,3 @@
-// Home's category grid is fetched live from the real Storefront Category API
-// (see category-grid.tsx) — it no longer reads from a hardcoded fixture. Only
-// the promo tile's static copy remains here, re-exported so existing imports
-// don't need to change.
-//
-// Product data for Home's "Loved by pet parents" section is likewise fetched
-// live from the real Storefront Product API (see featured-products.tsx) — it
-// no longer reads from the mock @/data/products fixture.
 export { CATEGORY_PROMO_TEXT } from "@/data/categories";
 
 export const GROOMING_BULLETS = [
@@ -25,7 +17,7 @@ export const GROOMING_DETAILED_BULLETS = [
   "Everyday grooming, minus the mess",
 ];
 
-export const GROOMING_STEPS = ["Step 1 · Mist", "Step 2 · Brush", "Step 3 · Click"];
+export const GROOMING_STEPS = ["Step 1 Â· Mist", "Step 2 Â· Brush", "Step 3 Â· Click"];
 
 export type UspCard = { title: string; description: string };
 

@@ -33,3 +33,20 @@ export interface PaymentStatusResultJSON {
   currency: string;
   commerceException: string | null;
 }
+
+// Mirrors backend PaymentModels/payment.types.ts ConfirmCodOrderInput —
+// identical shape to InitiatePaymentInput (exactly one of orderId/guestAccessToken).
+export type ConfirmCodOrderInput = InitiatePaymentInput;
+
+// Mirrors backend PaymentModels/payment.types.ts CodConfirmationResultJSON.
+// paymentStatus is always "pending" here — a COD Payment is never marked
+// "paid" automatically (Phase 1 scope).
+export interface CodConfirmationResultJSON {
+  provider: "cod";
+  paymentId: number;
+  orderId: number;
+  orderStatus: string;
+  paymentStatus: string;
+  amount: string;
+  currency: string;
+}

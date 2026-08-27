@@ -8,8 +8,8 @@ import { PrimaryNav } from "@/components/primary-nav";
 import { MobileNavPanel } from "@/components/mobile-nav-panel";
 import { IconButton } from "@/components/icon-button";
 import {
-  SearchIcon,
   HeartIcon,
+  SearchIcon,
   UserIcon,
   MenuIcon,
   CloseIcon,
@@ -32,16 +32,15 @@ export function SiteHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const { status, customer, logout } = useCustomerAuth();
-
-  const wishlistLink = status === "authenticated" ? "/wishlist" : "/signin";
+  const wishlistHref = status === "authenticated" ? "/wishlist" : "/signin";
 
   const firstName = customer?.name?.trim().split(/\s+/)[0];
   const accountLabel =
     status === "authenticated"
-      ? `Hi, ${firstName || customer?.name || "Account"}`
+      ? "Account"
       : status === "loading"
         ? ""
-        : "Sign In";
+        : "Account";
   const accountMenuAriaLabel =
     status === "authenticated"
       ? `Open account menu for ${firstName || customer?.name || "your account"}`
@@ -73,19 +72,27 @@ export function SiteHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-t border-deep-brown bg-cream-bg">
-      <div className="site-container flex h-[72px] items-center justify-between lg:grid lg:grid-cols-[1fr_auto_1fr]">
-        <SiteLogo />
+    <header className="sticky top-0 z-50 border-t-[3px] border-deep-brown bg-cream-bg">
+      <div className="site-container flex h-[72px] items-center justify-between gap-3 lg:gap-8">
+        <SiteLogo className="shrink-0 [&>img]:!h-8 [&>img]:!max-w-[170px] sm:[&>img]:!h-9 sm:[&>img]:!max-w-[180px]" />
 
-        <PrimaryNav className="hidden lg:block lg:justify-self-center" />
-
-        <div className="hidden items-center gap-2 lg:flex lg:justify-self-end">
+        <div className="hidden min-w-0 flex-1 items-center gap-3 lg:flex lg:gap-4">
+          <PrimaryNav className="shrink-0" />
+          <Link
+            href={wishlistHref}
+            aria-label="Wishlist"
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-0.5 text-[13px] font-semibold leading-none text-text-primary transition-colors duration-150 ease-out hover:border-deep-brown/30 hover:text-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
+          >
+            <HeartIcon width={16} height={16} />
+            <span>Wishlist</span>
+          </Link>
           <form
             action="/shop"
             method="get"
             role="search"
+            aria-label="Product search"
             onSubmit={handleSearchSubmit}
-            className="relative w-40 xl:w-56"
+            className="relative ml-auto w-[clamp(240px,28vw,520px)] shrink-0"
           >
             <label htmlFor="navbar-product-search" className="sr-only">
               Search products
@@ -95,44 +102,26 @@ export function SiteHeader() {
               name="search"
               type="search"
               placeholder="Search products..."
-              className="h-10 w-full rounded-full border border-deep-brown/15 bg-white py-2 pl-4 pr-10 text-sm text-text-primary outline-none transition-colors duration-150 placeholder:text-text-muted focus:border-deep-brown/45 focus:ring-2 focus:ring-deep-brown/10"
+              className="h-12 w-full rounded-lg border border-deep-brown/10 bg-surface-secondary/30 py-2 pl-11 pr-4 text-sm text-text-primary outline-none transition-colors duration-150 placeholder:text-text-muted focus:border-deep-brown/45 focus:ring-2 focus:ring-deep-brown/10"
             />
             <button
               type="submit"
               aria-label="Search products"
-              className="absolute right-1 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-text-primary transition-colors duration-150 hover:bg-cream-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 active:scale-95"
+              className="absolute left-2 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-text-muted transition-colors duration-150 hover:bg-white/50 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 active:scale-95"
             >
               <SearchIcon width={17} height={17} />
             </button>
           </form>
-          <Link href={wishlistLink} className="inline-flex">
-            <IconButton label="Wishlist">
-              <HeartIcon width={18} height={18} />
-            </IconButton>
-          </Link>
-          <Link href="/cart" className="inline-flex relative" aria-label={itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"}>
-            <IconButton label="Cart">
-              <div className="relative">
-                <ShoppingCart size={19} strokeWidth={1.8} />
-                {itemCount > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-orange px-1 text-[9px] font-bold text-white leading-none">
-                    {itemCount}
-                  </span>
-                )}
-              </div>
-            </IconButton>
-          </Link>
           <details ref={accountMenuRef} className="group relative">
             <summary
               data-testid="account-menu-trigger"
               aria-label={accountMenuAriaLabel}
               title={accountMenuAriaLabel}
-              className="inline-flex h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-full px-3 text-text-primary transition-colors duration-150 ease-out hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 [&::-webkit-details-marker]:hidden"
+              className="inline-flex h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-deep-brown/15 bg-white/45 px-4 text-sm font-semibold text-text-primary transition-colors duration-150 ease-out hover:bg-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 [&::-webkit-details-marker]:hidden"
             >
-              <UserIcon width={18} height={18} />
-              <span className="hidden text-sm font-semibold xl:inline">{accountLabel}</span>
+              <span>{accountLabel}</span>
               <ChevronDown
-                size={14}
+                size={15}
                 strokeWidth={1.8}
                 aria-hidden="true"
                 className="transition-transform duration-150 group-open:rotate-180"
@@ -186,6 +175,16 @@ export function SiteHeader() {
               </nav>
             </div>
           </details>
+          <Link
+            href="/cart"
+            className="inline-flex h-11 shrink-0 items-center gap-2.5 rounded-lg bg-deep-brown px-4 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
+            aria-label={itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"}
+          >
+            <span>Cart</span>
+            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary-orange px-1 text-[11px] font-bold leading-none">
+              {itemCount}
+            </span>
+          </Link>
         </div>
 
         <div className="flex items-center gap-1 lg:hidden">

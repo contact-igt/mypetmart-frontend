@@ -1,5 +1,5 @@
 import type { CreateAddressInput } from "./address";
-import type { ShipmentJSON } from "./shipment";
+import type { ShipmentJSON, ShipmentStatus } from "./shipment";
 
 export interface OrderItemJSON {
   id: number;
@@ -45,17 +45,54 @@ export interface OrderListItemJSON {
   placedAt: string;
 }
 
+export interface OrderProductPreviewJSON {
+  name: string;
+  image: string | null;
+}
+
+export interface CustomerOrderShipmentSummaryJSON {
+  status: ShipmentStatus;
+  carrier: string | null;
+  trackingAvailable: boolean;
+}
+
+export interface CustomerOrderListItemJSON extends OrderListItemJSON {
+  products: OrderProductPreviewJSON[];
+  shipment: CustomerOrderShipmentSummaryJSON | null;
+}
+
 export interface CustomerOrderListQuery {
   page?: number;
   pageSize?: number;
+  status?: string;
+  from?: string;
+  to?: string;
+  search?: string;
 }
 
 export interface CustomerOrderListResult {
-  items: OrderListItemJSON[];
+  items: CustomerOrderListItemJSON[];
   total: number;
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+// Deliberately its own type, not reused from any admin-facing shape — mirrors
+// backend order.types.ts's CustomerOrderPaymentJSON field-for-field.
+export interface CustomerOrderPaymentJSON {
+  provider: string;
+  method: string | null;
+  status: string;
+  providerOrderId: string | null;
+  paidAt: string | null;
+  refundedAt: string | null;
+}
+
+// null when the Order has no Refund at all.
+export interface CustomerOrderRefundSummaryJSON {
+  totalRefunded: string;
+  status: "processing" | "succeeded" | "failed";
 }
 
 export interface OrderDetailJSON extends OrderListItemJSON {
@@ -66,6 +103,8 @@ export interface OrderDetailJSON extends OrderListItemJSON {
   createdAt: string;
   updatedAt: string;
   shipment?: ShipmentJSON | null;
+  payments: CustomerOrderPaymentJSON[];
+  refundSummary: CustomerOrderRefundSummaryJSON | null;
 }
 
 // Order Creation's response: identical to OrderDetailJSON for a customer;

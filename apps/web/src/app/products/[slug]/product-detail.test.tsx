@@ -55,6 +55,9 @@ const mockSimpleProduct: ProductDetail = {
   lengthCm: "30.00",
   widthCm: "2.00",
   heightCm: "1.00",
+  howToUse: null,
+  careInstructions: null,
+  safetyInfo: null,
   variants: [],
   images: [
     {
@@ -70,8 +73,12 @@ const mockSimpleProduct: ProductDetail = {
     },
   ],
   features: [],
+  specifications: [],
+  contentBlocks: [],
   productVideos: [],
   testimonialVideos: [],
+  relatedProducts: [],
+  faqs: [],
 };
 
 const mockVariantProduct: ProductDetail = {
@@ -97,6 +104,9 @@ const mockVariantProduct: ProductDetail = {
   lengthCm: null,
   widthCm: null,
   heightCm: null,
+  howToUse: null,
+  careInstructions: null,
+  safetyInfo: null,
   variants: [
     {
       id: 201,
@@ -135,8 +145,12 @@ const mockVariantProduct: ProductDetail = {
   ],
   images: [],
   features: [],
+  specifications: [],
+  contentBlocks: [],
   productVideos: [],
   testimonialVideos: [],
+  relatedProducts: [],
+  faqs: [],
 };
 
 function jsonResponse(body: unknown, ok = true, status = 200) {
@@ -229,6 +243,7 @@ describe("ProductDetail Storefront Component", () => {
     expect(screen.getByText("₹599")).toBeInTheDocument(); // compare price
     expect(screen.getByText("COLLAR-SIMPLE")).toBeInTheDocument();
     expect(screen.getByText(/A super comfortable dog collar\./)).toBeInTheDocument();
+    expect(screen.getByLabelText("Product tags")).toHaveTextContent("#collar");
   });
 
   it("2. Variant Product renders 'From ₹price' and requires selection before Add to Cart", async () => {
@@ -956,5 +971,567 @@ describe("ProductDetail Storefront Component", () => {
     const section = view.container.querySelector("#product-testimonial-heading")!.closest("section")!;
     expect(section).toHaveTextContent(`From ₹${Math.round(parseFloat(mockVariantProduct.price)).toLocaleString("en-IN")}`);
     expect(section.textContent).not.toMatch(/% off/);
+  });
+
+  it("33. renders custom Specifications with correct labels, values, and order, merged into the existing Specifications block", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({
+      ...mockSimpleProduct,
+      specifications: [
+        { label: "Material", value: "Nylon", displayOrder: 0 },
+        { label: "Breed Size", value: "Medium", displayOrder: 1 },
+      ],
+    });
+
+    const heading = screen.getByRole("heading", { name: "Specifications", hidden: true });
+    const section = heading.closest("div")!;
+    expect(section).toHaveTextContent("Material:");
+    expect(section).toHaveTextContent("Nylon");
+    expect(section).toHaveTextContent("Breed Size:");
+    expect(section).toHaveTextContent("Medium");
+
+    const materialIndex = section.textContent!.indexOf("Material");
+    const breedSizeIndex = section.textContent!.indexOf("Breed Size");
+    expect(materialIndex).toBeLessThan(breedSizeIndex);
+
+    // Existing structured fields remain, sourced from the Product itself — not duplicated as specification rows.
+    expect(section).toHaveTextContent(`SKU:${mockSimpleProduct.sku}`);
+  });
+
+  it("34. zero Specifications renders no custom specification rows, only the existing structured fields", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({ ...mockSimpleProduct, specifications: [] });
+
+    const heading = screen.getByRole("heading", { name: "Specifications", hidden: true });
+    const section = heading.closest("div")!;
+    expect(section).toHaveTextContent(`SKU:${mockSimpleProduct.sku}`);
+    expect(section.textContent).not.toMatch(/Material/);
+  });
+
+  it("35. does not fabricate specification text — only genuinely provided label/value pairs render", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({
+      ...mockSimpleProduct,
+      specifications: [{ label: "Colour", value: "Black", displayOrder: 0 }],
+    });
+
+    const heading = screen.getByRole("heading", { name: "Specifications", hidden: true });
+    const section = heading.closest("div")!;
+    expect(section).toHaveTextContent("Colour:");
+    expect(section).toHaveTextContent("Black");
+    expect(section.innerHTML).not.toMatch(/<script/i);
+  });
+
+  it("36. renders How to Use, Care Instructions, and Safety / Important Information when present", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({
+      ...mockSimpleProduct,
+      howToUse: "Place the harness around your pet.",
+      careInstructions: "Hand wash with mild detergent.",
+      safetyInfo: "Inspect straps before use.",
+    });
+
+    expect(screen.getByText("How to Use")).toBeInTheDocument();
+    expect(screen.getByText("Place the harness around your pet.")).toBeInTheDocument();
+    expect(screen.getByText("Care Instructions")).toBeInTheDocument();
+    expect(screen.getByText("Hand wash with mild detergent.")).toBeInTheDocument();
+    expect(screen.getByText("Safety / Important Information")).toBeInTheDocument();
+    expect(screen.getByText("Inspect straps before use.")).toBeInTheDocument();
+  });
+
+  it("37. each of How to Use / Care Instructions / Safety hides independently when null", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({
+      ...mockSimpleProduct,
+      howToUse: "Only how-to-use is present.",
+      careInstructions: null,
+      safetyInfo: null,
+    });
+
+    expect(screen.getByText("How to Use")).toBeInTheDocument();
+    expect(screen.queryByText("Care Instructions")).not.toBeInTheDocument();
+    expect(screen.queryByText("Safety / Important Information")).not.toBeInTheDocument();
+  });
+
+  it("38. the entire Usage/Care/Safety area is absent when all three are null", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({ ...mockSimpleProduct, howToUse: null, careInstructions: null, safetyInfo: null });
+
+    expect(screen.queryByText("How to Use")).not.toBeInTheDocument();
+    expect(screen.queryByText("Care Instructions")).not.toBeInTheDocument();
+    expect(screen.queryByText("Safety / Important Information")).not.toBeInTheDocument();
+  });
+
+  it("39. preserves line breaks in How to Use content", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({
+      ...mockSimpleProduct,
+      howToUse: "1. Place the harness.\n2. Adjust the straps.\n3. Secure the buckle.",
+    });
+
+    const heading = screen.getByText("How to Use");
+    const section = heading.closest("div")!;
+    expect(section.querySelector(".whitespace-pre-line")?.textContent).toBe(
+      "1. Place the harness.\n2. Adjust the straps.\n3. Secure the buckle."
+    );
+  });
+
+  it("40. renders HTML/script-like content as plain text, never executed", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({
+      ...mockSimpleProduct,
+      safetyInfo: "<script>alert('xss')</script> Keep away from children.",
+    });
+
+    const heading = screen.getByText("Safety / Important Information");
+    const section = heading.closest("div")!;
+    expect(section.innerHTML).not.toMatch(/<script>/i);
+    expect(section.textContent).toContain("<script>alert('xss')</script> Keep away from children.");
+  });
+
+  it("41. renders a media_left content block (image + heading + description)", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      contentBlocks: [
+        {
+          heading: "Built for Everyday Comfort",
+          description: "Soft padded construction.",
+          layout: "media_left",
+          displayOrder: 0,
+          media: { publicUrl: "https://r2.example.com/comfort.jpg", mediaType: "image", mimeType: "image/jpeg", title: "Comfort" },
+        },
+      ],
+    });
+
+    expect(screen.getByText("Built for Everyday Comfort")).toBeInTheDocument();
+    expect(screen.getByText("Soft padded construction.")).toBeInTheDocument();
+    expect(view.container.querySelector('img[alt="Comfort"]')).toBeInTheDocument();
+  });
+
+  it("42. renders a media_right content block", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({
+      ...mockSimpleProduct,
+      contentBlocks: [
+        {
+          heading: "Easy to Adjust",
+          description: "Multiple adjustment points.",
+          layout: "media_right",
+          displayOrder: 0,
+          media: { publicUrl: "https://r2.example.com/adjust.jpg", mediaType: "image", mimeType: "image/jpeg", title: "Adjust" },
+        },
+      ],
+    });
+
+    expect(screen.getByText("Easy to Adjust")).toBeInTheDocument();
+    expect(screen.getByText("Multiple adjustment points.")).toBeInTheDocument();
+  });
+
+  it("43. renders a media_full content block", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      contentBlocks: [
+        {
+          heading: "Designed for Daily Use",
+          description: null,
+          layout: "media_full",
+          displayOrder: 0,
+          media: { publicUrl: "https://r2.example.com/daily.mp4", mediaType: "video", mimeType: "video/mp4", title: "Daily use" },
+        },
+      ],
+    });
+
+    expect(screen.getByText("Designed for Daily Use")).toBeInTheDocument();
+    expect(view.container.querySelector('video[src="https://r2.example.com/daily.mp4"]')).toBeInTheDocument();
+  });
+
+  it("44. video content block uses controls, playsInline, and preload=metadata", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      contentBlocks: [
+        {
+          heading: "Video block",
+          description: null,
+          layout: "media_full",
+          displayOrder: 0,
+          media: { publicUrl: "https://r2.example.com/demo.mp4", mediaType: "video", mimeType: "video/mp4", title: null },
+        },
+      ],
+    });
+
+    const video = view.container.querySelector("video")!;
+    expect(video).toHaveAttribute("controls");
+    expect(video).toHaveAttribute("playsinline");
+    expect(video).toHaveAttribute("preload", "metadata");
+  });
+
+  it("45. renders a text-only content block (no media)", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({
+      ...mockSimpleProduct,
+      contentBlocks: [
+        { heading: "Easy to Adjust", description: "Multiple adjustment points.", layout: "media_left", displayOrder: 0, media: null },
+      ],
+    });
+
+    const heading = screen.getByText("Easy to Adjust");
+    const block = heading.closest("div")!.parentElement!;
+    expect(block.querySelector("img")).not.toBeInTheDocument();
+    expect(block.querySelector("video")).not.toBeInTheDocument();
+  });
+
+  it("46. renders a media-only content block (no heading/description)", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      contentBlocks: [
+        { heading: null, description: null, layout: "media_left", displayOrder: 0, media: { publicUrl: "https://r2.example.com/only.jpg", mediaType: "image", mimeType: "image/jpeg", title: null } },
+      ],
+    });
+
+    expect(view.container.querySelector('img[alt="Comfort Dog Collar"]')).toBeInTheDocument();
+  });
+
+  it("47. zero content blocks hides the Enhanced Product Content area", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({ ...mockSimpleProduct, contentBlocks: [] });
+
+    expect(view.container.querySelector('video[src^="https://r2.example.com"]')).not.toBeInTheDocument();
+    expect(screen.queryByText("Built for Everyday Comfort")).not.toBeInTheDocument();
+  });
+
+  it("48. heading renders only when present; description renders only when present", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    renderProductDetail({
+      ...mockSimpleProduct,
+      contentBlocks: [
+        { heading: "Only a heading", description: null, layout: "media_left", displayOrder: 0, media: { publicUrl: "https://r2.example.com/h.jpg", mediaType: "image", mimeType: "image/jpeg", title: null } },
+      ],
+    });
+
+    expect(screen.getByText("Only a heading")).toBeInTheDocument();
+  });
+
+  it("49. does not fabricate a heading for a media-only block, and content is plain text (no script execution)", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({
+      ...mockSimpleProduct,
+      contentBlocks: [
+        {
+          heading: "<script>alert('xss')</script>",
+          description: "Safe description",
+          layout: "media_full",
+          displayOrder: 0,
+          media: null,
+        },
+      ],
+    });
+
+    expect(view.container.innerHTML).not.toMatch(/<script>alert/i);
+    expect(screen.getByText("<script>alert('xss')</script>")).toBeInTheDocument();
+  });
+
+  it("50. Ratings & Reviews: shows 'No reviews yet' with zero approved reviews", async () => {
+    setupMockFetch(async (url) => {
+      if (url.includes("/reviews") && !url.includes("review-eligibility")) {
+        return jsonResponse({ success: true, data: { items: [], page: 1, pageSize: 8, total: 0, summary: { averageRating: 0, reviewCount: 0, distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } } } });
+      }
+    });
+
+    renderProductDetail(mockSimpleProduct);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("No reviews yet.").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("51. Ratings & Reviews: renders the average rating and distribution from real approved data", async () => {
+    setupMockFetch(async (url) => {
+      if (url.includes("/reviews") && !url.includes("review-eligibility")) {
+        return jsonResponse({
+          success: true,
+          data: {
+            items: [
+              { id: 1, rating: 5, title: "Great collar", review: "My dog loves it.", customerName: "Iyyappan", reviewSource: "customer", verifiedPurchase: true, createdAt: "2026-08-01T00:00:00.000Z" },
+            ],
+            page: 1,
+            pageSize: 8,
+            total: 1,
+            summary: { averageRating: 4.6, reviewCount: 38, distribution: { 5: 28, 4: 6, 3: 3, 2: 0, 1: 1 } },
+          },
+        });
+      }
+    });
+
+    renderProductDetail(mockSimpleProduct);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("4.6").length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText("Based on 38 reviews")).toBeInTheDocument();
+    expect(screen.getByText("Great collar")).toBeInTheDocument();
+    expect(screen.getByText("My dog loves it.")).toBeInTheDocument();
+    expect(screen.queryByText("Verified Purchase")).not.toBeInTheDocument();
+    expect(screen.getByText("Iyyappan")).toBeInTheDocument();
+  });
+
+  it("52. Ratings & Reviews: does not render a Verified Purchase badge", async () => {
+    setupMockFetch(async (url) => {
+      if (url.includes("/reviews") && !url.includes("review-eligibility")) {
+        return jsonResponse({
+          success: true,
+          data: {
+            items: [{ id: 2, rating: 3, title: null, review: "It was okay.", customerName: "Customer", reviewSource: "customer", verifiedPurchase: false, createdAt: "2026-08-01T00:00:00.000Z" }],
+            page: 1,
+            pageSize: 8,
+            total: 1,
+            summary: { averageRating: 3, reviewCount: 1, distribution: { 5: 0, 4: 0, 3: 1, 2: 0, 1: 0 } },
+          },
+        });
+      }
+    });
+
+    renderProductDetail(mockSimpleProduct);
+
+    await waitFor(() => {
+      expect(screen.getByText("It was okay.")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Verified Purchase")).not.toBeInTheDocument();
+  });
+
+  it("53. Ratings & Reviews: review text renders as plain text (no HTML execution)", async () => {
+    setupMockFetch(async (url) => {
+      if (url.includes("/reviews") && !url.includes("review-eligibility")) {
+        return jsonResponse({
+          success: true,
+          data: {
+            items: [{ id: 3, rating: 4, title: null, review: "<script>alert('xss')</script> Works great.", customerName: "Rahul Kumar", reviewSource: "admin", verifiedPurchase: true, createdAt: "2026-08-01T00:00:00.000Z" }],
+            page: 1,
+            pageSize: 8,
+            total: 1,
+            summary: { averageRating: 4, reviewCount: 1, distribution: { 5: 0, 4: 1, 3: 0, 2: 0, 1: 0 } },
+          },
+        });
+      }
+    });
+
+    const view = renderProductDetail(mockSimpleProduct);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Works great\./)).toBeInTheDocument();
+    });
+    expect(view.container.innerHTML).not.toMatch(/<script>alert/i);
+    expect(screen.getByText("Rahul Kumar")).toBeInTheDocument();
+    expect(screen.queryByText("Verified Purchase")).not.toBeInTheDocument();
+  });
+
+  it("54. Ratings & Reviews: unauthenticated visitor sees a 'Sign in to review' prompt, not a write form", async () => {
+    setupMockFetch(async (url) => {
+      if (url.includes("/auth/refresh") || url.includes("/auth/me")) {
+        return jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401);
+      }
+    });
+
+    renderProductDetail(mockSimpleProduct);
+
+    await waitFor(() => {
+      expect(screen.getByText("Sign in to review")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Write a Review")).not.toBeInTheDocument();
+  });
+
+  it("55. above-the-fold rating badge is hidden when there are zero reviews", async () => {
+    setupMockFetch(async (url) => {
+      if (url.includes("/reviews") && !url.includes("review-eligibility")) {
+        return jsonResponse({ success: true, data: { items: [], page: 1, pageSize: 1, total: 0, summary: { averageRating: 0, reviewCount: 0, distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } } } });
+      }
+    });
+
+    renderProductDetail(mockSimpleProduct);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("No reviews yet.").length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText(/\(\d+ reviews?\)/)).not.toBeInTheDocument();
+  });
+
+  it("56. above-the-fold rating badge shows the real average and count, and links to #product-reviews", async () => {
+    setupMockFetch(async (url) => {
+      if (url.includes("/reviews") && !url.includes("review-eligibility")) {
+        return jsonResponse({
+          success: true,
+          data: { items: [], page: 1, pageSize: 1, total: 0, summary: { averageRating: 4.6, reviewCount: 38, distribution: { 5: 28, 4: 6, 3: 3, 2: 0, 1: 1 } } },
+        });
+      }
+    });
+
+    renderProductDetail(mockSimpleProduct);
+
+    await waitFor(() => {
+      expect(screen.getByText("(38 reviews)")).toBeInTheDocument();
+    });
+    const badgeLink = screen.getByRole("link", { name: /4\.6.*38 reviews/ });
+    expect(badgeLink).toHaveAttribute("href", "#product-reviews");
+  });
+
+  it("57. regression: Key Features, Specifications, Add to Cart, and gallery remain unaffected by the Reviews section", async () => {
+    const productWithFeatures: ProductDetail = {
+      ...mockSimpleProduct,
+      features: [{ id: 1, productId: 101, label: "Soft padded construction", displayOrder: 0 }],
+    };
+    renderProductDetail(productWithFeatures);
+
+    expect(screen.getByText("Key Features")).toBeInTheDocument();
+    expect(screen.getAllByText("Specifications").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Add to Cart/i })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: mockSimpleProduct.images[0]!.alt })).toBeInTheDocument();
+  });
+
+  describe("Related Products section", () => {
+    const relatedItems: ProductDetail["relatedProducts"] = [
+      {
+        id: 201,
+        name: "Rugged Dog Leash",
+        slug: "rugged-dog-leash",
+        brand: "Comfy Co",
+        petType: "dog",
+        price: "349.00",
+        compareAtPrice: null,
+        stock: 5,
+        hasVariants: false,
+        featured: false,
+        inStock: true,
+        category: { id: 1, name: "Dog Essentials", slug: "dog-essentials", petType: "dog" },
+        primaryImage: null,
+      },
+      {
+        id: 202,
+        name: "Padded Dog Harness",
+        slug: "padded-dog-harness",
+        brand: "Comfy Co",
+        petType: "dog",
+        price: "799.00",
+        compareAtPrice: "999.00",
+        stock: 3,
+        hasVariants: false,
+        featured: false,
+        inStock: true,
+        category: { id: 1, name: "Dog Essentials", slug: "dog-essentials", petType: "dog" },
+        primaryImage: null,
+      },
+    ];
+
+    it("58. renders the Related Products section with a card per related item", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail({ ...mockSimpleProduct, relatedProducts: relatedItems });
+
+      expect(screen.getByRole("heading", { name: "You may also like." })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Rugged Dog Leash/ })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Padded Dog Harness/ })).toBeInTheDocument();
+    });
+
+    it("59. Related Product cards show name, price, and a discount when compareAtPrice is set", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail({ ...mockSimpleProduct, relatedProducts: relatedItems });
+
+      const harnessLink = screen.getByRole("link", { name: /Padded Dog Harness/ });
+      expect(within(harnessLink).getByText("₹799")).toBeInTheDocument();
+      expect(within(harnessLink).getByText("₹999")).toBeInTheDocument();
+      expect(harnessLink).toHaveAttribute("href", "/products/padded-dog-harness");
+    });
+
+    it("60. never renders the current Product itself inside Related Products", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail({ ...mockSimpleProduct, relatedProducts: relatedItems });
+
+      // mockSimpleProduct itself ("Comfort Dog Collar") is never part of its own relatedProducts payload —
+      // only the two distinct related fixtures render as cards.
+      expect(screen.queryAllByRole("link", { name: /Comfort Dog Collar/ })).toHaveLength(0);
+    });
+
+    it("61. hides the Related Products section entirely when relatedProducts is empty", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail({ ...mockSimpleProduct, relatedProducts: [] });
+
+      expect(screen.queryByRole("heading", { name: "You may also like." })).not.toBeInTheDocument();
+    });
+
+    it("62. regression: existing sections (title, price, Add to Cart) are unaffected by Related Products", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail({ ...mockSimpleProduct, relatedProducts: relatedItems });
+
+      expect(screen.getByRole("heading", { name: "Comfort Dog Collar" })).toBeInTheDocument();
+      expect(screen.getByText("₹499")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Add to Cart/i })).toBeInTheDocument();
+    });
   });
 });

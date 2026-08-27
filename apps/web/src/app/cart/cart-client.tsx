@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useCart } from "@/context/cart-context";
 import { ProductImagePlaceholder } from "@/components/image-placeholder";
 import { AppAuthError } from "@/lib/auth/auth-errors";
+import { TrustBadges } from "@/components/checkout/trust-badges";
 
 const formatPrice = (priceVal: number | string) => {
   const num = typeof priceVal === "number" ? priceVal : parseFloat(priceVal);
@@ -403,7 +404,9 @@ export function CartClient() {
             </span>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <TrustBadges items={["secure", "tracking", "returns"]} />
+
+          <div className="mt-4 flex flex-col gap-3">
             <Link
               href={isCheckoutDisabled ? "#" : "/checkout"}
               aria-disabled={isCheckoutDisabled}

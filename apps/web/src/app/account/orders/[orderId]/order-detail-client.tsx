@@ -14,13 +14,32 @@ import type { ReturnRequestJSON } from "@/types/return";
 import { StatusBadge } from "../orders-client";
 import { ShipmentTracking } from "@/components/shipment-tracking";
 import { OrderTracker } from "@/components/order-tracker";
+import { OrderReturnSummary } from "@/components/returns/order-return-summary";
+import { useReorder } from "@/hooks/use-reorder";
+import type { CustomerOrderPaymentJSON } from "@/types/order";
 
-const RETURN_STATUS_LABELS: Record<string, string> = {
-  requested: "Return requested",
-  approved: "Return approved",
-  rejected: "Return rejected",
-  resolved: "Return resolved",
+const PAYMENT_PROVIDER_LABELS: Record<string, string> = {
+  payu: "Online Payment",
+  cod: "Cash on Delivery",
 };
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cod: "Cash on Delivery",
+};
+
+const REFUND_SUMMARY_LABELS: Record<string, string> = {
+  processing: "Refund processing",
+  succeeded: "Refund completed",
+  failed: "Refund failed",
+};
+
+// A failed/retried attempt shouldn't be what the customer sees as "the"
+// payment for this order — prefer whichever attempt actually moved money
+// (paid or refunded), falling back to the most recent attempt (e.g. a
+// still-pending COD confirmation, or an order with only failed attempts).
+function pickDisplayPayment(payments: CustomerOrderPaymentJSON[]): CustomerOrderPaymentJSON | null {
+  return payments.find((p) => p.status === "paid" || p.status === "refunded") ?? payments[payments.length - 1] ?? null;
+}
 
 function formatDate(dateString: string): string {
   try {
@@ -48,6 +67,7 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const [returnsByItem, setReturnsByItem] = useState<Map<number, ReturnRequestJSON[]>>(new Map());
   const [returnsRefreshKey, setReturnsRefreshKey] = useState(0);
+  const { reorder, states: reorderStates } = useReorder();
 
   useEffect(() => {
     if (!isValidId) return;
@@ -164,6 +184,7 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
 
   const isPendingOrder = order.status === "pending" || order.paymentStatus === "pending";
   const canPay = order.paymentStatus === "pending" && order.status !== "cancelled";
+  const displayPayment = pickDisplayPayment(order.payments);
 
   return (
     <div className="space-y-6">
@@ -187,8 +208,20 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge label={order.status} type="order" />
           <StatusBadge label={order.paymentStatus} type="payment" />
+          <button
+            type="button"
+            onClick={() => reorder(order.id)}
+            disabled={reorderStates[order.id] === "loading"}
+            className="inline-flex items-center justify-center rounded-xl border border-deep-brown/20 bg-cream-bg px-4 py-2 text-xs font-bold text-deep-brown hover:bg-primary-orange hover:text-white hover:border-primary-orange transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {reorderStates[order.id] === "loading" ? "Adding..." : reorderStates[order.id] === "error" ? "Try Again" : "Reorder"}
+          </button>
         </div>
       </div>
+
+      {reorderStates[order.id] === "error" && (
+        <p className="text-xs font-semibold text-terracotta">Some items from this order are no longer available.</p>
+      )}
 
       {/* Pending Order Status Banner (No payment action) */}
       {isPendingOrder && (
@@ -279,6 +312,10 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
                           delivery. order.status is what the real Admin "Order
                           status" control actually advances (see return.service.ts
                           on the backend for the matching authoritative check). */}
+                      {/* Return/refund/replacement status for an already-requested return now
+                          lives in the Returns & Refunds section below, not duplicated here —
+                          this stays purely the entry point for requesting a NEW return, gated
+                          on how much of this item's quantity isn't already covered by one. */}
                       {(order.status === "delivered" || order.status === "return_requested") && (
                         <div className="mt-2">
                           {(() => {
@@ -286,30 +323,14 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
                             const activeReturns = itemReturns.filter((r) => r.status !== "rejected");
                             const remaining = item.quantity - activeReturns.reduce((total, r) => total + r.quantity, 0);
                             return (
-                              <div className="space-y-2">
-                                {activeReturns.map((activeReturn) => {
-                                  const refund = activeReturn.refunds[0];
-                                  return (
-                                    <div key={activeReturn.id} className="text-xs space-y-0.5">
-                                      <p className="font-bold text-deep-brown">
-                                        {activeReturn.resolution === "replacement" ? "Replacement" : "Refund"}: {RETURN_STATUS_LABELS[activeReturn.status] ?? activeReturn.status}
-                                        {" · "}
-                                        <span className="font-mono text-[11px] text-text-primary/60">{activeReturn.returnNumber}</span>
-                                      </p>
-                                      {refund && <p className="text-text-primary/75">Refund {refund.status}{refund.status === "succeeded" ? ` — ₹${refund.amount}` : ""}</p>}
-                                      {activeReturn.replacement && <p className="text-text-primary/75">Replacement {activeReturn.replacement.status.replace(/_/g, " ")}</p>}
-                                    </div>
-                                  );
-                                })}
-                                {remaining > 0 && (
-                                  <RequestReturnForm
-                                    orderId={order.id}
-                                    orderItemId={item.id}
-                                    purchasedQuantity={remaining}
-                                    onSubmitted={() => setReturnsRefreshKey((k) => k + 1)}
-                                  />
-                                )}
-                              </div>
+                              remaining > 0 && (
+                                <RequestReturnForm
+                                  orderId={order.id}
+                                  orderItemId={item.id}
+                                  purchasedQuantity={remaining}
+                                  onSubmitted={() => setReturnsRefreshKey((k) => k + 1)}
+                                />
+                              )
                             );
                           })()}
                         </div>
@@ -354,7 +375,33 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
               Payment Summary
             </h3>
             <div className="space-y-2 text-xs">
-              <div className="flex justify-between text-text-primary/80">
+              {displayPayment && (
+                <>
+                  <div className="flex justify-between text-text-primary/80">
+                    <span>Payment Method</span>
+                    <span className="font-semibold text-deep-brown">
+                      {(displayPayment.method && PAYMENT_METHOD_LABELS[displayPayment.method]) ?? PAYMENT_PROVIDER_LABELS[displayPayment.provider] ?? displayPayment.provider}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-text-primary/80">
+                    <span>Payment Status</span>
+                    <span className="font-semibold text-deep-brown capitalize">{displayPayment.status}</span>
+                  </div>
+                  {displayPayment.providerOrderId && (
+                    <div className="flex justify-between text-text-primary/80">
+                      <span>Transaction Reference</span>
+                      <span className="font-mono font-semibold text-deep-brown">{displayPayment.providerOrderId}</span>
+                    </div>
+                  )}
+                </>
+              )}
+              {order.refundSummary && (
+                <div className="flex justify-between text-text-primary/80">
+                  <span>{REFUND_SUMMARY_LABELS[order.refundSummary.status]}</span>
+                  <span className="font-semibold text-deep-brown">₹{order.refundSummary.totalRefunded}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-text-primary/80 border-t border-deep-brown/10 pt-2">
                 <span>Subtotal</span>
                 <span className="font-semibold text-deep-brown">₹{order.subtotal}</span>
               </div>
@@ -372,6 +419,8 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
           </div>
         </div>
       </div>
+
+      <OrderReturnSummary returns={Array.from(returnsByItem.values()).flat()} />
     </div>
   );
 }

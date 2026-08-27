@@ -15,6 +15,9 @@ import type { Cart } from "@/types/storefront";
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import { AddressLocationAssist, type LocationSelection } from "@/components/address/address-location-assist";
 import { ProceedToPaymentButton } from "@/components/payment/proceed-to-payment-button";
+import { ConfirmCodOrderButton } from "@/components/payment/confirm-cod-order-button";
+import type { CodConfirmationResultJSON } from "@/types/payment";
+import { TrustBadges } from "@/components/checkout/trust-badges";
 
 type AddressFormData = {
   label: string;
@@ -79,6 +82,13 @@ export function CheckoutClient() {
   const [isOrderStatusUnknown, setIsOrderStatusUnknown] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<CreateOrderResultJSON | null>(null);
   const isSubmittingRef = useRef(false);
+
+  // Payment method selection (Phase 1 COD) — chosen only after the Order
+  // exists, on the same "Order Created" screen the PayU handoff already
+  // lives on. Defaults to Pay Online so PayU's existing behavior/flow is
+  // unchanged unless the customer explicitly picks Cash on Delivery.
+  const [paymentMethod, setPaymentMethod] = useState<"payu" | "cod">("payu");
+  const [codConfirmation, setCodConfirmation] = useState<CodConfirmationResultJSON | null>(null);
 
   // Invalidate preview only when actual preview input fields change
   const handleFormFieldChange = (field: keyof AddressFormData, value: unknown) => {
@@ -436,11 +446,15 @@ export function CheckoutClient() {
             <div className="grid gap-4 sm:grid-cols-3 border-b border-deep-brown/10 pb-6 text-sm">
               <div>
                 <span className="block text-xs font-bold text-deep-brown/60 uppercase">Order Status</span>
-                <span className="font-bold text-deep-brown capitalize">{createdOrder.status}</span>
+                <span className="font-bold text-deep-brown capitalize">{codConfirmation ? codConfirmation.orderStatus : createdOrder.status}</span>
               </div>
               <div>
                 <span className="block text-xs font-bold text-deep-brown/60 uppercase">Payment Status</span>
-                <span className="font-bold text-terracotta capitalize">{createdOrder.paymentStatus} (Not paid)</span>
+                {codConfirmation ? (
+                  <span className="font-bold text-deep-brown capitalize">Cash on Delivery ({codConfirmation.paymentStatus})</span>
+                ) : (
+                  <span className="font-bold text-terracotta capitalize">{createdOrder.paymentStatus} (Not paid)</span>
+                )}
               </div>
               <div>
                 <span className="block text-xs font-bold text-deep-brown/60 uppercase">Fulfilment</span>
@@ -500,14 +514,68 @@ export function CheckoutClient() {
 
             {/* Proceed to Payment */}
             <div className="pt-4 border-t border-deep-brown/10 space-y-3 text-center">
-              {isAuthenticated ? (
-                <ProceedToPaymentButton input={{ orderId: createdOrder.id }} />
-              ) : createdOrder.guestAccessToken ? (
-                <ProceedToPaymentButton input={{ guestAccessToken: createdOrder.guestAccessToken }} />
-              ) : null}
-              <p className="text-[11px] text-text-primary/60">
-                You&apos;ll be redirected to PayU to complete payment. Your cart remains available.
-              </p>
+              {codConfirmation ? (
+                <div className="rounded-xl border border-mint-sage bg-mint-sage/20 p-4">
+                  <p className="text-sm font-bold text-deep-brown">Order placed successfully</p>
+                  <p className="mt-1 text-xs font-semibold text-deep-brown/80">
+                    Payment Method: Cash on Delivery
+                  </p>
+                  <p className="mt-1 text-[11px] text-text-primary/70">
+                    Please keep ₹{codConfirmation.amount} ready at the time of delivery.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col items-center gap-3 pb-1 sm:flex-row sm:justify-center sm:gap-6" role="radiogroup" aria-label="Payment method">
+                    <label className="flex items-center gap-2 text-xs font-bold text-deep-brown cursor-pointer">
+                      <input
+                        type="radio"
+                        name="payment-method"
+                        checked={paymentMethod === "payu"}
+                        onChange={() => setPaymentMethod("payu")}
+                        className="h-4 w-4 text-primary-orange focus:ring-primary-orange"
+                      />
+                      Pay Online
+                    </label>
+                    <label className="flex items-center gap-2 text-xs font-bold text-deep-brown cursor-pointer">
+                      <input
+                        type="radio"
+                        name="payment-method"
+                        checked={paymentMethod === "cod"}
+                        onChange={() => setPaymentMethod("cod")}
+                        className="h-4 w-4 text-primary-orange focus:ring-primary-orange"
+                      />
+                      Cash on Delivery
+                    </label>
+                  </div>
+
+                  <TrustBadges items={["secure", "cod", "tracking"]} />
+
+                  {paymentMethod === "payu" ? (
+                    <>
+                      {isAuthenticated ? (
+                        <ProceedToPaymentButton input={{ orderId: createdOrder.id }} />
+                      ) : createdOrder.guestAccessToken ? (
+                        <ProceedToPaymentButton input={{ guestAccessToken: createdOrder.guestAccessToken }} />
+                      ) : null}
+                      <p className="text-[11px] text-text-primary/60">
+                        You&apos;ll be redirected to PayU to complete payment. Your cart remains available.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      {isAuthenticated ? (
+                        <ConfirmCodOrderButton input={{ orderId: createdOrder.id }} onConfirmed={setCodConfirmation} />
+                      ) : createdOrder.guestAccessToken ? (
+                        <ConfirmCodOrderButton input={{ guestAccessToken: createdOrder.guestAccessToken }} onConfirmed={setCodConfirmation} />
+                      ) : null}
+                      <p className="text-[11px] text-text-primary/60">
+                        Pay in cash when your order is delivered. No online payment is needed.
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
@@ -565,10 +633,10 @@ export function CheckoutClient() {
         <div className="flex items-center justify-between border-b border-deep-brown/15 pb-6">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider text-primary-orange">
-              Storefront Checkout
+              Complete your order securely
             </span>
             <h1 className="font-baloo text-3xl font-extrabold text-deep-brown sm:text-4xl">
-              Checkout Preview
+              Checkout
             </h1>
           </div>
           <Link
@@ -634,7 +702,7 @@ export function CheckoutClient() {
               Your cart is empty
             </h2>
             <p className="mt-2 text-sm text-text-primary/75">
-              Add items to your cart before proceeding to checkout preview.
+              Add items to your cart before proceeding to checkout.
             </p>
             <Link
               href="/shop"
@@ -1066,9 +1134,13 @@ export function CheckoutClient() {
                   <div className="flex justify-between text-text-primary text-xs">
                     <span>Estimated Shipping</span>
                     <span className="font-medium text-deep-brown/70">
-                      {previewResult?.totals.shippingAmount
-                        ? `₹${previewResult.totals.shippingAmount}`
-                        : "To be calculated"}
+                      {previewing
+                        ? "Calculating delivery charges..."
+                        : error && !previewResult
+                          ? "Unable to calculate delivery charges. Please retry."
+                          : previewResult?.totals.shippingAmount
+                            ? `₹${previewResult.totals.shippingAmount}`
+                            : "To be calculated"}
                     </span>
                   </div>
 

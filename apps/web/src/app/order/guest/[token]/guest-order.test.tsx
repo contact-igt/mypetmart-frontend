@@ -25,6 +25,8 @@ function baseOrder(overrides: Partial<GuestOrderDetailJSON> = {}): GuestOrderDet
     placedAt: "2026-08-14T10:00:00Z",
     createdAt: "2026-08-14T10:00:00Z",
     updatedAt: "2026-08-14T10:00:00Z",
+    payments: [],
+    refundSummary: null,
     cancelledAt: null,
     shippingAddress: {
       recipientName: "Jordan Rivera",

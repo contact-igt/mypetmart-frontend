@@ -39,11 +39,10 @@ export function CustomerFeedbackSlider({ products }: { products: ProductListItem
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <span className="pill-label bg-white text-text-primary">Real pet parents</span>
-            <h2 className="display-heading mt-4 text-3xl text-text-primary sm:text-4xl">
-              Real pet parents.
-              <span className="accent ml-2">Real happy tails.</span>
+            <h2 className="display-heading mt-4 text-[2.75rem] leading-[0.98] tracking-[-0.03em] text-text-primary sm:text-[3.5rem]">
+              Real happy tails.
             </h2>
-            <p className="body-copy mt-3 max-w-lg text-text-primary/80">
+            <p className="body-copy mt-4 max-w-lg text-base text-text-primary/80 sm:text-lg">
               Watch loving pet owners share their My Pet Mart experience.
             </p>
           </div>

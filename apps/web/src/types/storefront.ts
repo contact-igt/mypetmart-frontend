@@ -33,6 +33,7 @@ export interface ProductListItem {
   name: string;
   slug: string;
   brand: string | null;
+  description?: string | null;
   petType: "dog" | "cat" | "all";
   price: string;
   compareAtPrice: string | null;
@@ -69,6 +70,27 @@ export interface ProductFeature {
   productId: number;
   label: string;
   displayOrder: number;
+}
+
+export interface ProductSpecification {
+  label: string;
+  value: string;
+  displayOrder: number;
+}
+
+export type ProductContentLayout = "media_left" | "media_right" | "media_full";
+
+export interface ProductContentBlock {
+  heading: string | null;
+  description: string | null;
+  layout: ProductContentLayout;
+  displayOrder: number;
+  media: {
+    publicUrl: string;
+    mediaType: "image" | "video";
+    mimeType: string;
+    title: string | null;
+  } | null;
 }
 
 export type ProductMediaRole = "product_video" | "testimonial_video";
@@ -109,6 +131,12 @@ export interface ProductVariant {
   updatedAt: string;
 }
 
+export interface ProductFaq {
+  question: string;
+  answer: string;
+  displayOrder: number;
+}
+
 export interface ProductDetail {
   id: number;
   name: string;
@@ -132,11 +160,18 @@ export interface ProductDetail {
   lengthCm: string | null;
   widthCm: string | null;
   heightCm: string | null;
+  howToUse: string | null;
+  careInstructions: string | null;
+  safetyInfo: string | null;
   variants: ProductVariant[];
   images: ProductImage[];
   features: ProductFeature[];
+  specifications: ProductSpecification[];
+  contentBlocks: ProductContentBlock[];
   productVideos: ProductMediaAssignment[];
   testimonialVideos: ProductMediaAssignment[];
+  relatedProducts: ProductListItem[];
+  faqs: ProductFaq[];
 }
 
 export type CartAvailabilityReason =

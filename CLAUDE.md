@@ -102,8 +102,21 @@ still require separate approval.
 Full exclusion list → `docs/PROJECT_BRIEF.md`
 
 ## Unconfirmed public claims (do not publish as fact until approved)
-Cash on Delivery · pan-India shipping · fixed delivery times · verified-review
-claims · customer ratings · low-stock labels · ranking timelines.
+Pan-India shipping · fixed delivery times · verified-review claims · customer
+ratings · low-stock labels · ranking timelines.
+
+**Override (2026-08-26): Cash on Delivery Phase 1 approved.** The blanket
+"Cash on Delivery" exclusion above no longer applies. Scope approved: COD as
+a second payment method alongside PayU, at checkout only. Backend:
+`PaymentService.confirmCodOrder` (backend/src/models/PaymentModels/payment.service.ts)
+creates a `Payment` row (`provider: "cod"`, `method: "cod"`, `status: "pending"`
+— never auto-marked "paid") and confirms the Order directly, reusing the same
+stock-lock/decrement path PayU's finalization uses; `POST /storefront/payments/cod`.
+Storefront: a payment-method choice (Pay Online / Cash on Delivery) on the
+checkout order-created screen (`apps/web/src/app/checkout/checkout-client.tsx`),
+PayU's flow otherwise unchanged. Still excluded and NOT built: COD collection
+reconciliation, COD refunds, COD order value limits, and pincode-based COD
+eligibility — those still require separate approval.
 
 All open items → `docs/OPEN_ITEMS.md`
 

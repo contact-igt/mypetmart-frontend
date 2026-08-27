@@ -1,16 +1,21 @@
 // @vitest-environment jsdom
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import "@testing-library/jest-dom/vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WishlistProvider } from "@/context/wishlist-context";
 import { FeaturedProducts } from "./featured-products";
-import type { ProductListItem, PaginatedProductList } from "@/types/storefront";
+import type { PaginatedProductList, ProductListItem } from "@/types/storefront";
 
 const mockPush = vi.fn();
+const mockAddToCart = vi.fn();
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: vi.fn() }),
-  usePathname: () => "/",
+}));
+
+vi.mock("@/context/cart-context", () => ({
+  useCart: () => ({ add: mockAddToCart }),
 }));
 
 let mockAuthStatus = "unauthenticated";
@@ -33,6 +38,7 @@ const simpleItem: ProductListItem = {
   name: "Comfort Dog Collar",
   slug: "comfort-dog-collar",
   brand: null,
+  description: "Soft everyday collar made for repeat walks and comfortable wear.",
   petType: "dog",
   price: "499.00",
   compareAtPrice: "599.00",
@@ -55,19 +61,13 @@ const simpleItem: ProductListItem = {
 };
 
 const variantItem: ProductListItem = {
+  ...simpleItem,
   id: 502,
   name: "Premium Dog Food",
   slug: "premium-dog-food",
-  brand: null,
-  petType: "dog",
-  price: "499.00",
   compareAtPrice: null,
-  stock: 5,
   hasVariants: true,
-  featured: false,
-  inStock: true,
-  category: { id: 1, name: "Dog Essentials", slug: "dog-essentials", petType: "dog" },
-  primaryImage: null, // missing image
+  primaryImage: null,
 };
 
 async function renderFeaturedProducts() {
@@ -75,9 +75,11 @@ async function renderFeaturedProducts() {
   return render(<WishlistProvider>{jsx}</WishlistProvider>);
 }
 
-describe("Home Featured Products (Fix 3)", () => {
+describe("Home Best Sellers", () => {
   beforeEach(() => {
     mockAuthStatus = "unauthenticated";
+    mockAddToCart.mockReset();
+    mockAddToCart.mockResolvedValue({});
   });
 
   afterEach(() => {
@@ -85,99 +87,107 @@ describe("Home Featured Products (Fix 3)", () => {
     vi.restoreAllMocks();
   });
 
-  it("fetches from the real Storefront Product API using the featured=true filter, not the mock fixture or a locally-filtered pool", async () => {
-    const list: PaginatedProductList = { items: [simpleItem, variantItem], total: 2, page: 1, pageSize: 12, totalPages: 1 };
-    const fetchMock = vi.fn(async (...args: unknown[]) => {
-      void args;
-      return jsonResponse({ success: true, data: list });
-    });
+  it("uses the real featured-products query with three product slots", async () => {
+    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 3, totalPages: 1 };
+    const fetchMock = vi.fn(async () => jsonResponse({ success: true, data: list }));
     vi.stubGlobal("fetch", fetchMock);
 
     await renderFeaturedProducts();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
     const calledUrl = String((fetchMock.mock.calls[0] as unknown[])[0]);
     expect(calledUrl).toContain("/storefront/products");
     expect(calledUrl).toContain("sort=newest");
     expect(calledUrl).toContain("featured=true");
-    expect(calledUrl).toContain("pageSize=6");
+    expect(calledUrl).toContain("pageSize=3");
   });
 
-  it("renders no more than the 6 supported Featured Product slots even if the API returns more", async () => {
-    const many: ProductListItem[] = Array.from({ length: 8 }, (_, i) => ({
+  it("renders at most three product cards plus the full-range Shop CTA", async () => {
+    const items = Array.from({ length: 5 }, (_, index) => ({
       ...simpleItem,
-      id: 600 + i,
-      name: `Featured Item ${i + 1}`,
-      slug: `featured-item-${i + 1}`,
+      id: 600 + index,
+      name: `Featured Item ${index + 1}`,
+      slug: `featured-item-${index + 1}`,
     }));
-    const list: PaginatedProductList = { items: many, total: 8, page: 1, pageSize: 6, totalPages: 2 };
+    const list: PaginatedProductList = { items, total: 5, page: 1, pageSize: 3, totalPages: 2 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     await renderFeaturedProducts();
 
-    expect(screen.getAllByRole("article")).toHaveLength(6);
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+    expect(screen.getByRole("link", { name: /See the full range/i })).toHaveAttribute("href", "/shop");
+    expect(screen.getByLabelText("Best sellers product grid")).toHaveClass("grid-cols-1", "md:grid-cols-2", "lg:grid-cols-4");
   });
 
-  it("renders the real numeric Product id, so the Product Detail link and Wishlist heart both work", async () => {
-    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 12, totalPages: 1 };
+  it("keeps detail, wishlist, and add-to-cart actions on a real product", async () => {
+    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 3, totalPages: 1 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     await renderFeaturedProducts();
 
-    const link = screen.getByRole("link", { name: /Comfort Dog Collar/i });
-    expect(link).toHaveAttribute("href", "/products/comfort-dog-collar");
-
-    // A real numeric id reaching ProductCard is what lets the Wishlist heart click
-    // actually resolve to a navigation (a null id, as mock Products always had,
-    // makes the click handler return early and do nothing at all).
-    const heartButton = screen.getByRole("button", { name: /add to wishlist/i });
-    fireEvent.click(heartButton);
+    expect(screen.getAllByRole("link", { name: "Comfort Dog Collar" })[0]).toHaveAttribute("href", "/products/comfort-dog-collar");
+    expect(screen.getByText("Dog Essentials")).toHaveClass("uppercase");
+    expect(screen.getByText(/Soft everyday collar/i)).toHaveClass("line-clamp-3");
+    expect(screen.getByText("17% OFF")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add to wishlist" }));
     expect(mockPush).toHaveBeenCalledWith("/signin");
+
+    fireEvent.click(screen.getByRole("button", { name: "Add to Cart" }));
+    await waitFor(() => expect(mockAddToCart).toHaveBeenCalledWith(501, 1));
   });
 
-  it("shows the variant aggregate 'From ₹...' price prefix for a variant Product", async () => {
-    const list: PaginatedProductList = { items: [variantItem], total: 1, page: 1, pageSize: 12, totalPages: 1 };
+  it("renders a variant price with a product-detail options action and the image fallback", async () => {
+    const list: PaginatedProductList = { items: [variantItem], total: 1, page: 1, pageSize: 3, totalPages: 1 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     await renderFeaturedProducts();
 
-    expect(screen.getByText(/From ₹499/)).toBeInTheDocument();
-  });
-
-  it("uses ProductImagePlaceholder when a Product has no primary image", async () => {
-    const list: PaginatedProductList = { items: [variantItem], total: 1, page: 1, pageSize: 12, totalPages: 1 };
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
-
-    await renderFeaturedProducts();
-
+    expect(screen.getByText("From ₹499")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Premium Dog Food - Image coming soon" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Choose Options" })).toHaveAttribute("href", "/products/premium-dog-food");
   });
 
-  it("does not crash the section when the Product API call fails", async () => {
+  it("shows an error state with a Retry action when the featured-products fetch fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: false, error: { code: "INTERNAL_ERROR", message: "boom" } }, false, 500)));
 
     await renderFeaturedProducts();
 
-    expect(screen.getByText(/couldn't load products right now/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Browse the shop/i })).toHaveAttribute("href", "/shop");
+    expect(screen.getByText("Unable to load products. Please try again.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
-  it("handles an empty result set without crashing", async () => {
-    const list: PaginatedProductList = { items: [], total: 0, page: 1, pageSize: 12, totalPages: 0 };
+  it("recovers into the real product grid after a successful Retry", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: false, error: { code: "INTERNAL_ERROR", message: "boom" } }, false, 500)));
+
+    await renderFeaturedProducts();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+
+    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 3, totalPages: 1 };
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Pet parent favourites" })).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Unable to load products. Please try again.")).not.toBeInTheDocument();
+  });
+
+  it("hides the section for a genuinely empty (not failed) product result", async () => {
+    const list: PaginatedProductList = { items: [], total: 0, page: 1, pageSize: 3, totalPages: 0 };
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
+
+    const emptyView = await renderFeaturedProducts();
+
+    expect(emptyView.container).toBeEmptyDOMElement();
+  });
+
+  it("renders the supplied section heading and all-products link", async () => {
+    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 3, totalPages: 1 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     await renderFeaturedProducts();
 
-    expect(screen.getByText(/New products are on their way/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Browse the shop/i })).toHaveAttribute("href", "/shop");
-  });
-
-  it("'See all products' links to /shop", async () => {
-    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 12, totalPages: 1 };
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
-
-    await renderFeaturedProducts();
-
+    expect(screen.getByRole("heading", { name: "Pet parent favourites" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /See all products/i })).toHaveAttribute("href", "/shop");
   });
 });

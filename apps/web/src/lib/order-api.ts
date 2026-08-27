@@ -37,6 +37,10 @@ export const OrderApi = {
     const params = new URLSearchParams();
     if (query?.page) params.set("page", String(query.page));
     if (query?.pageSize) params.set("pageSize", String(query.pageSize));
+    if (query?.status) params.set("status", query.status);
+    if (query?.from) params.set("from", query.from);
+    if (query?.to) params.set("to", query.to);
+    if (query?.search) params.set("search", query.search);
 
     const queryString = params.toString();
     const endpoint = queryString ? `/storefront/orders?${queryString}` : "/storefront/orders";
