@@ -10,6 +10,20 @@ import type { PaginatedProductList, ProductListItem } from "@/types/storefront";
 const mockPush = vi.fn();
 const mockAddToCart = vi.fn();
 
+vi.mock("react-slick", async () => {
+  const React = await import("react");
+  const MockSlider = React.forwardRef(function MockSlider(
+    { children }: { children: React.ReactNode },
+    ref,
+  ) {
+    React.useImperativeHandle(ref, () => ({ slickPrev: () => undefined, slickNext: () => undefined }));
+    return <div>{children}</div>;
+  });
+  return {
+    default: MockSlider,
+  };
+});
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: vi.fn() }),
 }));
@@ -87,8 +101,8 @@ describe("Home Best Sellers", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses the real featured-products query with three product slots", async () => {
-    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 3, totalPages: 1 };
+  it("uses the real featured-products query with enough products for carousel discovery", async () => {
+    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 8, totalPages: 1 };
     const fetchMock = vi.fn(async () => jsonResponse({ success: true, data: list }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -98,36 +112,37 @@ describe("Home Best Sellers", () => {
     expect(calledUrl).toContain("/storefront/products");
     expect(calledUrl).toContain("sort=newest");
     expect(calledUrl).toContain("featured=true");
-    expect(calledUrl).toContain("pageSize=3");
+    expect(calledUrl).toContain("pageSize=8");
   });
 
-  it("renders at most three product cards plus the full-range Shop CTA", async () => {
+  it("renders real product cards in the carousel with desktop controls", async () => {
     const items = Array.from({ length: 5 }, (_, index) => ({
       ...simpleItem,
       id: 600 + index,
       name: `Featured Item ${index + 1}`,
       slug: `featured-item-${index + 1}`,
     }));
-    const list: PaginatedProductList = { items, total: 5, page: 1, pageSize: 3, totalPages: 2 };
+    const list: PaginatedProductList = { items, total: 5, page: 1, pageSize: 8, totalPages: 1 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     await renderFeaturedProducts();
 
-    expect(screen.getAllByRole("article")).toHaveLength(3);
-    expect(screen.getByRole("link", { name: /See the full range/i })).toHaveAttribute("href", "/shop");
-    expect(screen.getByLabelText("Best sellers product grid")).toHaveClass("grid-cols-1", "md:grid-cols-2", "lg:grid-cols-4");
+    expect(screen.getAllByRole("article")).toHaveLength(5);
+    expect(screen.getByRole("region", { name: "Best sellers products" })).toHaveAttribute("aria-roledescription", "carousel");
+    expect(screen.getByRole("button", { name: "Previous best seller" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next best seller" })).toBeInTheDocument();
   });
 
   it("keeps detail, wishlist, and add-to-cart actions on a real product", async () => {
-    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 3, totalPages: 1 };
+    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 8, totalPages: 1 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     await renderFeaturedProducts();
 
     expect(screen.getAllByRole("link", { name: "Comfort Dog Collar" })[0]).toHaveAttribute("href", "/products/comfort-dog-collar");
     expect(screen.getByText("Dog Essentials")).toHaveClass("uppercase");
-    expect(screen.getByText(/Soft everyday collar/i)).toHaveClass("line-clamp-3");
-    expect(screen.getByText("17% OFF")).toBeInTheDocument();
+    expect(screen.getByText(/Soft everyday collar/i)).toHaveClass("line-clamp-2");
+    expect(screen.getByText("-17%")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add to wishlist" }));
     expect(mockPush).toHaveBeenCalledWith("/signin");
 
@@ -136,7 +151,7 @@ describe("Home Best Sellers", () => {
   });
 
   it("renders a variant price with a product-detail options action and the image fallback", async () => {
-    const list: PaginatedProductList = { items: [variantItem], total: 1, page: 1, pageSize: 3, totalPages: 1 };
+    const list: PaginatedProductList = { items: [variantItem], total: 1, page: 1, pageSize: 8, totalPages: 1 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     await renderFeaturedProducts();
@@ -161,7 +176,7 @@ describe("Home Best Sellers", () => {
     await renderFeaturedProducts();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
 
-    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 3, totalPages: 1 };
+    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 8, totalPages: 1 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -173,7 +188,7 @@ describe("Home Best Sellers", () => {
   });
 
   it("hides the section for a genuinely empty (not failed) product result", async () => {
-    const list: PaginatedProductList = { items: [], total: 0, page: 1, pageSize: 3, totalPages: 0 };
+    const list: PaginatedProductList = { items: [], total: 0, page: 1, pageSize: 8, totalPages: 0 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     const emptyView = await renderFeaturedProducts();
@@ -182,7 +197,7 @@ describe("Home Best Sellers", () => {
   });
 
   it("renders the supplied section heading and all-products link", async () => {
-    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 3, totalPages: 1 };
+    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 8, totalPages: 1 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     await renderFeaturedProducts();

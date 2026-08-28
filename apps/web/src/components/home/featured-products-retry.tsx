@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { BestSellersSection, BestSellersSkeleton } from "./best-sellers-section";
+import { BestSellersSection, BestSellersSkeleton, HOME_FEATURED_PRODUCT_COUNT } from "./best-sellers-section";
 import { getStorefrontProducts } from "@/lib/storefront-api";
 import type { ProductListItem } from "@/types/storefront";
-
-const HOME_FEATURED_PRODUCT_COUNT = 3;
 
 type Phase = { status: "error" } | { status: "retrying" } | { status: "loaded"; products: ProductListItem[] };
 

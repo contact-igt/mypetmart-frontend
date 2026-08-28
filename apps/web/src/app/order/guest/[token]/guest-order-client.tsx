@@ -11,6 +11,7 @@ import { ProceedToPaymentButton } from "@/components/payment/proceed-to-payment-
 import { StatusBadge } from "@/app/account/orders/orders-client";
 import { ShipmentTracking } from "@/components/shipment-tracking";
 import { OrderTracker } from "@/components/order-tracker";
+import { DownloadReceiptButton } from "@/components/download-receipt-button";
 
 function formatDate(dateString: string): string {
   try {
@@ -140,6 +141,7 @@ export function GuestOrderClient({ token }: { token: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge label={order.status} type="order" />
           <StatusBadge label={order.paymentStatus} type="payment" />
+          <DownloadReceiptButton download={() => OrderApi.downloadGuestReceipt(token)} fallbackFilename={`Receipt-${order.orderNumber}.pdf`} />
         </div>
       </div>
 

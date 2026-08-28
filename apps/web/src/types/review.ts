@@ -40,6 +40,30 @@ export interface PublicReviewListResult {
   summary: ReviewSummaryJSON;
 }
 
+export interface StorefrontReviewFeedItem {
+  id: number;
+  rating: number;
+  title: string | null;
+  review: string;
+  customerName: string;
+  verifiedPurchase: boolean;
+  createdAt?: string;
+  product: {
+    id: number;
+    name: string;
+    slug: string;
+    image: string | null;
+  };
+}
+
+export interface StorefrontReviewFeedResult {
+  reviews: StorefrontReviewFeedItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface OwnReviewJSON {
   id: number;
   productId: number;

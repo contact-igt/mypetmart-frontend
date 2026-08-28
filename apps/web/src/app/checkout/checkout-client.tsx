@@ -627,21 +627,21 @@ export function CheckoutClient() {
   );
 
   return (
-    <main className="flex-1 bg-cream-bg py-8 md:py-12 min-h-[calc(100vh-144px)]">
-      <div className="mx-auto max-w-[1100px] px-5 sm:px-8">
+    <main className="min-w-0 flex-1 bg-cream-bg py-6 sm:py-8 md:py-12 min-h-[calc(100vh-144px)]">
+      <div className="mx-auto w-full max-w-[1100px] px-4 sm:px-8">
         {/* Header Breadcrumb */}
-        <div className="flex items-center justify-between border-b border-deep-brown/15 pb-6">
-          <div>
+        <div className="flex flex-col items-start gap-2 border-b border-deep-brown/15 pb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pb-6">
+          <div className="min-w-0">
             <span className="text-xs font-bold uppercase tracking-wider text-primary-orange">
               Complete your order securely
             </span>
-            <h1 className="font-baloo text-3xl font-extrabold text-deep-brown sm:text-4xl">
+            <h1 className="font-baloo text-[2rem] font-extrabold leading-none text-deep-brown sm:text-4xl">
               Checkout
             </h1>
           </div>
           <Link
             href="/cart"
-            className="inline-flex items-center gap-1 text-xs font-bold text-primary-orange hover:underline"
+            className="inline-flex min-h-8 items-center gap-1 text-xs font-bold text-primary-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-orange/40 focus-visible:ring-offset-2 sm:shrink-0"
           >
             &larr; Back to Cart
           </Link>
@@ -649,14 +649,14 @@ export function CheckoutClient() {
 
         {/* Distinct Order Status Unknown State (Network Uncertainty) */}
         {isOrderStatusUnknown && (
-          <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5 text-deep-brown shadow-xs space-y-3">
+          <div className="mt-5 space-y-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-deep-brown shadow-xs sm:mt-6 sm:p-5">
             <div className="flex items-center gap-2 text-amber-800 font-extrabold text-sm uppercase tracking-wider">
               <span>⚠️ Order Status Unknown</span>
             </div>
             <p className="text-xs font-medium text-deep-brown/90 leading-relaxed">
               We couldn&apos;t confirm whether your order was created because of a network connection issue. To prevent duplicate orders, <strong>Place Order has been locked</strong>. Please re-verify your connection before attempting to unlock checkout.
             </p>
-            <div className="pt-1 flex items-center gap-3">
+            <div className="flex items-center gap-3 pt-1">
               <button
                 type="button"
                 onClick={() => {
@@ -665,7 +665,7 @@ export function CheckoutClient() {
                   setActivePreviewPayload(null);
                   setPreviewResult(null);
                 }}
-                className="rounded-xl bg-amber-700 px-4 py-2 text-xs font-bold text-white hover:bg-amber-800 transition-colors"
+                className="w-full rounded-xl bg-amber-700 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-amber-800 sm:w-auto"
               >
                 Re-check & Unlock Checkout
               </button>
@@ -675,12 +675,12 @@ export function CheckoutClient() {
 
         {/* Standard Error Banner */}
         {error && !isOrderStatusUnknown && (
-          <div className="mt-6 rounded-xl border border-terracotta/30 bg-terracotta/10 p-4 text-xs font-semibold text-terracotta flex items-center justify-between">
-            <span>{error}</span>
+          <div className="mt-5 flex flex-col items-start gap-3 rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs font-semibold text-terracotta sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+            <span className="leading-relaxed">{error}</span>
             {isCartError && (
               <Link
                 href="/cart"
-                className="ml-4 shrink-0 rounded-lg bg-terracotta px-3 py-1 text-xs font-bold text-white hover:opacity-90"
+                className="shrink-0 rounded-lg bg-terracotta px-3 py-1.5 text-xs font-bold text-white hover:opacity-90"
               >
                 Review Cart &rarr;
               </Link>
@@ -688,7 +688,7 @@ export function CheckoutClient() {
             {isPendingOrderError && (
               <Link
                 href={pendingOrderRedirectId ? `/account/orders/${pendingOrderRedirectId}` : "/account/orders"}
-                className="ml-4 shrink-0 rounded-lg bg-terracotta px-3 py-1 text-xs font-bold text-white hover:opacity-90"
+                className="shrink-0 rounded-lg bg-terracotta px-3 py-1.5 text-xs font-bold text-white hover:opacity-90"
               >
                 {pendingOrderRedirectId ? "View Pending Order \u2192" : "View My Orders \u2192"}
               </Link>
@@ -712,14 +712,14 @@ export function CheckoutClient() {
             </Link>
           </div>
         ) : (
-          <div className="mt-8 grid gap-8 lg:grid-cols-12 items-start">
+          <div className="mt-6 grid min-w-0 gap-5 sm:mt-8 sm:gap-8 lg:grid-cols-12 lg:items-start">
             {/* Left Column: Shipping Address & Selection */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="min-w-0 space-y-5 sm:space-y-6 lg:col-span-7">
               {/* Authenticated Saved Address Selector */}
               {isAuthenticated && savedAddresses.length > 0 && !isAddingNewAddress && (
-                <div className="rounded-2xl border border-deep-brown/15 bg-white p-6 shadow-xs">
-                  <div className="flex items-center justify-between border-b border-deep-brown/10 pb-4 mb-4">
-                    <h2 className="font-baloo text-lg font-bold text-deep-brown">
+                <div className="rounded-2xl border border-deep-brown/15 bg-white p-4 shadow-xs sm:p-6">
+                  <div className="flex items-start justify-between gap-3 border-b border-deep-brown/10 pb-4 mb-4">
+                    <h2 className="min-w-0 font-baloo text-base font-bold leading-tight text-deep-brown sm:text-lg">
                       Select Shipping Address
                     </h2>
                     <button
@@ -729,7 +729,7 @@ export function CheckoutClient() {
                         setActivePreviewPayload(null);
                         setPreviewResult(null);
                       }}
-                      className="text-xs font-bold text-primary-orange hover:underline"
+                      className="shrink-0 text-right text-xs font-bold text-primary-orange hover:underline"
                     >
                       + Add New Address
                     </button>
@@ -773,9 +773,9 @@ export function CheckoutClient() {
 
               {/* Address Input Form (Guest OR New Address for Authenticated) */}
               {(!isAuthenticated || savedAddresses.length === 0 || isAddingNewAddress) && (
-                <div className="rounded-2xl border border-deep-brown/15 bg-white p-6 shadow-xs">
-                  <div className="flex items-center justify-between border-b border-deep-brown/10 pb-4 mb-4">
-                    <h2 className="font-baloo text-lg font-bold text-deep-brown">
+                <div className="rounded-2xl border border-deep-brown/15 bg-white p-4 shadow-xs sm:p-6">
+                  <div className="flex items-start justify-between gap-3 border-b border-deep-brown/10 pb-4 mb-4">
+                    <h2 className="min-w-0 font-baloo text-base font-bold leading-tight text-deep-brown sm:text-lg">
                       {isAuthenticated ? "New Shipping Address" : "Guest Shipping Address"}
                     </h2>
                     {isAuthenticated && savedAddresses.length > 0 && (
@@ -787,7 +787,7 @@ export function CheckoutClient() {
                             handleSelectSavedAddress(selectedAddressId);
                           }
                         }}
-                        className="text-xs font-bold text-deep-brown/60 hover:text-deep-brown"
+                        className="shrink-0 text-right text-xs font-bold text-deep-brown/60 hover:text-deep-brown"
                       >
                         Use Saved Address
                       </button>
@@ -998,15 +998,15 @@ export function CheckoutClient() {
               )}
 
               {/* Items Availability & Revalidation Section */}
-              <div className="rounded-2xl border border-deep-brown/15 bg-white p-6 shadow-xs">
-                <h2 className="border-b border-deep-brown/10 pb-4 mb-4 font-baloo text-lg font-bold text-deep-brown">
+              <div className="rounded-2xl border border-deep-brown/15 bg-white p-4 shadow-xs sm:p-6">
+                <h2 className="border-b border-deep-brown/10 pb-4 mb-4 font-baloo text-base font-bold leading-tight text-deep-brown sm:text-lg">
                   Items Revalidation & Availability
                 </h2>
 
                 {previewResult && !previewResult.readiness.cartReady && (
-                  <div className="mb-4 rounded-xl border border-terracotta/40 bg-terracotta/10 p-4 text-xs font-bold text-terracotta flex items-center justify-between">
-                    <span>Attention required: One or more items in your cart are currently unavailable or out of stock. Please update your cart before proceeding.</span>
-                    <Link href="/cart" className="ml-4 shrink-0 font-bold underline text-terracotta">
+                  <div className="mb-4 flex flex-col items-start gap-2 rounded-xl border border-terracotta/40 bg-terracotta/10 p-3 text-xs font-bold text-terracotta sm:flex-row sm:items-center sm:justify-between sm:p-4">
+                    <span className="leading-relaxed">Attention required: One or more items in your cart are currently unavailable or out of stock. Please update your cart before proceeding.</span>
+                    <Link href="/cart" className="shrink-0 font-bold underline text-terracotta">
                       Review Cart
                     </Link>
                   </div>
@@ -1019,11 +1019,11 @@ export function CheckoutClient() {
                     return (
                       <div
                         key={item.cartItemId}
-                        className={`flex items-center gap-4 rounded-xl border p-3 ${
+                        className={`flex min-w-0 items-start gap-3 rounded-xl border p-3 sm:items-center sm:gap-4 ${
                           reason ? "border-terracotta/50 bg-terracotta/5" : "border-deep-brown/10"
                         }`}
                       >
-                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-peach-hero/30 border border-deep-brown/10">
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-peach-hero/30 border border-deep-brown/10 sm:h-14 sm:w-14">
                           {item.image?.url ? (
                             <Image
                               src={item.image.url}
@@ -1039,13 +1039,13 @@ export function CheckoutClient() {
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-deep-brown truncate">
+                          <h4 className="truncate text-xs font-semibold text-deep-brown sm:text-sm">
                             {item.productName}
                           </h4>
                           {item.variantName && (
                             <p className="text-xs text-text-primary/70">{item.variantName}</p>
                           )}
-                          <p className="text-xs font-medium text-deep-brown/80 mt-0.5">
+                          <p className="mt-0.5 text-[11px] font-medium text-deep-brown/80 sm:text-xs">
                             Qty: {item.quantity} &times; ₹{item.price}
                           </p>
 
@@ -1068,8 +1068,8 @@ export function CheckoutClient() {
                           )}
                         </div>
 
-                        <div className="text-right">
-                          <span className="text-sm font-bold text-deep-brown">
+                        <div className="shrink-0 pt-0.5 text-right sm:pt-0">
+                          <span className="text-xs font-bold text-deep-brown sm:text-sm">
                             ₹{(parseFloat(item.price) * item.quantity).toFixed(2)}
                           </span>
                         </div>
@@ -1081,16 +1081,16 @@ export function CheckoutClient() {
             </div>
 
             {/* Right Column: Order Summary & Readiness & Place Order CTA */}
-            <div className="lg:col-span-5 space-y-6">
+            <div className="min-w-0 space-y-5 sm:space-y-6 lg:col-span-5">
               {/* Readiness Summary Card */}
-              <div className="rounded-2xl border border-deep-brown/15 bg-white p-6 shadow-xs">
-                <h2 className="border-b border-deep-brown/10 pb-4 mb-4 font-baloo text-lg font-bold text-deep-brown">
+              <div className="rounded-2xl border border-deep-brown/15 bg-white p-4 shadow-xs sm:p-6">
+                <h2 className="border-b border-deep-brown/10 pb-4 mb-4 font-baloo text-base font-bold leading-tight text-deep-brown sm:text-lg">
                   Checkout Readiness Status
                 </h2>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-deep-brown/70">Shipping Address:</span>
+                  <div className="flex items-start justify-between gap-3 text-xs font-semibold">
+                    <span className="min-w-0 text-deep-brown/70">Shipping Address:</span>
                     <span
                       className={`rounded-full px-2.5 py-0.5 font-bold uppercase ${
                         previewResult?.readiness.addressReady && activePreviewPayload
@@ -1102,8 +1102,8 @@ export function CheckoutClient() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-deep-brown/70">Cart Inventory & Price:</span>
+                  <div className="flex items-start justify-between gap-3 text-xs font-semibold">
+                    <span className="min-w-0 text-deep-brown/70">Cart Inventory &amp; Price:</span>
                     <span
                       className={`rounded-full px-2.5 py-0.5 font-bold uppercase ${
                         previewResult?.readiness.cartReady
@@ -1118,22 +1118,22 @@ export function CheckoutClient() {
               </div>
 
               {/* Order Totals Summary Card & CTA */}
-              <div className="rounded-2xl border border-deep-brown/15 bg-white p-6 shadow-xs">
+              <div className="rounded-2xl border border-deep-brown/15 bg-white p-4 shadow-xs sm:p-6">
                 <h2 className="border-b border-deep-brown/10 pb-4 mb-4 font-baloo text-lg font-bold text-deep-brown">
                   Order Summary
                 </h2>
 
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between text-text-primary">
-                    <span>Merchandise Subtotal</span>
+                  <div className="flex items-baseline justify-between gap-3 text-text-primary">
+                    <span className="min-w-0">Merchandise Subtotal</span>
                     <span className="font-semibold text-deep-brown">
                       ₹{previewResult?.totals.merchandiseSubtotal || cart.subtotal}
                     </span>
                   </div>
 
-                  <div className="flex justify-between text-text-primary text-xs">
-                    <span>Estimated Shipping</span>
-                    <span className="font-medium text-deep-brown/70">
+                  <div className="flex items-baseline justify-between gap-3 text-xs text-text-primary">
+                    <span className="min-w-0">Estimated Shipping</span>
+                    <span className="min-w-0 max-w-[58%] break-words text-right font-medium text-deep-brown/70 sm:max-w-none">
                       {previewing
                         ? "Calculating delivery charges..."
                         : error && !previewResult
@@ -1144,7 +1144,7 @@ export function CheckoutClient() {
                     </span>
                   </div>
 
-                  <div className="border-t border-deep-brown/10 pt-3 flex justify-between font-bold text-base text-deep-brown">
+                  <div className="flex items-baseline justify-between gap-3 border-t border-deep-brown/10 pt-3 text-base font-bold text-deep-brown">
                     <span>Payable Total</span>
                     <span className="text-primary-orange font-extrabold">
                       ₹{previewResult?.totals.payableTotal || previewResult?.totals.merchandiseSubtotal || cart.subtotal}

@@ -3,12 +3,21 @@ import type {
   CreateReviewInput,
   OwnReviewJSON,
   PublicReviewListResult,
+  StorefrontReviewFeedResult,
   ReviewEligibilityJSON,
   ReviewListSort,
   UpdateReviewInput,
 } from "@/types/review";
 
 export const ReviewApi = {
+  async listGlobal(query?: { page?: number; pageSize?: number; sort?: ReviewListSort }): Promise<StorefrontReviewFeedResult> {
+    const params = new URLSearchParams();
+    if (query?.page) params.set("page", String(query.page));
+    if (query?.pageSize) params.set("pageSize", String(query.pageSize));
+    if (query?.sort) params.set("sort", query.sort);
+    const queryString = params.toString();
+    return fetchWithAuth<StorefrontReviewFeedResult>(`/storefront/reviews${queryString ? `?${queryString}` : ""}`, { method: "GET" });
+  },
   // Public — no auth required. Returns approved Reviews + the rating summary
   // in one round trip (see backend review.service.ts).
   async list(productId: number, query?: { page?: number; pageSize?: number; sort?: ReviewListSort }): Promise<PublicReviewListResult> {

@@ -135,7 +135,7 @@ export function ForgotPasswordVerifyForm() {
           </div>
         )}
 
-        <div className="flex justify-center gap-2 sm:gap-3">
+        <div className="flex justify-center gap-1.5 sm:gap-3">
           {otpDigits.map((digit, index) => (
             <input
               key={index}
@@ -150,7 +150,7 @@ export function ForgotPasswordVerifyForm() {
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
               disabled={formLoading}
-              className="h-12 w-12 rounded-xl border border-deep-brown/30 bg-cream-bg text-center text-xl font-bold text-deep-brown focus:border-primary-orange focus:outline-none focus:ring-2 focus:ring-primary-orange/20 disabled:bg-cream-bg/50"
+              className="h-9 w-9 shrink-0 rounded-xl border border-deep-brown/30 bg-cream-bg text-center text-xl font-bold text-deep-brown focus:border-primary-orange focus:outline-none focus:ring-2 focus:ring-primary-orange/20 disabled:bg-cream-bg/50 sm:h-12 sm:w-12"
             />
           ))}
         </div>

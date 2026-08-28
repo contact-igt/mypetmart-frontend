@@ -1,5 +1,6 @@
 import { getApiBaseUrl } from "./config";
-import type { Category, PaginatedProductList, ProductListQuery, ProductDetail, StoreProfile } from "@/types/storefront";
+import type { Category, PaginatedProductList, ProductListQuery, ProductDetail, StoreProfile, StorefrontTestimonial, StorefrontTestimonialsResult } from "@/types/storefront";
+import type { StorefrontReviewFeedResult } from "@/types/review";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -71,6 +72,19 @@ export async function getStorefrontProducts(query: ProductListQuery): Promise<Pa
 
 export async function getStorefrontProductBySlug(slug: string): Promise<ProductDetail> {
   return storefrontFetch<ProductDetail>(`/storefront/products/${slug}`);
+}
+
+export async function getStorefrontTestimonials(): Promise<StorefrontTestimonialsResult> {
+  return storefrontFetch<StorefrontTestimonialsResult>("/storefront/testimonials");
+}
+
+export async function getStorefrontProductTestimonials(productId: number): Promise<StorefrontTestimonial[]> {
+  const result = await storefrontFetch<StorefrontTestimonialsResult>(`/storefront/products/${productId}/testimonials`);
+  return Array.isArray(result.testimonials) ? result.testimonials : [];
+}
+
+export async function getStorefrontReviews(query?: { page?: number; pageSize?: number; sort?: "newest" | "highest" | "lowest" }): Promise<StorefrontReviewFeedResult> {
+  return storefrontFetch<StorefrontReviewFeedResult>("/storefront/reviews", query);
 }
 
 export async function getStorefrontStoreProfile(): Promise<StoreProfile> {

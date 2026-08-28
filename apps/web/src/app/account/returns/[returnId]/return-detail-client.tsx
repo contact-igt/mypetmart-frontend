@@ -6,6 +6,7 @@ import { ReturnApi } from "@/lib/return-api";
 import type { ReturnRequestDetailJSON } from "@/types/return";
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import { ShipmentTracking } from "@/components/shipment-tracking";
+import { ReturnShipmentTracking } from "@/components/returns/return-shipment-tracking";
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return "—";
@@ -156,17 +157,19 @@ export function ReturnDetailClient({ returnIdStr }: { returnIdStr: string }) {
         )}
       </div>
 
+      <ReturnShipmentTracking returnShipment={detail.returnShipment} />
+
       {/* Refund status — deliberately visually distinct from Return status above. */}
       {detail.refunds.length > 0 && (
         <div className="rounded-2xl border border-deep-brown/15 bg-cream-bg p-6 shadow-xs space-y-4">
           <h3 className="font-baloo text-base font-bold text-deep-brown">Refund status</h3>
           {detail.refunds.map((refund) => (
             <div key={refund.id} className="rounded-xl border border-deep-brown/10 bg-white p-4 space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-deep-brown text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0 font-bold text-deep-brown text-sm">
                   {refund.status === "succeeded" ? `₹${refund.amount} refunded` : `₹${refund.amount} refund ${refund.status}`}
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wide text-text-primary/60">{refund.status}</span>
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-text-primary/60">{refund.status}</span>
               </div>
               <p className="text-xs text-text-primary/75">{REFUND_STATUS_COPY[refund.status]}</p>
               <p className="text-[11px] text-text-primary/50">

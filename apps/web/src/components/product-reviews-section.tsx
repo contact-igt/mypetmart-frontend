@@ -2,17 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ReviewCarousel } from "@/components/reviews/review-carousel";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { ReviewApi } from "@/lib/review-api";
 import { StarRatingInput, StaticStars } from "./review-stars";
 import { AppAuthError } from "@/lib/auth/auth-errors";
-import { getReviewCustomerName, type OwnReviewJSON, type PublicReviewJSON, type ReviewEligibilityJSON, type ReviewSummaryJSON } from "@/types/review";
+import type { OwnReviewJSON, PublicReviewJSON, ReviewEligibilityJSON, ReviewSummaryJSON, StorefrontReviewFeedItem } from "@/types/review";
 
-const PAGE_SIZE = 8;
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
+const PAGE_SIZE = 50;
 
 function ReviewStatusNote({ status }: { status: OwnReviewJSON["status"] }) {
   if (status === "approved") {
@@ -131,13 +128,11 @@ function ReviewForm({
   );
 }
 
-export function ProductReviewsSection({ productId }: { productId: number }) {
+export function ProductReviewsSection({ productId, product }: { productId: number; product?: { name: string; slug: string; image: string | null } }) {
   const { status } = useCustomerAuth();
 
   const [items, setItems] = useState<PublicReviewJSON[]>([]);
   const [summary, setSummary] = useState<ReviewSummaryJSON | null>(null);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
   const [loadingList, setLoadingList] = useState(true);
 
   const [eligibility, setEligibility] = useState<ReviewEligibilityJSON | null>(null);
@@ -148,13 +143,12 @@ export function ProductReviewsSection({ productId }: { productId: number }) {
 
   useEffect(() => {
     let cancelled = false;
-    ReviewApi.list(productId, { page, pageSize: PAGE_SIZE, sort: "newest" })
+    ReviewApi.list(productId, { page: 1, pageSize: PAGE_SIZE, sort: "newest" })
       .then((result) => {
         if (cancelled) return;
         const nextItems = Array.isArray(result.items) ? result.items : [];
-        setItems((current) => (page === 1 ? nextItems : [...current, ...nextItems]));
+        setItems(nextItems);
         setSummary(result.summary ?? null);
-        setTotal(typeof result.total === "number" ? result.total : 0);
       })
       .catch(() => {
         // Public list — degrade to "no reviews shown" rather than surface an error UI.
@@ -165,7 +159,7 @@ export function ProductReviewsSection({ productId }: { productId: number }) {
     return () => {
       cancelled = true;
     };
-  }, [productId, page]);
+  }, [productId]);
 
   useEffect(() => {
     // Rendering already gates every use of `eligibility` behind
@@ -214,9 +208,18 @@ export function ProductReviewsSection({ productId }: { productId: number }) {
     }
   }
 
-  const hasMore = items.length < total;
   const distribution = summary?.distribution;
   const reviewCount = summary?.reviewCount ?? 0;
+  const carouselReviews: StorefrontReviewFeedItem[] = items.map((item) => ({
+    id: item.id,
+    rating: item.rating,
+    title: item.title,
+    review: item.review,
+    customerName: item.customerName ?? item.customerDisplayName ?? "Customer",
+    verifiedPurchase: item.verifiedPurchase,
+    createdAt: item.createdAt,
+    product: { id: productId, name: product?.name ?? "This product", slug: product?.slug ?? "", image: product?.image ?? null },
+  }));
 
   return (
     <section id="product-reviews" className="mt-20 scroll-mt-24 sm:mt-24">
@@ -325,34 +328,8 @@ export function ProductReviewsSection({ productId }: { productId: number }) {
           </div>
         </div>
 
-        <div className="flex flex-col gap-5">
-          {items.length === 0 && !loadingList && <p className="text-sm text-text-muted">No reviews yet.</p>}
-          {items.map((item) => (
-            <article key={item.id} className="rounded-[22px] border border-border-subtle bg-white p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <StaticStars rating={item.rating} />
-                <span className="text-xs text-text-muted">{formatDate(item.createdAt)}</span>
-              </div>
-              {item.title && <p className="mt-2 text-sm font-semibold text-text-primary">{item.title}</p>}
-              <p className="mt-1 whitespace-pre-line text-sm text-text-primary/80">{item.review}</p>
-              <div className="mt-3 flex items-center gap-2 text-xs text-text-muted">
-                <span className="font-medium text-text-primary">{getReviewCustomerName(item)}</span>
-              </div>
-            </article>
-          ))}
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => {
-                setLoadingList(true);
-                setPage((p) => p + 1);
-              }}
-              disabled={loadingList}
-              className="self-start rounded-xl border border-border-subtle px-4 py-2 text-sm font-semibold text-text-primary hover:bg-cream-bg disabled:opacity-50"
-            >
-              {loadingList ? "Loading…" : "Load More"}
-            </button>
-          )}
+        <div className="min-w-0">
+          <ReviewCarousel reviews={carouselReviews} compact showHeader={false} singleCard fullReview showArrows loading={loadingList && carouselReviews.length === 0} />
         </div>
       </div>
     </section>

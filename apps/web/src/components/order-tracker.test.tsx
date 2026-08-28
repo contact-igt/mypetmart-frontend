@@ -35,6 +35,8 @@ function shipment(overrides: Partial<ShipmentJSON> = {}): ShipmentJSON {
     providerCost: "50.00",
     currency: "INR",
     package: { weightGrams: 500, lengthCm: "10.00", widthCm: "8.00", heightCm: "6.00" },
+    deliveryTat: null,
+    estimatedDelivery: null,
     shippedAt: "2026-08-11T10:00:00Z",
     deliveredAt: null,
     cancelledAt: null,

@@ -14,6 +14,7 @@ import type { ReturnRequestJSON } from "@/types/return";
 import { StatusBadge } from "../orders-client";
 import { ShipmentTracking } from "@/components/shipment-tracking";
 import { OrderTracker } from "@/components/order-tracker";
+import { DownloadReceiptButton } from "@/components/download-receipt-button";
 import { OrderReturnSummary } from "@/components/returns/order-return-summary";
 import { useReorder } from "@/hooks/use-reorder";
 import type { CustomerOrderPaymentJSON } from "@/types/order";
@@ -182,8 +183,15 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
     );
   }
 
-  const isPendingOrder = order.status === "pending" || order.paymentStatus === "pending";
-  const canPay = order.paymentStatus === "pending" && order.status !== "cancelled";
+  // COD funds are collected at the door, not upfront — a COD Order's
+  // paymentStatus stays "pending" all the way through delivery by design
+  // (see backend PaymentService.confirmCodOrder/markCodDelivered). That
+  // "pending" must never be read as "still owes an online payment": the
+  // retry-payment banner/button below is PayU-only.
+  const isCodOrder = order.payments.some((p) => p.provider === "cod");
+  const isPendingOrder = !isCodOrder && (order.status === "pending" || order.paymentStatus === "pending");
+  const canPay = order.paymentStatus === "pending" && order.status !== "cancelled" && !isCodOrder;
+  const showCodPendingNotice = isCodOrder && order.paymentStatus === "pending";
   const displayPayment = pickDisplayPayment(order.payments);
 
   return (
@@ -208,6 +216,7 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge label={order.status} type="order" />
           <StatusBadge label={order.paymentStatus} type="payment" />
+          <DownloadReceiptButton download={() => OrderApi.downloadReceipt(order.id)} fallbackFilename={`Receipt-${order.orderNumber}.pdf`} />
           <button
             type="button"
             onClick={() => reorder(order.id)}
@@ -247,6 +256,12 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
               Payment unavailable
             </button>
           )}
+        </div>
+      )}
+
+      {showCodPendingNotice && (
+        <div className="rounded-2xl border border-deep-brown/15 bg-cream-bg p-4 text-xs font-medium text-deep-brown/80">
+          Payment will be collected via Cash on Delivery.
         </div>
       )}
 
@@ -377,28 +392,28 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
             <div className="space-y-2 text-xs">
               {displayPayment && (
                 <>
-                  <div className="flex justify-between text-text-primary/80">
-                    <span>Payment Method</span>
-                    <span className="font-semibold text-deep-brown">
+                  <div className="flex items-start justify-between gap-3 text-text-primary/80">
+                    <span className="min-w-0">Payment Method</span>
+                    <span className="max-w-[58%] break-words text-right font-semibold text-deep-brown">
                       {(displayPayment.method && PAYMENT_METHOD_LABELS[displayPayment.method]) ?? PAYMENT_PROVIDER_LABELS[displayPayment.provider] ?? displayPayment.provider}
                     </span>
                   </div>
-                  <div className="flex justify-between text-text-primary/80">
-                    <span>Payment Status</span>
-                    <span className="font-semibold text-deep-brown capitalize">{displayPayment.status}</span>
+                  <div className="flex items-start justify-between gap-3 text-text-primary/80">
+                    <span className="min-w-0">Payment Status</span>
+                    <span className="max-w-[58%] break-words text-right font-semibold text-deep-brown capitalize">{displayPayment.status}</span>
                   </div>
                   {displayPayment.providerOrderId && (
-                    <div className="flex justify-between text-text-primary/80">
-                      <span>Transaction Reference</span>
-                      <span className="font-mono font-semibold text-deep-brown">{displayPayment.providerOrderId}</span>
+                    <div className="flex items-start justify-between gap-3 text-text-primary/80">
+                      <span className="min-w-0">Transaction Reference</span>
+                      <span className="max-w-[58%] break-all text-right font-mono font-semibold text-deep-brown">{displayPayment.providerOrderId}</span>
                     </div>
                   )}
                 </>
               )}
               {order.refundSummary && (
-                <div className="flex justify-between text-text-primary/80">
+                <div className="flex items-start justify-between gap-3 text-text-primary/80">
                   <span>{REFUND_SUMMARY_LABELS[order.refundSummary.status]}</span>
-                  <span className="font-semibold text-deep-brown">₹{order.refundSummary.totalRefunded}</span>
+                  <span className="shrink-0 font-semibold text-deep-brown">₹{order.refundSummary.totalRefunded}</span>
                 </div>
               )}
               <div className="flex justify-between text-text-primary/80 border-t border-deep-brown/10 pt-2">

@@ -113,6 +113,25 @@ export interface ProductMediaAssignment {
   };
 }
 
+export interface StorefrontProductSummary {
+  id: number;
+  name: string;
+  slug: string;
+  image: string | null;
+}
+
+export interface StorefrontTestimonial {
+  id: number;
+  videoUrl: string;
+  title: string | null;
+  caption: string | null;
+  product: StorefrontProductSummary;
+}
+
+export interface StorefrontTestimonialsResult {
+  testimonials: StorefrontTestimonial[];
+}
+
 export interface ProductVariant {
   id: number;
   productId: number;

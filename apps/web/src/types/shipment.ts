@@ -28,6 +28,11 @@ export interface ShipmentJSON {
   providerCost: string | null;
   currency: string;
   package: { weightGrams: number; lengthCm: string; widthCm: string; heightCm: string };
+  // Captured once at booking from the courier candidate iThink's Rate API
+  // returned (not refreshed from tracking) — null on any shipment iThink
+  // didn't supply an estimate for, or created before this field existed.
+  deliveryTat: number | null;
+  estimatedDelivery: { min: string; max: string } | null;
   shippedAt: string | null;
   deliveredAt: string | null;
   cancelledAt: string | null;

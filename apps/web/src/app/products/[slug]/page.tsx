@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { getStorefrontProductBySlug } from "@/lib/storefront-api";
+import { getStorefrontProductBySlug, getStorefrontProductTestimonials } from "@/lib/storefront-api";
+import type { StorefrontTestimonial } from "@/types/storefront";
 import { ProductDetailClient } from "./product-detail";
 import type { Metadata } from "next";
 
@@ -41,9 +42,16 @@ export default async function ProductDetailPage({ params }: PageProps) {
     throw error;
   }
 
+  let testimonials: StorefrontTestimonial[] = [];
+  try {
+    testimonials = await getStorefrontProductTestimonials(product.id);
+  } catch {
+    testimonials = [];
+  }
+
   return (
     <main className="flex-1 bg-[#FFF5E9]">
-      <ProductDetailClient product={product} />
+      <ProductDetailClient product={product} testimonials={testimonials} />
     </main>
   );
 }

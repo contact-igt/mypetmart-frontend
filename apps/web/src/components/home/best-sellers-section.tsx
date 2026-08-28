@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ArrowRightIcon } from "@/components/icons";
 import type { ProductListItem } from "@/types/storefront";
-import { FeaturedProductCard } from "./featured-product-card";
+import { BestSellersCarousel } from "./best-sellers-carousel";
+
+export const HOME_FEATURED_PRODUCT_COUNT = 8;
 
 function SectionHeader() {
   return (
@@ -26,31 +28,14 @@ function SectionHeader() {
   );
 }
 
-function FullRangeCard() {
-  return (
-    <Link
-      href="/shop"
-      className="group flex min-h-[31rem] h-full flex-col items-center justify-center rounded-[24px] border border-dashed border-deep-brown/20 bg-white/20 px-7 text-center transition-colors duration-150 hover:bg-white/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
-    >
-      <p className="max-w-[12rem] text-2xl font-bold leading-[1.12] text-text-primary/70 sm:text-[1.7rem]">See the full range</p>
-      <p className="mt-4 max-w-[12.5rem] text-sm font-medium leading-[1.45] text-text-primary/60 sm:text-base">
-        Explore the complete My Pet Mart collection.
-      </p>
-      <span className="mt-7 text-2xl leading-none text-terracotta transition-transform duration-150 group-hover:translate-x-1" aria-hidden="true">
-        <ArrowRightIcon width={24} height={24} />
-      </span>
-    </Link>
-  );
-}
-
 export function BestSellersSkeleton() {
   return (
     <section className="section-block bg-cream-bg py-14 sm:py-16">
       <div className="site-container">
         <SectionHeader />
-        <div className="mt-7 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
           {[1, 2, 3, 4].map((item) => (
-            <div key={item} className="min-h-[31rem] animate-pulse rounded-[24px] border border-deep-brown/10 bg-white/45" />
+            <div key={item} className="min-h-[30rem] animate-pulse rounded-[24px] border border-deep-brown/10 bg-white/45" />
           ))}
         </div>
       </div>
@@ -65,10 +50,7 @@ export function BestSellersSection({ products }: { products: ProductListItem[] }
     <section className="section-block bg-cream-bg py-14 sm:py-16" aria-labelledby="best-sellers-heading">
       <div className="site-container">
         <SectionHeader />
-        <div className="mt-7 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-4" aria-label="Best sellers product grid">
-          {products.map((product) => <FeaturedProductCard key={product.id} product={product} />)}
-          <FullRangeCard />
-        </div>
+        <BestSellersCarousel products={products} />
       </div>
     </section>
   );

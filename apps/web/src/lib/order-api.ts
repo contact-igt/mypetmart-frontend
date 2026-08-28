@@ -1,4 +1,4 @@
-import { fetchWithAuth } from "./auth/auth-api";
+import { fetchBinaryWithAuth, fetchWithAuth, type BinaryDownload } from "./auth/auth-api";
 import type {
   CreateOrderInput,
   CreateOrderResultJSON,
@@ -55,6 +55,27 @@ export const OrderApi = {
    */
   async getOrder(id: number): Promise<OrderDetailJSON> {
     return fetchWithAuth<OrderDetailJSON>(`/storefront/orders/${id}`, {
+      method: "GET",
+    });
+  },
+
+  /**
+   * Downloads the PDF receipt for an authenticated customer's own Order.
+   * Ownership is enforced entirely server-side (same guarantee as getOrder).
+   */
+  async downloadReceipt(id: number): Promise<BinaryDownload> {
+    return fetchBinaryWithAuth(`/storefront/orders/${id}/receipt`, {
+      method: "GET",
+    });
+  },
+
+  /**
+   * Downloads the PDF receipt for a guest Order via its recovery token — no
+   * authentication, the token itself is the sole access credential (same as
+   * getGuestOrder).
+   */
+  async downloadGuestReceipt(token: string): Promise<BinaryDownload> {
+    return fetchBinaryWithAuth(`/storefront/orders/guest/${encodeURIComponent(token)}/receipt`, {
       method: "GET",
     });
   },

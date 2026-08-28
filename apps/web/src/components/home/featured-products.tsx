@@ -1,9 +1,7 @@
-import { BestSellersSection, BestSellersSkeleton } from "./best-sellers-section";
+import { BestSellersSection, BestSellersSkeleton, HOME_FEATURED_PRODUCT_COUNT } from "./best-sellers-section";
 import { FeaturedProductsRetry } from "./featured-products-retry";
 import { getStorefrontProducts } from "@/lib/storefront-api";
 import type { ProductListItem } from "@/types/storefront";
-
-const HOME_FEATURED_PRODUCT_COUNT = 3;
 
 async function getHomeFeaturedProducts(): Promise<ProductListItem[]> {
   const { items } = await getStorefrontProducts({

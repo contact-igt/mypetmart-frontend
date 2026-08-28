@@ -34,6 +34,7 @@ export function PlayableVideoCard({
   className = "",
   product,
   chrome = true,
+  poster,
 }: {
   src: string;
   label: string;
@@ -43,6 +44,8 @@ export function PlayableVideoCard({
   product?: VideoCardProduct;
   /** false when a wrapping card (e.g. ShoppableVideoCard) already owns the rounded corners/shadow. */
   chrome?: boolean;
+  /** Optional still image shown while the video metadata is loading or unavailable. */
+  poster?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -76,6 +79,7 @@ export function PlayableVideoCard({
           muted
           playsInline
           preload="auto"
+          poster={poster ?? undefined}
           aria-hidden="true"
           tabIndex={-1}
           className={`pointer-events-none w-full bg-deep-brown object-cover ${aspect}`}

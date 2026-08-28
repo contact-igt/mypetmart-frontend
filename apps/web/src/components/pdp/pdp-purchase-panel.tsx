@@ -165,7 +165,7 @@ export function PdpPurchasePanel({
       )}
 
       {!(product.hasVariants && product.variants.length === 0) && (
-        <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="mt-7 flex w-full flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex h-14 w-full shrink-0 items-center justify-between rounded-lg border border-deep-brown/15 bg-[#FFF9F1] px-1 sm:w-36">
             <button
               type="button"
@@ -194,9 +194,9 @@ export function PdpPurchasePanel({
             type="button"
             onClick={onAddToCart}
             disabled={isOutOfStock || (product.hasVariants && !selectedVariant) || cartStatus === "adding"}
-            className="inline-flex h-14 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary-orange px-7 text-base font-semibold text-white transition-colors duration-150 hover:bg-terracotta disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
+            className="inline-flex h-14 min-w-0 w-full flex-1 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary-orange px-5 text-base font-semibold text-white transition-colors duration-150 hover:bg-terracotta active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 sm:px-7"
           >
-            <ShoppingBag size={18} strokeWidth={1.9} aria-hidden="true" />
+            <ShoppingBag className="shrink-0" size={18} strokeWidth={1.9} aria-hidden="true" />
             {cartStatus === "adding" ? "Adding..." : "Add to Cart"}
           </button>
         </div>

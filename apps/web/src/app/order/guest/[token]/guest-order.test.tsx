@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { GuestOrderClient } from "./guest-order-client";
 import { OrderApi } from "@/lib/order-api";
@@ -149,5 +149,41 @@ describe("Guest Order Recovery Page", () => {
       expect(screen.getByRole("button", { name: "Payment unavailable" })).toBeDisabled();
       expect(screen.queryByRole("button", { name: /Proceed to Payment/i })).not.toBeInTheDocument();
     });
+  });
+
+  // Deliberately confirmed/paid, not the file's pending default — a pending
+  // order here also renders <ProceedToPaymentButton>, which needs an App
+  // Router context this test harness doesn't provide (a pre-existing,
+  // unrelated gap — see the other pending-order tests in this file). Using
+  // a non-pending fixture keeps these two Download Receipt tests focused on
+  // what they're actually testing.
+  it("shows a Download Receipt button once the guest order loads", async () => {
+    vi.spyOn(OrderApi, "getGuestOrder").mockResolvedValue(baseOrder({ status: "confirmed", paymentStatus: "paid" }));
+
+    render(<GuestOrderClient token={"2".repeat(64)} />);
+
+    expect(await screen.findByRole("button", { name: "Download Receipt" })).toBeInTheDocument();
+  });
+
+  it("clicking Download Receipt calls OrderApi.downloadGuestReceipt with the page's own token and downloads the returned PDF", async () => {
+    vi.spyOn(OrderApi, "getGuestOrder").mockResolvedValue(baseOrder({ status: "confirmed", paymentStatus: "paid" }));
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    URL.createObjectURL = vi.fn(() => "blob:mock-url");
+    URL.revokeObjectURL = vi.fn();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const token = "3".repeat(64);
+    const downloadSpy = vi.spyOn(OrderApi, "downloadGuestReceipt").mockResolvedValue({ blob: new Blob(["%PDF-1.4"], { type: "application/pdf" }), filename: "REC-000002.pdf" });
+
+    render(<GuestOrderClient token={token} />);
+
+    const button = await screen.findByRole("button", { name: "Download Receipt" });
+    fireEvent.click(button);
+
+    await waitFor(() => expect(downloadSpy).toHaveBeenCalledWith(token));
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
   });
 });
