@@ -2,28 +2,26 @@ import { USP_CARDS } from "./home-data";
 
 export function WhyMyPetMart() {
   return (
-    <section className="section-block bg-cream-bg">
-      <div className="site-container">
-        <span className="pill-label bg-yellow-card text-text-primary">Why My Pet Mart</span>
-        <h2 className="display-heading mt-4 text-3xl text-text-primary sm:text-4xl">
-          Little things,
-          <span className="accent">done well.</span>
-        </h2>
+    <section className="section-block bg-cream-bg py-14 sm:py-16">
+      <div className="site-container grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-16 xl:gap-24">
+        <div className="max-w-[28rem]">
+          <p className="text-sm font-bold uppercase tracking-[0.1em] text-terracotta">Why MyPetMart</p>
+          <h2 className="mt-4 text-[2.6rem] leading-[0.96] tracking-[-0.04em] text-text-primary sm:text-[3.6rem]" style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}>
+            <span className="block">Little things,</span>
+            <span className="block">done well.</span>
+          </h2>
+          <p className="mt-6 text-lg leading-[1.55] text-text-primary/75">Thoughtfully selected essentials for everyday pet care.</p>
+        </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {USP_CARDS.map((card, index) => (
             <div
               key={card.title}
-              className={`warm-card ${index % 2 === 1 ? "bg-peach-hero" : "bg-white"}`}
+              className="min-h-[11.25rem] rounded-[20px] border border-deep-brown/15 bg-white p-6 sm:p-7"
             >
-              <span
-                className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-deep-brown text-xs font-bold text-white"
-                aria-hidden="true"
-              >
-                0{index + 1}
-              </span>
-              <p className="body-copy font-semibold text-text-primary">{card.title}</p>
-              <p className="body-copy mt-1 text-sm text-text-primary/70">{card.description}</p>
+              <span className="text-sm font-bold text-terracotta" aria-hidden="true">0{index + 1}</span>
+              <h3 className="mt-4 text-xl font-bold leading-[1.15] text-text-primary">{card.title}</h3>
+              <p className="mt-3 text-base leading-[1.5] text-text-primary/75">{card.description}</p>
             </div>
           ))}
         </div>

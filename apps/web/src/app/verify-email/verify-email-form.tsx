@@ -125,7 +125,7 @@ export function VerifyEmailForm() {
       <div className="text-center">
         <h2 className="font-baloo text-3xl font-extrabold text-deep-brown">Verify Your Email</h2>
         <p className="mt-2 text-text-primary">
-          We sent a 6-digit verification code to <span className="font-semibold text-deep-brown">{maskedEmailParam}</span>.
+          We sent a 6-digit verification code to <span className="break-words font-semibold text-deep-brown">{maskedEmailParam}</span>.
         </p>
       </div>
 
@@ -148,7 +148,7 @@ export function VerifyEmailForm() {
           </div>
         )}
 
-        <div className="flex justify-center gap-2 sm:gap-3">
+        <div className="flex justify-center gap-1.5 sm:gap-3">
           {otpDigits.map((digit, index) => (
             <input
               key={index}
@@ -163,7 +163,7 @@ export function VerifyEmailForm() {
               onKeyDown={(e) => handleKeyDown(index, e)}
               onPaste={handlePaste}
               disabled={isLoading}
-              className="h-12 w-12 rounded-xl border border-deep-brown/30 bg-cream-bg text-center text-xl font-bold text-deep-brown focus:border-primary-orange focus:outline-none focus:ring-2 focus:ring-primary-orange/20 disabled:bg-cream-bg/50"
+              className="h-9 w-9 shrink-0 rounded-xl border border-deep-brown/30 bg-cream-bg text-center text-xl font-bold text-deep-brown focus:border-primary-orange focus:outline-none focus:ring-2 focus:ring-primary-orange/20 disabled:bg-cream-bg/50 sm:h-12 sm:w-12"
             />
           ))}
         </div>

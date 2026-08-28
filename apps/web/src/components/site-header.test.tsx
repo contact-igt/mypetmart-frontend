@@ -10,10 +10,12 @@ import { CartProvider } from "../context/cart-context";
 import { AuthTokenStore } from "../lib/auth/auth-api";
 
 let mockPathname = "/";
+let mockSearchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => mockPathname,
+  useSearchParams: () => mockSearchParams,
 }));
 
 process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:5000/api/v1";
@@ -47,6 +49,7 @@ function renderHeader() {
 describe("SiteHeader Wishlist link", () => {
   beforeEach(() => {
     mockPathname = "/";
+    mockSearchParams = new URLSearchParams();
     const fetchMock = vi.fn(async (url, init) => {
       const urlStr = String(url);
       if (urlStr.includes("/storefront/cart")) {
@@ -71,22 +74,35 @@ describe("SiteHeader Wishlist link", () => {
     vi.restoreAllMocks();
   });
 
-  it("hides the desktop Search icon on the Shop page", () => {
+  it("renders the compact product search in the desktop header", () => {
     mockPathname = "/shop";
     renderHeader();
 
-    // The remaining control belongs to the collapsed mobile navigation.
-    expect(screen.getAllByLabelText("Search products")).toHaveLength(1);
+    expect(screen.getByRole("search", { name: "Product search" })).toBeInTheDocument();
   });
 
-  it("points the header Wishlist icon at /signin for a logged-out visitor", async () => {
+  it("uses the requested primary links and marks the active pet filter", () => {
+    mockPathname = "/shop";
+    mockSearchParams = new URLSearchParams("petType=dog");
+    renderHeader();
+
+    for (const link of screen.getAllByRole("link", { name: "Dogs" })) {
+      expect(link).toHaveAttribute("href", "/shop?petType=dog");
+      expect(link).toHaveAttribute("aria-current", "page");
+    }
+    for (const link of screen.getAllByRole("link", { name: "Contact Us" })) {
+      expect(link).toHaveAttribute("href", "/contact");
+    }
+  });
+
+  it("points Wishlist controls at /signin for a logged-out visitor", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
     );
 
     renderHeader();
 
-    // Desktop header and the mobile nav panel both render a "Wishlist" control.
+    // Both the desktop navbar and mobile nav panel reuse the sign-in gate.
     await waitFor(() => {
       const links = screen.getAllByLabelText("Wishlist").map((el) => el.closest("a"));
       expect(links.length).toBeGreaterThan(0);
@@ -96,7 +112,7 @@ describe("SiteHeader Wishlist link", () => {
     });
 
     const accountButton = screen.getByTestId("account-menu-trigger");
-    expect(within(accountButton).getByText("Sign In")).toBeInTheDocument();
+    expect(within(accountButton).getByText("Account")).toBeInTheDocument();
     expect(accountButton).toHaveAttribute("aria-label", "Sign in to MyPetMart");
     fireEvent.click(accountButton);
     const menu = within(accountButton.closest("details")!);
@@ -145,14 +161,14 @@ describe("SiteHeader Wishlist link", () => {
 
     await waitFor(() => {
       const links = screen.getAllByLabelText("Wishlist").map((el) => el.closest("a"));
-      expect(links.length).toBeGreaterThan(0);
+      expect(links.length).toBeGreaterThan(1);
       for (const link of links) {
         expect(link).toHaveAttribute("href", "/wishlist");
       }
     });
 
     const accountButton = screen.getByTestId("account-menu-trigger");
-    expect(within(accountButton).getByText("Hi, Test")).toBeInTheDocument();
+    expect(within(accountButton).getByText("Account")).toBeInTheDocument();
     expect(accountButton).toHaveAttribute("aria-label", "Open account menu for Test");
     fireEvent.click(accountButton);
     const accountMenu = within(accountButton.closest("details")!);
@@ -177,7 +193,8 @@ describe("SiteHeader Wishlist link", () => {
 
     const accountButton = screen.getByTestId("account-menu-trigger");
     await waitFor(() => {
-      expect(within(accountButton).getByText("Hi, Cher")).toBeInTheDocument();
+      expect(within(accountButton).getByText("Account")).toBeInTheDocument();
+      expect(accountButton).toHaveAttribute("aria-label", "Open account menu for Cher");
     });
   });
 
@@ -191,7 +208,7 @@ describe("SiteHeader Wishlist link", () => {
 
     const accountButton = screen.getByTestId("account-menu-trigger");
     await waitFor(() => {
-      expect(within(accountButton).getByText("Hi, Test")).toBeInTheDocument();
+      expect(within(accountButton).getByText("Account")).toBeInTheDocument();
     });
 
     fireEvent.click(accountButton);
@@ -199,7 +216,7 @@ describe("SiteHeader Wishlist link", () => {
     fireEvent.click(signOutButton);
 
     await waitFor(() => {
-      expect(within(accountButton).getByText("Sign In")).toBeInTheDocument();
+      expect(within(accountButton).getByText("Account")).toBeInTheDocument();
     });
   });
 });

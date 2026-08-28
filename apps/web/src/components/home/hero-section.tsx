@@ -1,155 +1,111 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRightIcon, ShieldCheckIcon, TruckIcon } from "@/components/icons";
+import { Cat, Dog } from "lucide-react";
+import {
+  ArrowRightIcon,
+  HeartIcon,
+  ShieldCheckIcon,
+  StarIcon,
+  TruckIcon,
+} from "@/components/icons";
 
 export function HeroSection() {
   return (
-    <section className="relative isolate overflow-hidden bg-orange-hero">
-      <Image
-        src="/assest/Background1.png"
-        alt=""
-        width={800}
-        height={1280}
-        priority
-        className="pointer-events-none absolute -right-16 -top-8 z-0 hidden h-auto w-[195px] lg:block"
-      />
+    <section className="border-b border-deep-brown/10 bg-orange-hero">
+      <div className="site-container grid gap-10 py-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)] lg:items-center lg:gap-14 lg:py-14 xl:gap-20 xl:py-16">
+        <div className="motion-enter flex max-w-[38rem] flex-col items-start">
+          <span className="inline-flex items-center rounded-full border border-deep-brown/15 bg-cream-bg px-4 py-2 text-sm font-semibold text-deep-brown">
+            Grooming · Walking · Paw Care
+          </span>
 
-      <Image
-        src="/assest/Vector1.png"
-        alt=""
-        width={194}
-        height={131}
-        className="pointer-events-none absolute left-[2rem] top-[9.5rem] z-0 hidden w-9 lg:block"
-      />
-      <Image
-        src="/assest/SVG3.png"
-        alt=""
-        width={104}
-        height={104}
-        className="pointer-events-none absolute left-[46.2vw] top-[8.25rem] z-0 hidden w-6 lg:block"
-      />
+          <h1
+            className="mt-6 text-[3.45rem] leading-[0.96] tracking-[-0.045em] text-text-primary sm:text-[4.5rem] lg:text-[4.35rem] xl:text-[5.25rem]"
+            style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}
+          >
+            <span className="block">Better little</span>
+            <span className="block">things</span>
+            <span className="block">for happier pets.</span>
+          </h1>
 
-      <Image
-        src="/assest/Vector2.png"
-        alt=""
-        width={104}
-        height={104}
-        className="pointer-events-none absolute left-[46.2vw] top-[13rem] z-0 hidden w-20 lg:block"
-      />
-      <Image
-        src="/assest/SVG1.png"
-        alt=""
-        width={312}
-        height={359}
-        className="pointer-events-none absolute left-[56.25vw] top-[12.4rem] z-0 hidden w-16 lg:block"
-      />
-      <Image
-        src="/assest/SVG2.png"
-        alt=""
-        width={538}
-        height={538}
-        className="pointer-events-none absolute left-[47vw] top-[17rem] z-0 hidden w-24 lg:block"
-      />
+          <p className="mt-6 max-w-[34rem] text-base font-medium leading-[1.55] text-text-primary/75 sm:text-lg">
+            Practical grooming, walking and everyday essentials — curated to make everyday pet care easier.
+          </p>
 
-      <Image
-        src="/assest/Gradient2.png"
-        alt=""
-        width={1520}
-        height={1520}
-        className="pointer-events-none absolute -left-[0rem] -top[0rem] z-0 hidden w-[23rem] lg:block border-0"
-      />
-      {/* <Image
-        src="/assest/Gradient2.png"
-        alt=""
-        width={1696}
-        height={1696}
-        className="pointer-events-none absolute -right-[30rem] bottom-[-32rem] z-0 hidden w-[54rem] lg:block"
-      /> */}
-
-      <div className="site-container relative z-10 pb-12 pt-5 lg:pb-20">
-        <div className="grid items-center gap-8 pt-12 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:gap-5 lg:pt-16">
-          <div className="motion-enter relative z-10 flex max-w-[38rem] flex-col items-start">
-            <span className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-4 text-[13px] font-medium uppercase tracking-[0.02em] text-text-primary">
-              <Image
-                src="/assest/SVG7.png"
-                alt=""
-                width={104}
-                height={104}
-                className="h-4 w-4 brightness-0"
-              />
-              Welcome to My Pet Mart
-            </span>
-
-            <h1 className="display-heading mt-5 text-[3.75rem] leading-[0.94] tracking-[-0.045em] text-text-primary sm:text-[4.5rem] lg:text-[4.85rem] xl:text-[100px] xl:leading-[100px] xl:tracking-[-2.56px]" style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}>
-              <span className="block">Better</span>
-              <span className="block text-white lg:whitespace-nowrap">
-                <span className="block lg:inline">little</span>{" "}
-                <span className="block lg:inline">things</span>
-              </span>
-              <span className="block lg:whitespace-nowrap">
-                <span className="block lg:inline">for</span>{" "}
-                <span className="block lg:inline">happier</span>
-              </span>
-              <span className="block">pets.</span>
-            </h1>
-
-            <p
-              className="mt-10 max-w-[28rem] text-[18px] font-medium italic leading-[1.35] text-text-primary"
-              style={{ fontFamily: "var(--font-display-italic)" }}
-            >
-              Discover practical grooming, walking and everyday pet-care essentials made to bring more
-              comfort, confidence and joy to life with your pet.
-            </p>
-
-            <div className="mt-10 flex flex-wrap gap-3">
-              <Link href="/shop" className="button-primary motion-press h-12 min-w-[13.25rem] px-6 text-base inline-flex items-center justify-center gap-2 cursor-pointer">
-                Shop Bestsellers <ArrowRightIcon width={16} height={16} />
-              </Link>
-              <Link href="/shop" className="button-secondary motion-press h-12 min-w-[13.25rem] border-deep-brown bg-deep-brown px-6 text-base text-white hover:border-terracotta hover:bg-terracotta focus-visible:border-terracotta focus-visible:bg-terracotta cursor-pointer inline-flex items-center justify-center">
-                Explore All Products
-              </Link>
-            </div>
-
-            <ul className="mt-8 flex flex-wrap gap-2" aria-label="My Pet Mart highlights">
-              <li className="inline-flex h-[34px] items-center gap-2 rounded-full border border-text-primary/15 bg-[#ffe2bd] px-4 text-[10px] font-medium text-text-primary">
-                <ShieldCheckIcon width={14} height={14} /> Verified pet-parent reviews
-              </li>
-              <li className="inline-flex h-[34px] items-center gap-2 rounded-full border border-text-primary/15 bg-[#ffe2bd] px-4 text-[10px] font-medium text-text-primary">
-                <span aria-hidden="true" className="text-[15px] leading-none">₹</span> Cash on Delivery
-              </li>
-              <li className="inline-flex h-[34px] items-center gap-2 rounded-full border border-text-primary/15 bg-[#ffe2bd] px-4 text-[10px] font-medium text-text-primary">
-                <TruckIcon width={15} height={15} /> Shipping across India
-              </li>
-            </ul>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/shop" className="button-primary motion-press h-14 min-w-[13.5rem] px-6 text-base">
+              Shop Best Sellers <ArrowRightIcon width={17} height={17} />
+            </Link>
+            <Link href="/shop" className="button-secondary motion-press h-14 min-w-[14rem] px-6 text-base">
+              Explore All Products
+            </Link>
           </div>
 
-          <div className="relative isolate mx-auto w-full max-w-[42rem] lg:max-w-[50rem] lg:translate-x-[4%] xl:translate-y-5">
-            <Image
-              src="/assest/Gradient1.png"
-              alt=""
-              width={1520}
-              height={1520}
-              className="pointer-events-none absolute -bottom-[10rem] -left-[-10rem] z-0 hidden w-[23rem] lg:block"
-            />
+          <div className="mt-8 grid w-full max-w-[34rem] gap-3 sm:grid-cols-2">
+            <Link
+              href="/shop?petType=dog"
+              className="group flex min-h-[84px] items-center gap-3 rounded-2xl border border-deep-brown/15 bg-white p-3 transition-colors duration-150 hover:border-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
+            >
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-surface-secondary/50 text-terracotta" aria-hidden="true">
+                <Dog size={29} strokeWidth={1.7} />
+              </span>
+              <span>
+                <span className="block text-base font-bold text-text-primary">Dogs</span>
+                <span className="block text-sm text-text-primary/65">Walk · groom · paws</span>
+              </span>
+            </Link>
+            <Link
+              href="/shop?petType=cat"
+              className="group flex min-h-[84px] items-center gap-3 rounded-2xl border border-deep-brown/15 bg-white p-3 transition-colors duration-150 hover:border-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
+            >
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-surface-secondary/50 text-terracotta" aria-hidden="true">
+                <Cat size={29} strokeWidth={1.7} />
+              </span>
+              <span>
+                <span className="block text-base font-bold text-text-primary">Cats</span>
+                <span className="block text-sm text-text-primary/65">Grooming · essentials</span>
+              </span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="motion-enter motion-enter-delay-1 relative mx-auto w-full max-w-[38rem] pb-4">
+          <div className="relative aspect-[1.14] overflow-hidden rounded-[28px] bg-surface-secondary/40 shadow-xl">
             <Image
               src="/assest/Group 5.png"
               alt="Golden retriever, cats, and puppy from My Pet Mart"
-              width={3992}
-              height={2834}
+              fill
               priority
-              className="motion-enter motion-enter-delay-1 relative z-10 h-auto w-full"
+              sizes="(min-width: 1280px) 43vw, (min-width: 1024px) 46vw, 100vw"
+              className="object-cover object-center"
             />
+          </div>
+          <div className="absolute -bottom-4 left-5 rounded-2xl border border-deep-brown/10 bg-white px-4 py-3 shadow-lg sm:left-7">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-terracotta">Pet care essentials</p>
+            <p className="mt-0.5 text-sm font-bold text-text-primary">Made for everyday moments</p>
           </div>
         </div>
       </div>
 
-      <Image
-        src="/assest/SVG6.png"
-        alt=""
-        width={112}
-        height={112}
-        className="pointer-events-none absolute bottom-70 left-9 z-0 hidden w-7 lg:block"
-      />
+      <div className="border-t border-deep-brown/10 bg-surface-secondary/20">
+        <div className="site-container grid grid-cols-1 gap-4 py-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-7">
+          <div className="flex items-center gap-3 text-sm font-semibold text-text-primary">
+            <TruckIcon width={22} height={22} className="shrink-0 text-primary-orange" />
+            <span>Thoughtfully selected essentials</span>
+          </div>
+          <div className="flex items-center gap-3 text-sm font-semibold text-text-primary">
+            <HeartIcon width={22} height={22} className="shrink-0 text-primary-orange" />
+            <span>Made for everyday pet care</span>
+          </div>
+          <div className="flex items-center gap-3 text-sm font-semibold text-text-primary">
+            <ShieldCheckIcon width={22} height={22} className="shrink-0 text-primary-orange" />
+            <span>Simple, secure shopping</span>
+          </div>
+          <div className="flex items-center gap-3 text-sm font-semibold text-text-primary">
+            <StarIcon width={22} height={22} className="shrink-0 text-primary-orange" />
+            <span>Explore by your pet&apos;s needs</span>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

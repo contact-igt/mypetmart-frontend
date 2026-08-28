@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useCart } from "@/context/cart-context";
 import { ProductImagePlaceholder } from "@/components/image-placeholder";
 import { AppAuthError } from "@/lib/auth/auth-errors";
+import { TrustBadges } from "@/components/checkout/trust-badges";
 
 const formatPrice = (priceVal: number | string) => {
   const num = typeof priceVal === "number" ? priceVal : parseFloat(priceVal);
@@ -162,7 +163,7 @@ export function CartClient() {
   }
 
   return (
-    <div className="site-container py-8">
+    <div className="site-container max-w-[1440px] py-8 lg:px-10 xl:px-[54px] 2xl:px-20">
       {/* Title */}
       <h1
         className="motion-enter text-3xl sm:text-4xl text-text-primary leading-tight font-medium mb-8"
@@ -219,19 +220,18 @@ export function CartClient() {
             return (
               <div
                 key={item.cartItemId}
-                className={`relative flex flex-col sm:flex-row gap-4 p-4 sm:p-5 rounded-2xl bg-white border border-border-subtle shadow-[0_4px_12px_rgba(88,51,29,0.02)] transition-opacity duration-150 ${
-                  isRemoving ? "opacity-40 pointer-events-none" : "opacity-100"
-                }`}
+                className={`relative flex flex-col sm:flex-row gap-4 p-4 sm:p-5 rounded-2xl bg-white border border-border-subtle shadow-[0_4px_12px_rgba(88,51,29,0.02)] transition-opacity duration-150 ${isRemoving ? "opacity-40 pointer-events-none" : "opacity-100"
+                  }`}
                 aria-busy={isUpdating || isRemoving}
               >
                 {/* Product Image */}
-                <div className="relative aspect-square w-20 sm:w-24 shrink-0 overflow-hidden rounded-xl bg-[#FFF8EF]">
+                <div className="relative aspect-square w-24 sm:w-28 shrink-0 overflow-hidden rounded-xl bg-[#FFF8EF] p-1">
                   {hasImage && item.image ? (
                     <Image
                       src={item.image.url}
                       alt={item.image.alt || item.productName}
                       fill
-                      className="object-cover"
+                      className="object-contain"
                       sizes="96px"
                       onError={() => handleImageError(item.cartItemId)}
                     />
@@ -403,13 +403,14 @@ export function CartClient() {
             </span>
           </div>
 
-          <div className="flex flex-col gap-3">
+          <TrustBadges items={["secure", "tracking", "returns"]} />
+
+          <div className="mt-4 flex flex-col gap-3">
             <Link
               href={isCheckoutDisabled ? "#" : "/checkout"}
               aria-disabled={isCheckoutDisabled}
-              className={`motion-press h-11 inline-flex items-center justify-center rounded-xl bg-primary-orange hover:bg-terracotta text-white font-semibold text-sm tracking-wide transition-all cursor-pointer select-none ${
-                isCheckoutDisabled ? "opacity-40 pointer-events-none" : "opacity-100"
-              }`}
+              className={`motion-press h-11 inline-flex items-center justify-center rounded-xl bg-primary-orange hover:bg-terracotta text-white font-semibold text-sm tracking-wide transition-all cursor-pointer select-none ${isCheckoutDisabled ? "opacity-40 pointer-events-none" : "opacity-100"
+                }`}
             >
               Proceed to Checkout
             </Link>

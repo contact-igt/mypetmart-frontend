@@ -86,7 +86,7 @@ export function ReturnsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-baloo text-2xl font-bold text-deep-brown">My Returns</h2>
         <span className="text-xs font-semibold text-deep-brown/60">
           Showing {items.length} of {data?.total ?? items.length}

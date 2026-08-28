@@ -1,15 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { HeartIcon, SearchIcon, UserIcon } from "@/components/icons";
 import { IconButton } from "@/components/icon-button";
-
-const NAV_ITEMS = [
-  { label: "Home", href: "/" },
-  { label: "Shop", href: "/shop" },
-  { label: "Contact Us", href: "/contact" },
-];
+import { PRIMARY_NAV_ITEMS, isPrimaryNavItemActive } from "@/components/primary-nav";
 
 import { useCustomerAuth } from "@/context/customer-auth-context";
 
@@ -21,6 +16,7 @@ export function MobileNavPanel({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { status } = useCustomerAuth();
 
   const authLink = status === "authenticated" ? "/account" : "/signin";
@@ -30,15 +26,14 @@ export function MobileNavPanel({
   return (
     <div
       id="mobile-nav-panel"
-      className={`site-container overflow-hidden transition-[max-height,opacity] duration-150 ease-out md:hidden ${
+      className={`site-container overflow-hidden transition-[max-height,opacity] duration-150 ease-out lg:hidden ${
         open ? "max-h-[28rem] opacity-100" : "pointer-events-none max-h-0 opacity-0"
       }`}
     >
       <nav aria-label="Primary" className="border-t border-border-subtle py-4">
         <ul className="flex flex-col gap-1">
-          {NAV_ITEMS.map((item) => {
-            const active =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          {PRIMARY_NAV_ITEMS.map((item) => {
+            const active = isPrimaryNavItemActive(item, pathname, searchParams);
             return (
               <li key={item.href}>
                 <Link

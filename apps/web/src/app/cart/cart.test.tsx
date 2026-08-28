@@ -111,11 +111,18 @@ const mockProductDetail: ProductDetail = {
   lengthCm: null,
   widthCm: null,
   heightCm: null,
+  howToUse: null,
+  careInstructions: null,
+  safetyInfo: null,
   variants: [],
   images: [],
   features: [],
+  specifications: [],
+  contentBlocks: [],
   productVideos: [],
   testimonialVideos: [],
+  relatedProducts: [],
+  faqs: [],
 };
 
 function jsonResponse(body: unknown, ok = true, status = 200) {

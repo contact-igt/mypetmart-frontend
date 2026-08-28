@@ -107,6 +107,87 @@ async function performRefresh(): Promise<string | null> {
   return refreshPromise;
 }
 
+export type BinaryDownload = { blob: Blob; filename: string | null };
+
+function extractFilename(response: Response): string | null {
+  const header = response.headers.get("content-disposition");
+  if (!header) return null;
+  const match = /filename="([^"]+)"/u.exec(header);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Binary counterpart to handleResponse() above — a PDF (or any other file)
+ * response is never JSON, so success reads response.blob() instead. Errors
+ * still arrive as the standard JSON error envelope (the backend never fails
+ * a request after it starts streaming bytes), so the error path reuses the
+ * same shape/parsing as the JSON path.
+ */
+async function handleBinaryResponse(response: Response): Promise<BinaryDownload> {
+  if (!response.ok) {
+    let body: ApiResponse<unknown> | undefined;
+    try {
+      body = await response.json();
+    } catch {
+      throw new AppAuthError(`HTTP Error: ${response.status} ${response.statusText}`, "HTTP_ERROR");
+    }
+    const errorDetails = body && !body.success ? body.error : undefined;
+    throw new AppAuthError(
+      errorDetails?.message || "An unexpected error occurred.",
+      errorDetails?.code || "UNEXPECTED_ERROR",
+      errorDetails?.details
+    );
+  }
+
+  return { blob: await response.blob(), filename: extractFilename(response) };
+}
+
+async function requestBinary(path: string, options: RequestInit = {}): Promise<BinaryDownload> {
+  const url = buildUrl(path);
+  const headers = new Headers(options.headers);
+
+  options.credentials = "include";
+
+  const token = AuthTokenStore.getAccessToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  options.headers = headers;
+
+  try {
+    const res = await fetch(url, options);
+    return await handleBinaryResponse(res);
+  } catch (err: any) {
+    if (err instanceof AppAuthError) {
+      throw err;
+    }
+    throw new NetworkError();
+  }
+}
+
+/**
+ * Binary counterpart to fetchWithAuth — same single-flight refresh-and-retry
+ * behaviour on an expired access token, but resolves a Blob rather than
+ * parsed JSON. Used for authenticated file downloads (e.g. order receipts).
+ */
+export async function fetchBinaryWithAuth(path: string, options: RequestInit = {}): Promise<BinaryDownload> {
+  try {
+    return await requestBinary(path, options);
+  } catch (error: any) {
+    if (error instanceof AppAuthError && (error.code === "AUTH_TOKEN_EXPIRED" || error.code === "UNAUTHENTICATED")) {
+      const newAccessToken = await performRefresh();
+      if (newAccessToken) {
+        const headers = new Headers(options.headers);
+        headers.set("Authorization", `Bearer ${newAccessToken}`);
+        options.headers = headers;
+        return await requestBinary(path, options);
+      }
+    }
+    throw error;
+  }
+}
+
 /**
  * Fetch wrapper that automatically retries once upon token expiration.
  */

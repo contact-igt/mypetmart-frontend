@@ -1,4 +1,4 @@
-import { fetchWithAuth } from "./auth/auth-api";
+import { fetchBinaryWithAuth, fetchWithAuth, type BinaryDownload } from "./auth/auth-api";
 import type {
   CreateOrderInput,
   CreateOrderResultJSON,
@@ -37,6 +37,10 @@ export const OrderApi = {
     const params = new URLSearchParams();
     if (query?.page) params.set("page", String(query.page));
     if (query?.pageSize) params.set("pageSize", String(query.pageSize));
+    if (query?.status) params.set("status", query.status);
+    if (query?.from) params.set("from", query.from);
+    if (query?.to) params.set("to", query.to);
+    if (query?.search) params.set("search", query.search);
 
     const queryString = params.toString();
     const endpoint = queryString ? `/storefront/orders?${queryString}` : "/storefront/orders";
@@ -51,6 +55,27 @@ export const OrderApi = {
    */
   async getOrder(id: number): Promise<OrderDetailJSON> {
     return fetchWithAuth<OrderDetailJSON>(`/storefront/orders/${id}`, {
+      method: "GET",
+    });
+  },
+
+  /**
+   * Downloads the PDF receipt for an authenticated customer's own Order.
+   * Ownership is enforced entirely server-side (same guarantee as getOrder).
+   */
+  async downloadReceipt(id: number): Promise<BinaryDownload> {
+    return fetchBinaryWithAuth(`/storefront/orders/${id}/receipt`, {
+      method: "GET",
+    });
+  },
+
+  /**
+   * Downloads the PDF receipt for a guest Order via its recovery token — no
+   * authentication, the token itself is the sole access credential (same as
+   * getGuestOrder).
+   */
+  async downloadGuestReceipt(token: string): Promise<BinaryDownload> {
+    return fetchBinaryWithAuth(`/storefront/orders/guest/${encodeURIComponent(token)}/receipt`, {
       method: "GET",
     });
   },

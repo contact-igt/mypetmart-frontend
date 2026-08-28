@@ -1,5 +1,5 @@
 import { fetchWithAuth } from "./auth/auth-api";
-import type { InitiatePaymentInput, PaymentInitiationResultJSON, PaymentStatusResultJSON } from "@/types/payment";
+import type { CodConfirmationResultJSON, ConfirmCodOrderInput, InitiatePaymentInput, PaymentInitiationResultJSON, PaymentStatusResultJSON } from "@/types/payment";
 
 export const PaymentApi = {
   /**
@@ -25,6 +25,19 @@ export const PaymentApi = {
    */
   async getStatus(input: InitiatePaymentInput): Promise<PaymentStatusResultJSON> {
     return fetchWithAuth<PaymentStatusResultJSON>("/storefront/payments/status", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  /**
+   * Confirms an existing pending Order for Cash on Delivery — creates a
+   * "cod"/"pending" Payment record and moves the Order straight to
+   * "confirmed". Never redirects anywhere; the customer stays on the
+   * checkout success screen.
+   */
+  async confirmCod(input: ConfirmCodOrderInput): Promise<CodConfirmationResultJSON> {
+    return fetchWithAuth<CodConfirmationResultJSON>("/storefront/payments/cod", {
       method: "POST",
       body: JSON.stringify(input),
     });

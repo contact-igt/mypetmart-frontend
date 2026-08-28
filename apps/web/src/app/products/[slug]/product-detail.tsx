@@ -3,17 +3,24 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ChevronIcon, HeartIcon } from "@/components/icons";
-import { ProductImagePlaceholder, type PlaceholderTone } from "@/components/image-placeholder";
+import { useState } from "react";
 import { PlayableVideoCard, type VideoCardProduct } from "@/components/playable-video-card";
+import { TestimonialCarousel } from "@/components/testimonials/testimonial-carousel";
 import { TestimonialVideoCard, type TestimonialVideoCardProduct } from "@/components/testimonial-video-card";
+import { ProductReviewsSection } from "@/components/product-reviews-section";
+import { ProductCard } from "@/components/product-card";
+import { PdpGallery } from "@/components/pdp/pdp-gallery";
+import { PdpPurchasePanel } from "@/components/pdp/pdp-purchase-panel";
+import { PdpFeaturesGrid } from "@/components/pdp/pdp-features-grid";
+import { PdpInfoTabs } from "@/components/pdp/pdp-info-tabs";
+import { PdpFaqAccordion } from "@/components/pdp/pdp-faq-accordion";
 import { TESTIMONIAL_VIDEOS } from "@/data/testimonials";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useWishlist } from "@/context/wishlist-context";
 import { useCart } from "@/context/cart-context";
 import { AppAuthError } from "@/lib/auth/auth-errors";
-import type { ProductDetail, ProductVariant, ProductImage } from "@/types/storefront";
+import type { ProductDetail, ProductVariant, StorefrontTestimonial } from "@/types/storefront";
+import type { PlaceholderTone } from "@/components/image-placeholder";
 
 const TONES: Record<string, PlaceholderTone> = {
   grooming: "terracotta",
@@ -59,48 +66,14 @@ const PRODUCT_MEDIA: Record<string, ProductMedia[]> = {
 // Deterministic (no Math.random/Date — must match between server and client
 // render) rotation through the shared testimonial pool, so each product page
 // doesn't show the exact same four clips in the exact same order.
-function pickProductTestimonials(productId: number, count: number): string[] {
-  const offset = productId % TESTIMONIAL_VIDEOS.length;
-  return Array.from(
-    { length: Math.min(count, TESTIMONIAL_VIDEOS.length) },
-    (_, i) => TESTIMONIAL_VIDEOS[(offset + i) % TESTIMONIAL_VIDEOS.length],
-  );
-}
-
-const formatPrice = (priceVal: number | string) => {
-  const num = typeof priceVal === "number" ? priceVal : parseFloat(priceVal);
-  return isNaN(num) ? "0" : num.toLocaleString("en-IN", { maximumFractionDigits: 0 });
-};
-
-// useLayoutEffect measures and applies the rail height cap before the browser
-// paints, so the tall unmeasured list never flashes on screen. It's a no-op
-// warning-generating call during SSR, so it falls back to useEffect there.
-const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
-
-export function ProductDetailClient({ product }: { product: ProductDetail }) {
+export function ProductDetailClient({ product, testimonials }: { product: ProductDetail; testimonials?: StorefrontTestimonial[] }) {
   const router = useRouter();
   const { status } = useCustomerAuth();
   const { isWishlisted, isPending, add, remove } = useWishlist();
   const { add: addToCart } = useCart();
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
-  const [selectedImage, setSelectedImage] = useState<ProductImage | null>(
-    product.primaryImage || (product.images && product.images.length > 0 ? product.images[0] : null)
-  );
   const [quantity, setQuantity] = useState(1);
-  const [brokenImageIds, setBrokenImageIds] = useState<Set<number>>(new Set());
-
-  // Thumbnail rail: vertical slider on desktop, horizontal strip on mobile.
-  // Flexbox align-items:stretch alone can't cap the rail to the main image's
-  // height — a taller thumbnail list just grows the row instead of scrolling
-  // internally — so the main image's rendered height is measured and applied
-  // as an explicit cap.
-  const mainImageRef = useRef<HTMLDivElement>(null);
-  const thumbRailRef = useRef<HTMLDivElement>(null);
-  const thumbButtonRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
-  const [railMaxHeight, setRailMaxHeight] = useState<number | null>(null);
-  const [canScrollUp, setCanScrollUp] = useState(false);
-  const [canScrollDown, setCanScrollDown] = useState(false);
 
   // Cart interaction states
   const [cartStatus, setCartStatus] = useState<"idle" | "adding" | "success" | "error">("idle");
@@ -119,32 +92,41 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
   const hasDynamicProductVideos = dynamicProductVideos.length > 0;
   const showLegacyProductMedia = !hasDynamicProductVideos && legacyProductMedia.length > 0;
 
+  // A grid built for many videos leaves a mostly-empty row when a Product only
+  // has one (or two) assigned — cap the column count to the actual item count
+  // so the "See it in action" section never looks stranded.
+  const productMediaCount = hasDynamicProductVideos ? dynamicProductVideos.length : legacyProductMedia.length;
+  const productMediaGridClass =
+    productMediaCount === 2
+      ? "grid-cols-1 sm:grid-cols-2"
+      : productMediaCount === 3
+        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+
+  // Enhanced Product Content — the Storefront detail endpoint already returns
+  // active blocks only (see product.service.ts's `where: { active: true }`
+  // include), so no extra client-side active filtering is needed here.
+  const activeContentBlocks = product.contentBlocks ?? [];
+
   // Product-specific Customer Stories (Phase D) — genuine testimonial_video
   // assignments explicitly tied to this Product. Never the generic rotated
   // pool below: when real ones exist for this Product, they take over and
   // the generic section is suppressed to avoid two testimonial-shaped
   // sections back to back.
-  const testimonialVideos = product.testimonialVideos ?? [];
-  const hasTestimonialVideos = testimonialVideos.length > 0;
   // A variant Product's compareAtPrice belongs to one specific variant — never
   // attach it to the generic "From" starting price shown here (mirrors the
   // same suppression the main price block above already applies before a
   // variant is selected).
-  const testimonialCardProduct: TestimonialVideoCardProduct = {
+  const productTestimonials: StorefrontTestimonial[] = testimonials ?? (product.testimonialVideos?.length
+    ? product.testimonialVideos.map((assignment) => ({ id: assignment.id, videoUrl: assignment.media.publicUrl, title: assignment.title, caption: assignment.caption, product: { id: product.id, name: product.name, slug: product.slug, image: product.primaryImage?.url ?? null } }))
+    : TESTIMONIAL_VIDEOS.slice(0, 4).map((videoUrl, index) => ({ id: -(index + 1), videoUrl, title: null, caption: "Pet parent story", product: { id: product.id, name: product.name, slug: product.slug, image: product.primaryImage?.url ?? null } })));
+  const legacyTestimonialProduct: TestimonialVideoCardProduct = {
     name: product.name,
     slug: product.slug,
-    price: typeof product.price === "number" ? product.price : parseFloat(product.price),
-    compareAtPrice: product.hasVariants
-      ? null
-      : product.compareAtPrice != null
-        ? typeof product.compareAtPrice === "number"
-          ? product.compareAtPrice
-          : parseFloat(product.compareAtPrice)
-        : null,
+    price: Number.parseFloat(product.price),
+    compareAtPrice: product.hasVariants ? null : (product.compareAtPrice ? Number.parseFloat(product.compareAtPrice) : null),
     hasVariants: product.hasVariants,
   };
-
-  const productTestimonials = pickProductTestimonials(product.id, 4);
 
   // "Add to cart" from inside a demo-video lightbox is a fixed quantity-1,
   // no-variant quick-add — separate from the main panel's quantity/variant
@@ -237,55 +219,10 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
     setCartError(null);
   };
 
-  const handleImageError = (imageId: number) => {
-    setBrokenImageIds((prev) => {
-      const next = new Set(prev);
-      next.add(imageId);
-      return next;
-    });
+  const resetCartFeedback = () => {
+    setCartStatus("idle");
+    setCartError(null);
   };
-
-  const updateRailScrollState = () => {
-    const el = thumbRailRef.current;
-    if (!el) return;
-    setCanScrollUp(el.scrollTop > 1);
-    setCanScrollDown(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
-  };
-
-  const scrollRail = (direction: "up" | "down") => {
-    const el = thumbRailRef.current;
-    if (!el) return;
-    const amount = el.clientHeight * 0.8 || 160;
-    el.scrollBy({ top: direction === "down" ? amount : -amount, behavior: "smooth" });
-  };
-
-  // Track the main image's rendered height and cap the rail to it, so extra
-  // thumbnails scroll inside the rail instead of growing the page. Measured
-  // synchronously before paint (useLayoutEffect) so refreshing never shows a
-  // tall list that then visibly collapses down to size.
-  useIsomorphicLayoutEffect(() => {
-    const el = mainImageRef.current;
-    if (!el) return;
-    setRailMaxHeight(el.getBoundingClientRect().height);
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) setRailMaxHeight(entry.contentRect.height);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // Recompute whether the rail can scroll after the image list changes or
-  // the measured cap changes (e.g. on breakpoint/viewport resize).
-  useEffect(() => {
-    updateRailScrollState();
-  }, [product.images, railMaxHeight]);
-
-  // Keep the selected thumbnail visible inside the rail without scrolling the page.
-  useEffect(() => {
-    if (!selectedImage) return;
-    thumbButtonRefs.current.get(selectedImage.id)?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
-  }, [selectedImage]);
 
   const handleAddToCart = async () => {
     if (product.hasVariants && !selectedVariant) return;
@@ -323,546 +260,279 @@ export function ProductDetailClient({ product }: { product: ProductDetail }) {
     }
   };
 
-  const mainImageToRender = selectedImage;
-  const isMainImageBroken = mainImageToRender ? brokenImageIds.has(mainImageToRender.id) : true;
-
   return (
-    <div className="mx-auto max-w-[1440px] px-6 py-8 md:px-12 lg:px-[96px]">
+    <div className="site-container pb-20 pt-5 sm:pt-7 lg:pb-28">
       {/* Breadcrumb */}
-      <nav className="text-sm font-medium text-text-muted mb-8 flex flex-wrap items-center gap-2" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-text-primary transition-colors">Home</Link>
-        <span className="text-text-muted/40">/</span>
-        <Link href="/shop" className="hover:text-text-primary transition-colors">Shop</Link>
-        <span className="text-text-muted/40">/</span>
+      <nav className="mb-5 flex min-w-0 items-center gap-2 overflow-hidden text-xs font-semibold text-text-muted sm:mb-7 sm:text-sm" aria-label="Breadcrumb">
+        <Link href="/" className="shrink-0 transition-colors hover:text-primary-orange">Home</Link>
+        <span className="shrink-0 text-text-muted/35" aria-hidden="true">/</span>
+        <Link href="/shop" className="shrink-0 transition-colors hover:text-primary-orange">Shop</Link>
+        <span className="shrink-0 text-text-muted/35" aria-hidden="true">/</span>
         <Link
           href={`/shop?category=${product.category.slug}`}
-          className="hover:text-text-primary transition-colors"
+          className="shrink-0 transition-colors hover:text-primary-orange"
         >
           {product.category.name}
         </Link>
-        <span className="text-text-muted/40">/</span>
-        <span className="text-text-primary font-medium" aria-current="page">{product.name}</span>
+        <span className="shrink-0 text-text-muted/35" aria-hidden="true">/</span>
+        <span className="truncate font-semibold text-text-primary" aria-current="page">{product.name}</span>
       </nav>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
-        {/* Left Column: Image Gallery */}
-        <div className="flex flex-col gap-4 lg:flex-row-reverse lg:items-stretch">
-          <div ref={mainImageRef} className="relative aspect-[4/5] overflow-hidden rounded-[26px] bg-[#FFF8EF] border border-border-subtle shadow-[0_10px_22px_rgba(88,51,29,0.02)] lg:flex-1">
-            {mainImageToRender && !isMainImageBroken ? (
-              <Image
-                src={mainImageToRender.url}
-                alt={mainImageToRender.alt || product.name}
-                fill
-                priority
-                sizes="(min-width: 1024px) 45vw, 95vw"
-                className="object-cover transition-opacity duration-200"
-                onError={() => handleImageError(mainImageToRender.id)}
-              />
-            ) : (
-              <ProductImagePlaceholder
-                label={product.name}
-                tone={tone}
-                className="absolute inset-0 h-full w-full"
-              />
-            )}
-
-            {isOutOfStock && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-                <span className="rounded-full bg-white/90 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-text-primary">
-                  Out of Stock
-                </span>
-              </div>
-            )}
+      {/* Marketplace-style product overview: image browsing and a focused purchase area. */}
+      <section className="overflow-hidden rounded-2xl border border-deep-brown/15 bg-white shadow-[0_8px_24px_rgba(62,35,25,0.06)]">
+        <div className="grid items-stretch lg:grid-cols-[minmax(0,1.1fr)_minmax(390px,0.9fr)]">
+          <div className="bg-[#FFF9F1] p-3 sm:p-5 lg:p-6 xl:p-8">
+            <PdpGallery
+              images={product.images ?? []}
+              primaryImage={product.primaryImage}
+              productName={product.name}
+              tone={tone}
+              isOutOfStock={isOutOfStock}
+              onImageChange={resetCartFeedback}
+            />
           </div>
 
-          {/* Thumbnail Navigation */}
-          {product.images && product.images.length > 1 && (
-            <div
-              className="flex flex-col gap-2 lg:w-20 lg:flex-shrink-0 lg:min-h-0 lg:max-h-[75vh]"
-              style={railMaxHeight != null ? { maxHeight: `${railMaxHeight}px` } : undefined}
-            >
-              <button
-                type="button"
-                onClick={() => scrollRail("up")}
-                disabled={!canScrollUp}
-                aria-label="Scroll product images up"
-                tabIndex={canScrollUp ? 0 : -1}
-                className={`hidden shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-white py-1 text-text-primary transition-opacity duration-150 lg:flex ${
-                  canScrollUp ? "opacity-100 hover:border-text-primary/40 cursor-pointer" : "pointer-events-none opacity-0"
-                }`}
-              >
-                <ChevronIcon className="h-4 w-4" />
-              </button>
-
-              <div
-                ref={thumbRailRef}
-                onScroll={updateRailScrollState}
-                className="flex gap-3 overflow-x-auto py-2 scrollbar-none snap-x snap-mandatory lg:flex-1 lg:min-h-0 lg:flex-col lg:snap-none lg:overflow-x-visible lg:overflow-y-auto lg:py-0"
-              >
-                {product.images.map((img) => {
-                  const isBroken = brokenImageIds.has(img.id);
-                  const isSelected = selectedImage ? selectedImage.id === img.id : false;
-                  return (
-                    <button
-                      key={img.id}
-                      ref={(el) => {
-                        if (el) thumbButtonRefs.current.set(img.id, el);
-                        else thumbButtonRefs.current.delete(img.id);
-                      }}
-                      type="button"
-                      onClick={() => {
-                        setSelectedImage(img);
-                        setCartStatus("idle");
-                        setCartError(null);
-                      }}
-                      aria-label={`View image ${img.sortOrder}`}
-                      aria-current={isSelected ? "true" : "false"}
-                      className={`relative aspect-square w-20 flex-shrink-0 cursor-pointer overflow-hidden rounded-[14px] border-2 transition-all duration-150 snap-start ${
-                        isSelected
-                          ? "border-primary-orange shadow-sm"
-                          : "border-border-subtle bg-[#FFF8EF] hover:border-text-primary/40"
-                      }`}
-                    >
-                      {isBroken ? (
-                        <ProductImagePlaceholder
-                          label={product.name}
-                          tone={tone}
-                          iconSize={16}
-                          className="h-full w-full rounded-md"
-                        />
-                      ) : (
-                        <Image
-                          src={img.url}
-                          alt={img.alt || `Thumbnail ${img.sortOrder}`}
-                          fill
-                          sizes="80px"
-                          className="object-cover"
-                          onError={() => handleImageError(img.id)}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => scrollRail("down")}
-                disabled={!canScrollDown}
-                aria-label="Scroll product images down"
-                tabIndex={canScrollDown ? 0 : -1}
-                className={`hidden shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-white py-1 text-text-primary transition-opacity duration-150 lg:flex ${
-                  canScrollDown ? "opacity-100 hover:border-text-primary/40 cursor-pointer" : "pointer-events-none opacity-0"
-                }`}
-              >
-                <ChevronIcon className="h-4 w-4 rotate-180" />
-              </button>
-            </div>
-          )}
+          <div className="border-t border-deep-brown/10 bg-white lg:border-l lg:border-t-0">
+            <PdpPurchasePanel
+              product={product}
+              selectedVariant={selectedVariant}
+              onVariantChange={handleVariantChange}
+              quantity={quantity}
+              onMinus={handleMinus}
+              onPlus={handlePlus}
+              maxQuantity={maxQuantity}
+              isOutOfStock={isOutOfStock}
+              currentPrice={currentPrice}
+              currentComparePrice={currentComparePrice}
+              hasDiscount={hasDiscount}
+              cartStatus={cartStatus}
+              cartError={cartError}
+              onAddToCart={handleAddToCart}
+              wishlisted={wishlisted}
+              wishlistPending={wishlistPending}
+              onWishlistClick={handleWishlistClick}
+            />
+          </div>
         </div>
+      </section>
 
-        {/* Right Column: Content and Purchase Panel */}
-        <div className="flex flex-col">
-          {/* Pet type & category context */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-primary-orange bg-[#FFE9D6] px-3 py-1 rounded-full">
-              {product.petType === "all" ? "For Dogs & Cats" : `For ${product.petType}s`}
-            </span>
-            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              {product.category.name}
-            </span>
-          </div>
+      <PdpFeaturesGrid features={product.features} />
 
-          {/* Brand */}
-          {product.brand && (
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-text-muted">
-              {product.brand}
-            </p>
-          )}
+      <PdpInfoTabs product={product} selectedVariant={selectedVariant} />
 
-          {/* Title and Wishlist */}
-          <div className="flex justify-between items-start gap-4 mb-4">
-            <h1
-              className="text-3xl sm:text-4xl text-text-primary leading-tight font-medium"
-              style={{ fontFamily: "var(--font-display-italic)" }}
-            >
-              {product.name}
-            </h1>
-            <button
-              type="button"
-              aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-              title={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-              aria-pressed={wishlisted}
-              disabled={wishlistPending}
-              onClick={handleWishlistClick}
-              className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all duration-150 cursor-pointer ${
-                wishlisted
-                  ? "border-terracotta bg-[#FFF0ED] text-terracotta"
-                  : "border-border-subtle bg-white text-text-primary hover:border-text-primary/50"
-              } disabled:opacity-50`}
-            >
-              <HeartIcon className="h-5 w-5" fill={wishlisted ? "currentColor" : "none"} />
-            </button>
-          </div>
+      <PdpFaqAccordion faqs={product.faqs} />
 
-          {/* Price Block */}
-          <div className="flex items-baseline gap-3 mb-4">
-            <span
-              className="text-3xl font-bold text-text-primary"
-              style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}
-            >
-              {product.hasVariants && !selectedVariant ? "From " : ""}₹{formatPrice(currentPrice)}
-            </span>
-            {hasDiscount && currentComparePrice && (
-              <span className="text-lg text-text-muted line-through">
-                ₹{formatPrice(currentComparePrice)}
-              </span>
-            )}
-          </div>
-
-          {/* Key Features */}
-          {product.features.length > 0 && (
-            <div className="mb-6">
-              <span className="block text-sm font-semibold text-text-primary mb-2">
-                Key Features
-              </span>
-              <ul className="flex flex-col gap-1.5">
-                {product.features.map((feature) => (
-                  <li key={feature.id} className="flex items-start gap-2 text-sm text-text-primary/80">
-                    <span className="mt-0.5 text-primary-orange" aria-hidden="true">✓</span>
-                    <span>{feature.label}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Stock State */}
-          <div className="mb-8" aria-live="polite">
-            {product.hasVariants && product.variants.length === 0 ? (
-              <span className="inline-flex items-center rounded-lg bg-[#FFF0ED] px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-terracotta">
-                Product currently unavailable
-              </span>
-            ) : product.hasVariants && !selectedVariant ? (
-              <span className="text-sm text-text-muted italic">
-                Choose an option below to view availability.
-              </span>
-            ) : isOutOfStock ? (
-              <span className="inline-flex items-center rounded-lg bg-[#FFF0ED] px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-terracotta">
-                Out of Stock
-              </span>
-            ) : (
-              <span className="inline-flex items-center rounded-lg bg-[#EDFBF0] px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-800">
-                In Stock ({selectedVariant ? selectedVariant.stock : product.stock} available)
-              </span>
-            )}
-          </div>
-
-          {/* Variant Selector */}
-          {product.hasVariants && product.variants.length > 0 && (
-            <div className="mb-8">
-              <span className="block text-sm font-semibold text-text-primary mb-3">
-                Select Option
-              </span>
-              <div className="flex flex-wrap gap-3">
-                {product.variants.map((v) => {
-                  const isSelected = selectedVariant?.id === v.id;
-                  return (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => handleVariantChange(v)}
-                      aria-pressed={isSelected}
-                      className={`px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-150 cursor-pointer ${
-                        isSelected
-                          ? "border-primary-orange bg-[#FFE9D6] text-primary-orange shadow-sm"
-                          : "border-border-subtle bg-white text-text-primary hover:border-text-primary/50"
-                      }`}
-                    >
-                      {v.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Quantity Selector & Add to Cart */}
-          {!(product.hasVariants && product.variants.length === 0) && (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-6">
-              <div className="flex items-center justify-between border border-border-subtle rounded-xl bg-white p-1 h-12 w-32 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleMinus}
-                  disabled={isOutOfStock || (product.hasVariants && !selectedVariant) || quantity <= 1}
-                  aria-label="Decrease quantity"
-                  className="w-10 h-10 inline-flex items-center justify-center text-text-primary hover:bg-[#FFF8EF] rounded-lg disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer font-bold"
+      {activeContentBlocks.length > 0 && (
+        <section className="mt-20 flex flex-col gap-8 sm:mt-24">
+          {activeContentBlocks.map((block, index) => {
+            const hasMedia = Boolean(block.media);
+            const hasText = Boolean(block.heading || block.description);
+            const mediaEl = block.media ? (
+              block.media.mediaType === "video" ? (
+                <video
+                  src={block.media.publicUrl}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  aria-label={block.media.title || block.heading || "Product content video"}
+                  className="aspect-video w-full rounded-[22px] bg-deep-brown object-contain"
                 >
-                  -
-                </button>
-                <span className="w-8 text-center text-sm font-bold text-text-primary" aria-live="polite">
-                  {quantity}
-                </span>
-                <button
-                  type="button"
-                  onClick={handlePlus}
-                  disabled={isOutOfStock || (product.hasVariants && !selectedVariant) || quantity >= maxQuantity}
-                  aria-label="Increase quantity"
-                  className="w-10 h-10 inline-flex items-center justify-center text-text-primary hover:bg-[#FFF8EF] rounded-lg disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer font-bold"
-                >
-                  +
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={
-                  isOutOfStock ||
-                  (product.hasVariants && !selectedVariant) ||
-                  cartStatus === "adding"
-                }
-                className="flex-1 h-12 inline-flex items-center justify-center rounded-xl bg-primary-orange hover:bg-terracotta text-white font-semibold text-sm tracking-wide transition-all duration-150 disabled:opacity-40 disabled:hover:bg-primary-orange cursor-pointer"
-              >
-                {cartStatus === "adding" ? "Adding..." : "Add to Cart"}
-              </button>
-            </div>
-          )}
-
-          {/* Inline Feedback */}
-          {cartStatus === "success" && (
-            <div className="mb-8 p-4 rounded-xl bg-[#EDFBF0] text-[#1E7F3C] text-sm font-semibold flex items-center gap-2 border border-emerald-100" aria-live="polite">
-              <svg className="h-5 w-5 shrink-0 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              Added to cart successfully!
-            </div>
-          )}
-          {cartStatus === "error" && cartError && (
-            <div className="mb-8 p-4 rounded-xl bg-[#FFF0ED] text-terracotta text-sm font-semibold border border-red-100" aria-live="assertive">
-              {cartError}
-            </div>
-          )}
-
-          {/* Description */}
-          {product.description && (
-            <div className="border-t border-border-subtle pt-6 mb-6">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary mb-3">
-                Description
-              </h2>
-              <div className="text-text-muted text-sm leading-relaxed whitespace-pre-line">
-                {product.description}
-              </div>
-            </div>
-          )}
-
-          {/* Specifications */}
-          <div className="border-t border-border-subtle pt-6 mb-6">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary mb-3">
-              Specifications
-            </h2>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 text-sm">
-              <div className="flex items-baseline gap-1.5">
-                <dt className="text-text-muted">SKU:</dt>
-                <dd className="text-text-primary font-semibold">{selectedVariant ? selectedVariant.sku : product.sku}</dd>
-              </div>
-              {(selectedVariant ? selectedVariant.weightGrams : product.weightGrams) && (
-                <div className="flex items-baseline gap-1.5">
-                  <dt className="text-text-muted">Weight:</dt>
-                  <dd className="text-text-primary font-semibold">
-                    {selectedVariant ? selectedVariant.weightGrams : product.weightGrams}g
-                  </dd>
+                  Your browser does not support video playback.
+                </video>
+              ) : (
+                <div className="relative aspect-video w-full overflow-hidden rounded-[22px] border border-border-subtle bg-[#FFF8EF]">
+                  <Image
+                    src={block.media.publicUrl}
+                    alt={block.media.title || block.heading || product.name}
+                    fill
+                    loading="lazy"
+                    sizes="(min-width: 1024px) 50vw, 100vw"
+                    className="object-cover"
+                  />
                 </div>
-              )}
-              {/* Dimensions */}
-              {(selectedVariant
-                ? selectedVariant.lengthCm && selectedVariant.widthCm && selectedVariant.heightCm
-                : product.lengthCm && product.widthCm && product.heightCm) && (
-                <div className="flex items-baseline gap-1.5 sm:col-span-2">
-                  <dt className="text-text-muted">Dimensions (L x W x H):</dt>
-                  <dd className="text-text-primary font-semibold">
-                    {selectedVariant
-                      ? `${selectedVariant.lengthCm} × ${selectedVariant.widthCm} × ${selectedVariant.heightCm}`
-                      : `${product.lengthCm} × ${product.widthCm} × ${product.heightCm}`}{" "}
-                    cm
-                  </dd>
-                </div>
-              )}
-            </dl>
-          </div>
+              )
+            ) : null;
+            const textEl = hasText ? (
+              <div className="flex flex-col justify-center gap-3">
+                {block.heading && (
+                  <h2
+                    className="text-2xl font-medium text-text-primary sm:text-3xl"
+                    style={{ fontFamily: "var(--font-display-italic)" }}
+                  >
+                    {block.heading}
+                  </h2>
+                )}
+                {block.description && (
+                  <p className="text-text-muted text-sm leading-relaxed whitespace-pre-line">
+                    {block.description}
+                  </p>
+                )}
+              </div>
+            ) : null;
 
-          {/* Tags */}
-          {(() => {
-            const rawTags = product.tags as unknown;
-            let parsedTags: string[] = [];
-            if (Array.isArray(rawTags)) {
-              parsedTags = rawTags.map((t) => String(t));
-            } else if (typeof rawTags === "string" && rawTags.trim()) {
-              try {
-                const parsed = JSON.parse(rawTags);
-                if (Array.isArray(parsed)) {
-                  parsedTags = parsed.map((t) => String(t));
-                } else {
-                  parsedTags = [rawTags];
-                }
-              } catch {
-                if (rawTags.includes(",")) {
-                  parsedTags = rawTags.split(",").map((t: string) => t.trim());
-                } else {
-                  parsedTags = [rawTags.trim()];
-                }
-              }
+            // A block with only media, or only text, has nothing to position
+            // relative to — render it full-width regardless of `layout`,
+            // rather than leaving an empty grid column (see CLAUDE.md
+            // Enhanced Product Content §29/§30).
+            if (!hasMedia || !hasText) {
+              return (
+                <div key={index} className="flex flex-col gap-6 rounded-[28px] border border-deep-brown/10 bg-white p-4 sm:p-6">
+                  {mediaEl}
+                  {textEl}
+                </div>
+              );
             }
-            if (parsedTags.length === 0) return null;
+
+            if (block.layout === "media_full") {
+              return (
+                <div key={index} className="flex flex-col gap-6 rounded-[28px] border border-deep-brown/10 bg-white p-4 sm:p-6">
+                  {mediaEl}
+                  {textEl}
+                </div>
+              );
+            }
 
             return (
-              <div className="border-t border-border-subtle pt-6">
-                <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary mb-3">
-                  Tags
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {parsedTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-xs bg-[#FFF8EF] border border-[#E7CFB9] text-text-primary/70 px-3 py-1.5 rounded-full font-medium"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
+              <div key={index} className="grid grid-cols-1 gap-6 rounded-[28px] border border-deep-brown/10 bg-white p-4 sm:p-6 lg:grid-cols-2 lg:items-center">
+                {block.layout === "media_right" ? (
+                  <>
+                    <div className="order-2 lg:order-1">{textEl}</div>
+                    <div className="order-1 lg:order-2">{mediaEl}</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="order-1">{mediaEl}</div>
+                    <div className="order-2">{textEl}</div>
+                  </>
+                )}
               </div>
             );
-          })()}
-        </div>
-      </div>
+          })}
+        </section>
+      )}
+
+      <ProductReviewsSection productId={product.id} product={{ name: product.name, slug: product.slug, image: product.primaryImage?.url ?? null }} />
 
       {(hasDynamicProductVideos || showLegacyProductMedia) && (
-        <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-media-heading">
-          <div className="mb-7 max-w-2xl">
-            <span className="pill-label bg-white text-text-primary">See it in action</span>
-            <h2
-              id="product-media-heading"
-              className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
-              style={{ fontFamily: "var(--font-display-italic)" }}
-            >
-              Made for real pet moments.
-            </h2>
-          </div>
-
-          {hasDynamicProductVideos ? (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {dynamicProductVideos.map((assignment) => (
-                <figure
-                  key={assignment.id}
-                  className="overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm"
-                >
-                  <video
-                    src={assignment.media.publicUrl}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    aria-label={assignment.title || "Product video"}
-                    className="aspect-video w-full bg-deep-brown object-contain"
-                  >
-                    Your browser does not support video playback.
-                  </video>
-                  {(assignment.title || assignment.caption) && (
-                    <figcaption className="p-3 sm:p-4">
-                      {assignment.title && <p className="text-sm font-semibold text-text-primary">{assignment.title}</p>}
-                      {assignment.caption && <p className="mt-1 text-xs text-text-muted">{assignment.caption}</p>}
-                    </figcaption>
-                  )}
-                </figure>
-              ))}
+        <section className="mt-20 sm:mt-24" aria-labelledby="product-media-heading">
+          <div className={productMediaCount === 1 ? "grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-14" : "contents"}>
+            <div className={productMediaCount === 1 ? "max-w-md" : "mb-7 max-w-2xl"}>
+              <span className="pill-label border border-deep-brown/10 bg-white text-text-primary">See it in action</span>
+              <h2
+                id="product-media-heading"
+                className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
+                style={{ fontFamily: "var(--font-display-italic)" }}
+              >
+                Made for real pet moments.
+              </h2>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {legacyProductMedia.map((media) =>
-                media.type === "video" ? (
-                  <figure key={media.src} className="aspect-[9/16]">
-                    <PlayableVideoCard
-                      src={media.src}
-                      label={media.alt}
-                      aspect="h-full"
-                      className="h-full"
-                      product={videoCardProduct}
-                    />
-                  </figure>
-                ) : (
+
+            {hasDynamicProductVideos ? (
+              <div className={productMediaCount === 1 ? undefined : `grid gap-5 ${productMediaGridClass}`}>
+                {dynamicProductVideos.map((assignment) => (
                   <figure
-                    key={media.src}
-                    className="relative aspect-square overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm"
+                    key={assignment.id}
+                    className={`overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm ${productMediaCount === 1 ? "mx-auto w-full max-w-xl" : ""}`}
                   >
-                    <Image
-                      src={media.src}
-                      alt={media.alt}
-                      fill
-                      sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
-                      className="object-cover"
-                    />
+                    <video
+                      src={assignment.media.publicUrl}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label={assignment.title || "Product video"}
+                      className="aspect-video w-full bg-deep-brown object-contain"
+                    >
+                      Your browser does not support video playback.
+                    </video>
+                    {(assignment.title || assignment.caption) && (
+                      <figcaption className="p-3 sm:p-4">
+                        {assignment.title && <p className="text-sm font-semibold text-text-primary">{assignment.title}</p>}
+                        {assignment.caption && <p className="mt-1 text-xs text-text-muted">{assignment.caption}</p>}
+                      </figcaption>
+                    )}
                   </figure>
-                ),
-              )}
+                ))}
+              </div>
+            ) : (
+              <div className={productMediaCount === 1 ? undefined : `grid gap-5 ${productMediaGridClass}`}>
+                {legacyProductMedia.map((media) =>
+                  media.type === "video" ? (
+                    <figure
+                      key={media.src}
+                      className={`aspect-[9/16] ${productMediaCount === 1 ? "mx-auto w-full max-w-xs" : ""}`}
+                    >
+                      <PlayableVideoCard
+                        src={media.src}
+                        label={media.alt}
+                        aspect="h-full"
+                        className="h-full"
+                        product={videoCardProduct}
+                      />
+                    </figure>
+                  ) : (
+                    <figure
+                      key={media.src}
+                      className={`relative aspect-square overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm ${productMediaCount === 1 ? "mx-auto w-full max-w-xl" : ""}`}
+                    >
+                      <Image
+                        src={media.src}
+                        alt={media.alt}
+                        fill
+                        sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
+                        className="object-cover"
+                      />
+                    </figure>
+                  ),
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {testimonials === undefined ? (
+        product.testimonialVideos.length > 0 ? (
+          <section className="mt-20 sm:mt-24" aria-labelledby="product-testimonial-heading">
+            <div className="mb-7 max-w-2xl">
+              <span className="pill-label border border-deep-brown/10 bg-white text-text-primary">Customer stories</span>
+              <h2 id="product-testimonial-heading" className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl" style={{ fontFamily: "var(--font-display-italic)" }}>What pet parents say about this product.</h2>
             </div>
-          )}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {product.testimonialVideos.map((assignment) => <TestimonialVideoCard key={assignment.id} testimonial={{ id: assignment.id, mediaUrl: assignment.media.publicUrl, title: assignment.title, caption: assignment.caption }} product={legacyTestimonialProduct} variant="commerce" />)}
+            </div>
+          </section>
+        ) : (
+          <section className="mt-20 sm:mt-24" aria-labelledby="product-testimonials-heading">
+            <div className="mb-7 max-w-2xl"><span className="pill-label border border-deep-brown/10 bg-white text-text-primary">Real pet parents</span><h2 id="product-testimonials-heading" className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl" style={{ fontFamily: "var(--font-display-italic)" }}>Hear from pet parents shopping with us.</h2><p className="body-copy mt-3 text-text-muted">General customer stories from across My Pet Mart — not reviews of this specific product.</p></div>
+            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">{TESTIMONIAL_VIDEOS.slice(0, 4).map((src, index) => <PlayableVideoCard key={src} src={src} label={`Pet parent testimonial ${index + 1}`} caption="Pet parent story" />)}</div>
+          </section>
+        )
+      ) : (
+        <section className="mt-20 sm:mt-24" aria-labelledby="product-testimonial-heading">
+          <h2 id="product-testimonial-heading" className="sr-only">Customer stories</h2>
+          <TestimonialCarousel testimonials={productTestimonials} eyebrow="Customer stories" title="What pet parents say about this product." description="Real experiences from pet parents who chose this product." compact />
         </section>
       )}
 
-      {hasTestimonialVideos && (
-        <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-testimonial-heading">
+      {/* FAQ section placeholder — future phase. No FAQ data exists on the
+          Product yet, so nothing renders here until a real FAQ field/API
+          ships (never fabricate placeholder Q&A copy). */}
+
+      {product.relatedProducts.length > 0 && (
+        <section className="mt-20 sm:mt-24" aria-labelledby="related-products-heading">
           <div className="mb-7 max-w-2xl">
-            <span className="pill-label bg-white text-text-primary">Customer stories</span>
+            <span className="pill-label border border-deep-brown/10 bg-white text-text-primary">Related products</span>
             <h2
-              id="product-testimonial-heading"
+              id="related-products-heading"
               className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
               style={{ fontFamily: "var(--font-display-italic)" }}
             >
-              What pet parents say about this product.
+              You may also like.
             </h2>
           </div>
-
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {testimonialVideos.map((assignment) => (
-              <TestimonialVideoCard
-                key={assignment.id}
-                testimonial={{
-                  id: assignment.id,
-                  mediaUrl: assignment.media.publicUrl,
-                  title: assignment.title,
-                  caption: assignment.caption,
-                }}
-                product={testimonialCardProduct}
-                variant="commerce"
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {!hasTestimonialVideos && (
-        <section className="mt-16 border-t border-border-subtle pt-12" aria-labelledby="product-testimonials-heading">
-          <div className="mb-7 max-w-2xl">
-            <span className="pill-label bg-white text-text-primary">Real pet parents</span>
-            <h2
-              id="product-testimonials-heading"
-              className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
-              style={{ fontFamily: "var(--font-display-italic)" }}
-            >
-              Hear from pet parents shopping with us.
-            </h2>
-            <p className="body-copy mt-3 text-text-muted">
-              General customer stories from across My Pet Mart — not reviews of this specific product.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-            {productTestimonials.map((src, index) => (
-              <PlayableVideoCard
-                key={src}
-                src={src}
-                label={`Pet parent testimonial ${index + 1}`}
-                caption="Pet parent story"
-              />
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {product.relatedProducts.map((related) => (
+              <ProductCard key={related.id} product={related} />
             ))}
           </div>
         </section>
