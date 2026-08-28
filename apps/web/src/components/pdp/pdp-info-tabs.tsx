@@ -24,7 +24,9 @@ export function PdpInfoTabs({ product, selectedVariant }: { product: ProductDeta
     { key: "safety", label: "Safety", available: Boolean(product.safetyInfo) },
   ];
   const availableTabs = tabs.filter((tab) => tab.available);
-  const [activeTab, setActiveTab] = useState<TabKey>(availableTabs[0]?.key ?? "specifications");
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    availableTabs.some((tab) => tab.key === "specifications") ? "specifications" : availableTabs[0]?.key ?? "specifications"
+  );
 
   if (availableTabs.length === 0) return null;
 

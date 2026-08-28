@@ -213,18 +213,22 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge label={order.status} type="order" />
-          <StatusBadge label={order.paymentStatus} type="payment" />
-          <DownloadReceiptButton download={() => OrderApi.downloadReceipt(order.id)} fallbackFilename={`Receipt-${order.orderNumber}.pdf`} />
-          <button
-            type="button"
-            onClick={() => reorder(order.id)}
-            disabled={reorderStates[order.id] === "loading"}
-            className="inline-flex items-center justify-center rounded-xl border border-deep-brown/20 bg-cream-bg px-4 py-2 text-xs font-bold text-deep-brown hover:bg-primary-orange hover:text-white hover:border-primary-orange transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {reorderStates[order.id] === "loading" ? "Adding..." : reorderStates[order.id] === "error" ? "Try Again" : "Reorder"}
-          </button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge label={order.status} type="order" />
+            <StatusBadge label={order.paymentStatus} type="payment" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <DownloadReceiptButton download={() => OrderApi.downloadReceipt(order.id)} fallbackFilename={`Receipt-${order.orderNumber}.pdf`} />
+            <button
+              type="button"
+              onClick={() => reorder(order.id)}
+              disabled={reorderStates[order.id] === "loading"}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-deep-brown/20 bg-cream-bg px-4 py-2 text-xs font-bold text-deep-brown transition-all hover:border-primary-orange hover:bg-primary-orange hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {reorderStates[order.id] === "loading" ? "Adding..." : reorderStates[order.id] === "error" ? "Try Again" : "Reorder"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -236,7 +240,7 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
       {isPendingOrder && (
         <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-5 text-deep-brown space-y-3">
           <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm uppercase tracking-wider">
-            <span>📌 Order Pending Payment</span>
+            <span>Order Pending Payment</span>
           </div>
           <p className="text-xs font-medium text-amber-900/90 leading-relaxed">
             {canPay
@@ -285,9 +289,9 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
                 const sku = item.variantSku || item.productSku;
 
                 return (
-                  <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex items-start gap-4">
+                  <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex items-start gap-3 sm:gap-4">
                     {/* Item Image */}
-                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-deep-brown/10 bg-cream-bg flex items-center justify-center">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-deep-brown/10 bg-cream-bg flex items-center justify-center sm:h-20 sm:w-20">
                       {imgUrl && !hasImgError ? (
                         <Image
                           src={imgUrl}

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CartProvider, useCart } from "@/context/cart-context";
 import { WishlistProvider } from "@/context/wishlist-context";
@@ -20,6 +20,7 @@ vi.mock("next/navigation", () => ({
     replace: vi.fn(),
   }),
   usePathname: () => "/cart",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 // Mock customer auth
@@ -986,7 +987,11 @@ describe("Cart UI Components", () => {
       </WishlistProvider>
     );
 
-    const addToCartButton = await screen.findByRole("button", { name: /Add to Cart/i });
+    // Scope to the desktop purchase panel — the PDP also renders a mobile
+    // bottom-sticky Add to Cart bar (hidden via `md:hidden`, but present in the
+    // CSS-less test DOM).
+    const panel = await screen.findByTestId("pdp-purchase-panel");
+    const addToCartButton = within(panel).getByRole("button", { name: /Add to Cart/i });
     await act(async () => {
       fireEvent.click(addToCartButton);
     });

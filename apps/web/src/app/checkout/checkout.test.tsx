@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import "@testing-library/jest-dom/vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CheckoutClient } from "./checkout-client";
 import { AuthTokenStore } from "@/lib/auth/auth-api";
@@ -1001,6 +1001,131 @@ describe("Checkout Order Handoff Tests", () => {
         const viewOrderLink = screen.getByText("View Order").closest("a");
         expect(viewOrderLink).toHaveAttribute("href", "/account/orders/777");
       });
+    });
+  });
+
+  describe("Mobile sticky Place Order bar", () => {
+    beforeEach(() => {
+      vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue({
+        status: "unauthenticated",
+        customer: null,
+        accessToken: null,
+        signup: vi.fn(),
+        signin: vi.fn(),
+        verifyEmail: vi.fn(),
+        resendVerification: vi.fn(),
+        forgotPassword: vi.fn(),
+        verifyResetOTP: vi.fn(),
+        resetPassword: vi.fn(),
+        logout: vi.fn(),
+        refreshSession: vi.fn(),
+        loadCurrentCustomer: vi.fn(),
+      });
+      stubMatchMedia((query) => query.includes("max-width: 1023px"));
+    });
+
+    function stubMatchMedia(resolve: (query: string) => boolean) {
+      vi.stubGlobal(
+        "matchMedia",
+        (query: string) =>
+          ({
+            matches: resolve(query),
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: () => false,
+          }) as unknown as MediaQueryList,
+      );
+    }
+
+    async function fillGuestAddressAndPreview() {
+      await waitFor(() => expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument());
+      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
+      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
+      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
+      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
+      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
+      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
+      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
+      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
+    }
+
+    it("A. shows the sticky bar as the only Place Order control on compact viewports", async () => {
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any);
+
+      render(<CheckoutClient />);
+      await fillGuestAddressAndPreview();
+
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled(),
+      );
+
+      const bar = screen.getByTestId("checkout-sticky-cta");
+      expect(within(bar).getByRole("button", { name: /Place Order/i })).toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /Place Order/i })).toHaveLength(1);
+      expect(within(bar).getByText("₹499.00")).toBeInTheDocument();
+    });
+
+    it("B. sticky Place Order is disabled until the address preview is valid", async () => {
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any);
+
+      render(<CheckoutClient />);
+      await waitFor(() => expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument());
+
+      expect(
+        within(screen.getByTestId("checkout-sticky-cta")).getByRole("button", { name: /Place Order/i }),
+      ).toBeDisabled();
+
+      await fillGuestAddressAndPreview();
+      await waitFor(() =>
+        expect(
+          within(screen.getByTestId("checkout-sticky-cta")).getByRole("button", { name: /Place Order/i }),
+        ).not.toBeDisabled(),
+      );
+    });
+
+    it("C. sticky Place Order runs the same existing order-creation flow", async () => {
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCreatedOrderResponse }) } as any);
+
+      render(<CheckoutClient />);
+      await fillGuestAddressAndPreview();
+
+      const stickyButton = () =>
+        within(screen.getByTestId("checkout-sticky-cta")).getByRole("button", { name: /Place Order/i });
+      await waitFor(() => expect(stickyButton()).not.toBeDisabled());
+      fireEvent.click(stickyButton());
+
+      await waitFor(() => expect(screen.getByText(/Order #ORD-987654/i)).toBeInTheDocument());
+      const orderCreateCall = vi
+        .mocked(fetch)
+        .mock.calls.find((c) => c[0].toString().includes("/storefront/orders") && c[1]?.method === "POST");
+      expect(orderCreateCall).toBeDefined();
+    });
+
+    it("D. keeps the in-card button and renders no sticky bar on desktop widths", async () => {
+      stubMatchMedia(() => false);
+      vi.mocked(fetch)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any);
+
+      render(<CheckoutClient />);
+      await fillGuestAddressAndPreview();
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled(),
+      );
+
+      expect(screen.queryByTestId("checkout-sticky-cta")).not.toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /Place Order/i })).toHaveLength(1);
     });
   });
 });

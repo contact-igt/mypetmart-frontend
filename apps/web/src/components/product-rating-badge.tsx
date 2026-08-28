@@ -8,7 +8,15 @@ import { StaticStars } from "./review-stars";
 // (never a fabricated/zero rating — see CLAUDE.md Written Product Reviews
 // §31). A cheap pageSize:1 list call is enough since the summary always
 // rides along with the list response.
-export function ProductRatingBadge({ productId }: { productId: number }) {
+export function ProductRatingBadge({
+  productId,
+  href = "#product-reviews",
+  compact = false,
+}: {
+  productId: number;
+  href?: string;
+  compact?: boolean;
+}) {
   const [summary, setSummary] = useState<{ averageRating: number; reviewCount: number } | null>(null);
 
   useEffect(() => {
@@ -28,11 +36,11 @@ export function ProductRatingBadge({ productId }: { productId: number }) {
   if (!summary || summary.reviewCount === 0) return null;
 
   return (
-    <a href="#product-reviews" className="inline-flex items-center gap-1.5 text-sm text-text-primary hover:underline">
+    <a href={href} className="inline-flex max-w-full items-center gap-1.5 text-xs text-text-primary hover:underline sm:text-sm">
       <StaticStars rating={summary.averageRating} size={14} />
       <span className="font-semibold">{summary.averageRating.toFixed(1)}</span>
-      <span className="text-text-muted">
-        ({summary.reviewCount} review{summary.reviewCount === 1 ? "" : "s"})
+      <span className="truncate text-text-muted">
+        {compact ? `(${summary.reviewCount})` : `(${summary.reviewCount} review${summary.reviewCount === 1 ? "" : "s"})`}
       </span>
     </a>
   );

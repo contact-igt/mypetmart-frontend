@@ -193,6 +193,19 @@ export interface ProductDetail {
   faqs: ProductFaq[];
 }
 
+// Result of the Product Detail "check delivery to your pincode" pre-purchase
+// serviceability check. `serviceable: false` is a valid pincode we cannot
+// deliver to; a technical failure surfaces as a thrown error instead, never
+// as this shape. `estimatedDelivery` holds the iThink Rate API's exact
+// calendar-date window (or null when unavailable); `deliveryCharge` is the
+// existing V1 storefront shipping rule (free), never a raw courier rate.
+export interface DeliveryCheckResult {
+  pincode: string;
+  serviceable: boolean;
+  estimatedDelivery: { min: string; max: string } | null;
+  deliveryCharge: { free: boolean; amount: string; currency: string } | null;
+}
+
 export type CartAvailabilityReason =
   | "OUT_OF_STOCK"
   | "PRODUCT_UNAVAILABLE"

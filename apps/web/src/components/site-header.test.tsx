@@ -81,6 +81,42 @@ describe("SiteHeader Wishlist link", () => {
     expect(screen.getByRole("search", { name: "Product search" })).toBeInTheDocument();
   });
 
+  it("routes the mobile Search utility to the existing shop search UI", () => {
+    renderHeader();
+
+    const mobileSearchLink = screen
+      .getAllByLabelText("Search products")
+      .map((element) => element.closest("a"))
+      .find((link): link is HTMLAnchorElement => link !== null);
+
+    expect(mobileSearchLink).toHaveAttribute("href", "/shop?searchOpen=1");
+  });
+
+  it("closes the mobile menu when the user clicks outside it", () => {
+    renderHeader();
+
+    const menuButton = screen.getByRole("button", { name: "Open menu" });
+    fireEvent.click(menuButton);
+    expect(menuButton).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.pointerDown(document.body);
+
+    expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("closes the desktop account menu when the user clicks outside it", () => {
+    renderHeader();
+
+    const accountButton = screen.getByTestId("account-menu-trigger");
+    const accountDetails = accountButton.closest("details")!;
+    fireEvent.click(accountButton);
+    expect(accountDetails).toHaveAttribute("open");
+
+    fireEvent.pointerDown(document.body);
+
+    expect(accountDetails).not.toHaveAttribute("open");
+  });
+
   it("uses the requested primary links and marks the active pet filter", () => {
     mockPathname = "/shop";
     mockSearchParams = new URLSearchParams("petType=dog");

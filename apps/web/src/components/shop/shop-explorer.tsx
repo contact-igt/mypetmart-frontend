@@ -53,7 +53,9 @@ function ShopExplorerContent() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const shouldOpenMobileSearch = searchParams.get("searchOpen") === "1";
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(shouldOpenMobileSearch);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // API states
   const [categories, setCategories] = useState<Category[]>([]);
@@ -72,6 +74,25 @@ function ShopExplorerContent() {
   const activeSort = (searchParams.get("sort") as ProductSort) || "newest";
   const activePage = parseInt(searchParams.get("page") || "1", 10);
   const activeSearch = searchParams.get("search") || "";
+
+  useEffect(() => {
+    if (!shouldOpenMobileSearch) return;
+
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+      setIsMobileFiltersOpen(true);
+      window.setTimeout(() => {
+        if (cancelled) return;
+        searchInputRef.current?.focus();
+        searchInputRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+      }, 0);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldOpenMobileSearch]);
 
   // Search input debouncer ref
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -196,6 +217,8 @@ function ShopExplorerContent() {
             <button
               type="button"
               onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
+              aria-expanded={isMobileFiltersOpen}
+              aria-controls="shop-filters"
               className="inline-flex h-10 items-center justify-center rounded-full border border-deep-brown bg-[#FFF8EF] px-6 text-sm font-semibold text-text-primary cursor-pointer hover:bg-deep-brown hover:text-white transition-colors duration-200"
             >
               {isMobileFiltersOpen ? "Hide Filters" : "Show Filters"}
@@ -207,12 +230,15 @@ function ShopExplorerContent() {
 
           {/* Filter Sidebar */}
           <aside
+            id="shop-filters"
             className={`h-fit rounded-[26px] border border-[#E7CFB9] bg-[#FFF8EF] p-6 lg:block transition-all duration-300 ${
               isMobileFiltersOpen ? "block" : "hidden"
             }`}
           >
             <div>
-              <span className="eyebrow text-text-primary/60">Search</span>
+              <label htmlFor="shop-product-search" className="eyebrow text-text-primary/60">
+                Search products
+              </label>
               <div className="relative mt-2">
                 <SearchIcon
                   width={16}
@@ -220,13 +246,15 @@ function ShopExplorerContent() {
                   className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-primary/50"
                 />
                 <input
+                  id="shop-product-search"
+                  ref={searchInputRef}
                   type="search"
                   key={activeSearch}
                   defaultValue={activeSearch}
                   onChange={(event) => handleSearchChange(event.target.value)}
                   placeholder="Search products…"
                   aria-label="Search products"
-                  className="h-10 w-full rounded-full border border-[#E7CFB9] bg-white pl-10 pr-4 text-sm text-text-primary outline-none placeholder:text-text-primary/40 focus:border-deep-brown transition-colors duration-150"
+                  className="h-11 w-full rounded-full border border-[#E7CFB9] bg-white pl-10 pr-4 text-sm text-text-primary outline-none placeholder:text-text-primary/40 focus:border-deep-brown transition-colors duration-150"
                 />
               </div>
             </div>
@@ -374,11 +402,11 @@ function ShopExplorerContent() {
               </div>
             ) : isProductsLoading ? (
               /* Loading Skeletons */
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 lg:gap-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="animate-pulse rounded-[26px] bg-[#FFF8EF] border border-[#E7CFB9]/40 h-[360px] flex flex-col overflow-hidden">
-                    <div className="bg-[#FFF8EF]/50 aspect-[4/5] w-full" />
-                    <div className="p-5 flex-1 bg-white/40 flex flex-col justify-between">
+                  <div key={i} className="animate-pulse rounded-[26px] bg-[#FFF8EF] border border-[#E7CFB9]/40 flex min-w-0 flex-col overflow-hidden">
+                    <div className="aspect-square w-full bg-[#FFF8EF]/50 sm:aspect-[4/3]" />
+                    <div className="flex min-h-[13rem] flex-1 flex-col justify-between bg-white/40 p-3.5 sm:min-h-[17rem] sm:p-5">
                       <div className="h-5 bg-border-subtle rounded-md w-3/4" />
                       <div className="h-5 bg-border-subtle rounded-md w-1/4 mt-4" />
                     </div>
@@ -387,7 +415,7 @@ function ShopExplorerContent() {
               </div>
             ) : products.length > 0 ? (
               <>
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 lg:gap-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {products.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -395,7 +423,7 @@ function ShopExplorerContent() {
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <nav aria-label="Pagination" className="mt-12 flex justify-center items-center gap-2">
+                  <nav aria-label="Pagination" className="mt-12 flex flex-wrap justify-center items-center gap-2">
                     <button
                       type="button"
                       disabled={activePage === 1}

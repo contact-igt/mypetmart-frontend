@@ -18,6 +18,8 @@ import { ProceedToPaymentButton } from "@/components/payment/proceed-to-payment-
 import { ConfirmCodOrderButton } from "@/components/payment/confirm-cod-order-button";
 import type { CodConfirmationResultJSON } from "@/types/payment";
 import { TrustBadges } from "@/components/checkout/trust-badges";
+import { CheckoutStickyCta } from "@/components/checkout/checkout-sticky-cta";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 type AddressFormData = {
   label: string;
@@ -54,6 +56,11 @@ const initialFormData: AddressFormData = {
 export function CheckoutClient() {
   const { status, customer } = useCustomerAuth();
   const isAuthenticated = status === "authenticated" && Boolean(customer);
+
+  // Below the checkout's two-column breakpoint the primary action moves into a
+  // fixed bottom bar (progressive enhancement — false on the server / first
+  // render, see useMediaQuery).
+  const isCompactCheckout = useMediaQuery("(max-width: 1023px)");
 
   // Cart & Address State
   const [cart, setCart] = useState<Cart | null>(null);
@@ -430,7 +437,7 @@ export function CheckoutClient() {
           {!isAuthenticated && (
             <div className="mt-6 rounded-2xl border border-primary-orange/30 bg-peach-hero/40 p-4 text-center space-y-1">
               <p className="text-xs font-bold text-deep-brown">
-                📌 Please note your order number: <span className="text-primary-orange">{createdOrder.orderNumber}</span>
+                Please note your order number: <span className="text-primary-orange">{createdOrder.orderNumber}</span>
               </p>
               {createdOrder.guestAccessToken && (
                 <p className="text-[11px] font-medium text-deep-brown/80">
@@ -526,8 +533,14 @@ export function CheckoutClient() {
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-col items-center gap-3 pb-1 sm:flex-row sm:justify-center sm:gap-6" role="radiogroup" aria-label="Payment method">
-                    <label className="flex items-center gap-2 text-xs font-bold text-deep-brown cursor-pointer">
+                  <div className="grid grid-cols-1 gap-2.5 pb-1 sm:grid-cols-2 sm:gap-3" role="radiogroup" aria-label="Payment method">
+                    <label
+                      className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold text-deep-brown transition-colors ${
+                        paymentMethod === "payu"
+                          ? "border-primary-orange bg-peach-hero/20 ring-1 ring-primary-orange"
+                          : "border-deep-brown/15 bg-white hover:border-deep-brown/30"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="payment-method"
@@ -537,7 +550,13 @@ export function CheckoutClient() {
                       />
                       Pay Online
                     </label>
-                    <label className="flex items-center gap-2 text-xs font-bold text-deep-brown cursor-pointer">
+                    <label
+                      className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold text-deep-brown transition-colors ${
+                        paymentMethod === "cod"
+                          ? "border-primary-orange bg-peach-hero/20 ring-1 ring-primary-orange"
+                          : "border-deep-brown/15 bg-white hover:border-deep-brown/30"
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="payment-method"
@@ -626,8 +645,26 @@ export function CheckoutClient() {
       activePreviewPayload
   );
 
+  // Single source of truth for the Place Order gate, shared by the in-card
+  // button and the mobile sticky bar so they can never drift apart.
+  const placeOrderDisabled =
+    !isPreviewValid || submittingOrder || previewing || isCartEmpty || isOrderStatusUnknown;
+
+  // The payable amount shown in the Order Summary card — mirrored, not recomputed.
+  const payableTotalDisplay =
+    previewResult?.totals.payableTotal ||
+    previewResult?.totals.merchandiseSubtotal ||
+    cart?.subtotal ||
+    "0.00";
+
+  const showStickyPlaceOrder = isCompactCheckout && !isCartEmpty;
+
   return (
-    <main className="min-w-0 flex-1 bg-cream-bg py-6 sm:py-8 md:py-12 min-h-[calc(100vh-144px)]">
+    <main
+      className={`min-w-0 flex-1 bg-cream-bg py-6 sm:py-8 md:py-12 min-h-[calc(100vh-144px)] ${
+        showStickyPlaceOrder ? "pb-28" : ""
+      }`}
+    >
       <div className="mx-auto w-full max-w-[1100px] px-4 sm:px-8">
         {/* Header Breadcrumb */}
         <div className="flex flex-col items-start gap-2 border-b border-deep-brown/15 pb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pb-6">
@@ -651,7 +688,7 @@ export function CheckoutClient() {
         {isOrderStatusUnknown && (
           <div className="mt-5 space-y-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-deep-brown shadow-xs sm:mt-6 sm:p-5">
             <div className="flex items-center gap-2 text-amber-800 font-extrabold text-sm uppercase tracking-wider">
-              <span>⚠️ Order Status Unknown</span>
+              <span>Order Status Unknown</span>
             </div>
             <p className="text-xs font-medium text-deep-brown/90 leading-relaxed">
               We couldn&apos;t confirm whether your order was created because of a network connection issue. To prevent duplicate orders, <strong>Place Order has been locked</strong>. Please re-verify your connection before attempting to unlock checkout.
@@ -1147,26 +1184,30 @@ export function CheckoutClient() {
                   <div className="flex items-baseline justify-between gap-3 border-t border-deep-brown/10 pt-3 text-base font-bold text-deep-brown">
                     <span>Payable Total</span>
                     <span className="text-primary-orange font-extrabold">
-                      ₹{previewResult?.totals.payableTotal || previewResult?.totals.merchandiseSubtotal || cart.subtotal}
+                      ₹{payableTotalDisplay}
                     </span>
                   </div>
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-deep-brown/10 space-y-3">
-                  {/* Real Place Order Action CTA */}
-                  <button
-                    type="button"
-                    onClick={handlePlaceOrder}
-                    disabled={!isPreviewValid || submittingOrder || previewing || isCartEmpty || isOrderStatusUnknown}
-                    aria-disabled={!isPreviewValid || submittingOrder || previewing || isCartEmpty || isOrderStatusUnknown}
-                    className={`w-full rounded-xl py-3 text-xs font-bold text-white transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-orange focus:ring-offset-2 ${
-                      isPreviewValid && !submittingOrder && !previewing && !isCartEmpty && !isOrderStatusUnknown
-                        ? "bg-primary-orange hover:bg-terracotta cursor-pointer"
-                        : "bg-deep-brown/20 text-deep-brown/50 cursor-not-allowed"
-                    }`}
-                  >
-                    {submittingOrder ? "Placing Order..." : "Place Order"}
-                  </button>
+                  {/* Real Place Order Action CTA. On compact viewports this moves
+                      into the fixed bottom bar (CheckoutStickyCta) — same
+                      handler, same disabled gate — so it is hidden here. */}
+                  {!isCompactCheckout && (
+                    <button
+                      type="button"
+                      onClick={handlePlaceOrder}
+                      disabled={placeOrderDisabled}
+                      aria-disabled={placeOrderDisabled}
+                      className={`w-full rounded-xl py-3 text-xs font-bold text-white transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-orange focus:ring-offset-2 ${
+                        placeOrderDisabled
+                          ? "bg-deep-brown/20 text-deep-brown/50 cursor-not-allowed"
+                          : "bg-primary-orange hover:bg-terracotta cursor-pointer"
+                      }`}
+                    >
+                      {submittingOrder ? "Placing Order..." : "Place Order"}
+                    </button>
+                  )}
 
                   <p className="text-[11px] text-center text-text-primary/60">
                     Placing order creates a pending order. Payment setup is the next step.
@@ -1177,6 +1218,15 @@ export function CheckoutClient() {
           </div>
         )}
       </div>
+
+      {showStickyPlaceOrder && (
+        <CheckoutStickyCta
+          total={payableTotalDisplay}
+          disabled={placeOrderDisabled}
+          submitting={submittingOrder}
+          onPlaceOrder={handlePlaceOrder}
+        />
+      )}
     </main>
   );
 }

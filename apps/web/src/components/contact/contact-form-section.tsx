@@ -200,7 +200,7 @@ export function ContactFormSection({ storeProfile }: { storeProfile: StoreProfil
             </div>
           </div>
 
-          <label className="mt-6 flex items-start gap-2 text-sm text-text-primary/80">
+          <label className="mt-6 flex items-start gap-2.5 text-sm text-text-primary/80">
             <input
               type="checkbox"
               name="consent"
@@ -208,7 +208,7 @@ export function ContactFormSection({ storeProfile }: { storeProfile: StoreProfil
               checked={form.consent}
               onChange={(event) => update("consent", event.target.checked)}
               disabled={state === "submitting"}
-              className="mt-0.5 h-4 w-4 accent-[#147AF3]"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-orange/40"
             />
             I agree to be contacted about my enquiry. We respect your inbox.
           </label>

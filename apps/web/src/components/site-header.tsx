@@ -1,12 +1,11 @@
 "use client";
 
-import { type FormEvent, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ShoppingCart } from "lucide-react";
 import { SiteLogo } from "@/components/site-logo";
 import { PrimaryNav } from "@/components/primary-nav";
 import { MobileNavPanel } from "@/components/mobile-nav-panel";
-import { IconButton } from "@/components/icon-button";
 import {
   HeartIcon,
   SearchIcon,
@@ -29,6 +28,8 @@ import { useCart } from "@/context/cart-context";
 export function SiteHeader() {
   const router = useRouter();
   const accountMenuRef = useRef<HTMLDetailsElement>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileNavPanelRef = useRef<HTMLDivElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const { status, customer, logout } = useCustomerAuth();
@@ -52,6 +53,38 @@ export function SiteHeader() {
 
   const closeAccountMenu = () => accountMenuRef.current?.removeAttribute("open");
 
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      if (
+        mobileNavOpen &&
+        !mobileMenuButtonRef.current?.contains(target) &&
+        !mobileNavPanelRef.current?.contains(target)
+      ) {
+        setMobileNavOpen(false);
+      }
+
+      if (accountMenuRef.current?.open && !accountMenuRef.current.contains(target)) {
+        accountMenuRef.current.removeAttribute("open");
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setMobileNavOpen(false);
+      accountMenuRef.current?.removeAttribute("open");
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileNavOpen]);
+
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const query = String(new FormData(event.currentTarget).get("search") ?? "").trim();
@@ -73,8 +106,26 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-t-[3px] border-deep-brown bg-cream-bg">
-      <div className="site-container flex h-[72px] items-center justify-between gap-3 lg:gap-8">
-        <SiteLogo className="shrink-0 [&>img]:!h-8 [&>img]:!max-w-[170px] sm:[&>img]:!h-9 sm:[&>img]:!max-w-[180px]" />
+      <div className="site-container grid h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-2 lg:flex lg:justify-between lg:gap-8">
+        {/* Mobile: menu button on the left. Toggles the same mobile nav panel
+            the previous layout used — no second navigation system. */}
+        <button
+          type="button"
+          ref={mobileMenuButtonRef}
+          onClick={() => setMobileNavOpen((value) => !value)}
+          aria-expanded={mobileNavOpen}
+          aria-controls="mobile-nav-panel"
+          aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+          className="-ml-1 inline-flex h-11 w-11 items-center justify-center justify-self-start rounded-full text-text-primary transition-colors duration-150 ease-out hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 lg:hidden"
+        >
+          {mobileNavOpen ? (
+            <CloseIcon width={22} height={22} />
+          ) : (
+            <MenuIcon width={22} height={22} />
+          )}
+        </button>
+
+        <SiteLogo className="shrink-0 justify-self-center [&>img]:!h-8 [&>img]:!max-w-[160px] sm:[&>img]:!h-9 sm:[&>img]:!max-w-[180px]" />
 
         <div className="hidden min-w-0 flex-1 items-center gap-3 lg:flex lg:gap-4">
           <PrimaryNav className="shrink-0" />
@@ -187,42 +238,30 @@ export function SiteHeader() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-1 lg:hidden">
+        {/* Mobile: existing cart link + live count badge on the right. */}
+        <div className="flex items-center justify-self-end lg:hidden">
           <Link
             href="/cart"
-            className="relative inline-flex"
             aria-label={itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"}
+            className="-mr-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-text-primary transition-colors duration-150 ease-out hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
           >
-            <IconButton label="Cart">
-              <div className="relative">
-                <ShoppingCart size={20} strokeWidth={1.8} />
-                {itemCount > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-orange px-1 text-[9px] font-bold text-white leading-none">
-                    {itemCount}
-                  </span>
-                )}
-              </div>
-            </IconButton>
+            <span className="relative inline-flex">
+              <ShoppingCart size={21} strokeWidth={1.8} aria-hidden="true" />
+              {itemCount > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-orange px-1 text-[9px] font-bold leading-none text-white">
+                  {itemCount}
+                </span>
+              )}
+            </span>
           </Link>
-
-          <button
-            type="button"
-            onClick={() => setMobileNavOpen((value) => !value)}
-            aria-expanded={mobileNavOpen}
-            aria-controls="mobile-nav-panel"
-            aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-text-primary hover:bg-white/60"
-          >
-            {mobileNavOpen ? (
-              <CloseIcon width={20} height={20} />
-            ) : (
-              <MenuIcon width={20} height={20} />
-            )}
-          </button>
         </div>
       </div>
 
-      <MobileNavPanel open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <MobileNavPanel
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        panelRef={mobileNavPanelRef}
+      />
     </header>
   );
 }

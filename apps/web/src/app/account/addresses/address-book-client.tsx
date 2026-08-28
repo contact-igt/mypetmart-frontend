@@ -313,7 +313,7 @@ export function AddressBookClient() {
             <button
               type="button"
               onClick={openAddForm}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary-orange px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-terracotta transition-colors"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary-orange px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 sm:w-auto"
             >
               + Add New Address
             </button>
@@ -366,7 +366,7 @@ export function AddressBookClient() {
                   placeholder="e.g. Home, Office"
                   value={formData.label}
                   onChange={(e) => setFormData({ ...formData, label: e.target.value })}
-                  className="w-full rounded-xl border border-deep-brown/20 px-3.5 py-2 text-sm text-text-primary focus:border-primary-orange focus:outline-none"
+                  className="w-full min-h-11 rounded-xl border border-deep-brown/20 px-3.5 py-2 text-sm text-text-primary focus:border-primary-orange focus:outline-none"
                 />
               </div>
 
@@ -380,7 +380,7 @@ export function AddressBookClient() {
                   placeholder="e.g. Jordan Rivera"
                   value={formData.recipientName}
                   onChange={(e) => setFormData({ ...formData, recipientName: e.target.value })}
-                  className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
+                  className={`w-full rounded-xl border min-h-11 px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
                     formErrors.recipientName ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
                   }`}
                 />
@@ -399,7 +399,7 @@ export function AddressBookClient() {
                   placeholder="e.g. +91 98765 43210"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
+                  className={`w-full rounded-xl border min-h-11 px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
                     formErrors.phone ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
                   }`}
                 />
@@ -418,7 +418,7 @@ export function AddressBookClient() {
                   placeholder="House/Flat No., Street, Area"
                   value={formData.line1}
                   onChange={(e) => setFormData({ ...formData, line1: e.target.value })}
-                  className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
+                  className={`w-full rounded-xl border min-h-11 px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
                     formErrors.line1 ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
                   }`}
                 />
@@ -437,7 +437,7 @@ export function AddressBookClient() {
                   placeholder="Landmark, Suite, Apartment"
                   value={formData.line2}
                   onChange={(e) => setFormData({ ...formData, line2: e.target.value })}
-                  className="w-full rounded-xl border border-deep-brown/20 px-3.5 py-2 text-sm text-text-primary focus:border-primary-orange focus:outline-none"
+                  className="w-full min-h-11 rounded-xl border border-deep-brown/20 px-3.5 py-2 text-sm text-text-primary focus:border-primary-orange focus:outline-none"
                 />
               </div>
 
@@ -451,7 +451,7 @@ export function AddressBookClient() {
                   placeholder="e.g. Mumbai"
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
+                  className={`w-full rounded-xl border min-h-11 px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
                     formErrors.city ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
                   }`}
                 />
@@ -470,7 +470,7 @@ export function AddressBookClient() {
                   placeholder="e.g. Maharashtra"
                   value={formData.state}
                   onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
+                  className={`w-full rounded-xl border min-h-11 px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
                     formErrors.state ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
                   }`}
                 />
@@ -489,7 +489,7 @@ export function AddressBookClient() {
                   placeholder="e.g. 400001"
                   value={formData.postalCode}
                   onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
-                  className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
+                  className={`w-full rounded-xl border min-h-11 px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
                     formErrors.postalCode ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
                   }`}
                 />
@@ -507,7 +507,7 @@ export function AddressBookClient() {
                   type="text"
                   value={formData.country}
                   onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                  className="w-full rounded-xl border border-deep-brown/20 px-3.5 py-2 text-sm text-text-primary focus:border-primary-orange focus:outline-none"
+                  className="w-full min-h-11 rounded-xl border border-deep-brown/20 px-3.5 py-2 text-sm text-text-primary focus:border-primary-orange focus:outline-none"
                 />
               </div>
 
@@ -524,18 +524,18 @@ export function AddressBookClient() {
                 </label>
               </div>
 
-              <div className="sm:col-span-2 flex items-center justify-end gap-3 pt-3 border-t border-deep-brown/10 mt-2">
+              <div className="sm:col-span-2 mt-2 flex flex-col-reverse gap-2 border-t border-deep-brown/10 pt-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="rounded-xl border border-deep-brown/20 px-4 py-2 text-xs font-bold text-deep-brown hover:bg-cream-bg"
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-deep-brown/20 px-4 py-2 text-xs font-bold text-deep-brown transition-colors hover:bg-cream-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 sm:w-auto"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="rounded-xl bg-primary-orange px-5 py-2 text-xs font-bold text-white hover:bg-terracotta transition-colors disabled:opacity-50"
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary-orange px-5 py-2 text-xs font-bold text-white transition-colors hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:opacity-50 sm:w-auto"
                 >
                   {submitting ? "Saving..." : editingAddressId ? "Update Address" : "Save Address"}
                 </button>
@@ -602,31 +602,29 @@ export function AddressBookClient() {
                   </div>
                 </div>
 
-                <div className="mt-5 flex items-center justify-between border-t border-deep-brown/10 pt-3 text-xs">
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => openEditForm(address)}
-                      className="font-bold text-primary-orange hover:underline"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      disabled={deletingId === address.id}
-                      onClick={() => handleDelete(address.id)}
-                      className="font-bold text-terracotta hover:underline disabled:opacity-50"
-                    >
-                      {deletingId === address.id ? "Deleting..." : "Delete"}
-                    </button>
-                  </div>
+                <div className="mt-5 flex flex-wrap gap-2 border-t border-deep-brown/10 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => openEditForm(address)}
+                    className="inline-flex min-h-11 items-center rounded-xl border border-deep-brown/20 bg-cream-bg px-4 py-2 text-xs font-bold text-deep-brown transition-colors hover:border-primary-orange hover:text-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deletingId === address.id}
+                    onClick={() => handleDelete(address.id)}
+                    className="inline-flex min-h-11 items-center rounded-xl border border-terracotta/30 bg-terracotta/5 px-4 py-2 text-xs font-bold text-terracotta transition-colors hover:bg-terracotta/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/40 disabled:opacity-50"
+                  >
+                    {deletingId === address.id ? "Deleting..." : "Delete"}
+                  </button>
 
                   {!address.isDefault && (
                     <button
                       type="button"
                       disabled={settingDefaultId === address.id}
                       onClick={() => handleSetDefault(address.id)}
-                      className="font-bold text-deep-brown/80 hover:text-primary-orange hover:underline disabled:opacity-50"
+                      className="inline-flex min-h-11 items-center rounded-xl border border-deep-brown/20 bg-white px-4 py-2 text-xs font-bold text-deep-brown transition-colors hover:border-primary-orange hover:text-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:opacity-50 sm:ml-auto"
                     >
                       {settingDefaultId === address.id ? "Setting..." : "Set as Default"}
                     </button>

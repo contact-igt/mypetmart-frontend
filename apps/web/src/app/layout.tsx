@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Bagel_Fat_One, Baloo_2, Fraunces, Inter } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { ScrollProgressBar } from "@/components/scroll-progress-bar";
 import "slick-carousel/slick/slick.css";
 import "./globals.css";
 
@@ -50,6 +51,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <Providers>
+          <ScrollProgressBar />
           <Suspense fallback={null}>
             <SiteHeader />
           </Suspense>

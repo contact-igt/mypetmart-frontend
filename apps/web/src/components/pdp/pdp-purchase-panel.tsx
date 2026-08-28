@@ -4,6 +4,7 @@ import type { MouseEvent } from "react";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import { HeartIcon, ShieldCheckIcon, TruckIcon } from "@/components/icons";
 import { PdpTags } from "@/components/pdp/pdp-tags";
+import { PdpDeliveryCheck } from "@/components/pdp/pdp-delivery-check";
 import { ProductRatingBadge } from "@/components/product-rating-badge";
 import type { ProductDetail, ProductVariant } from "@/types/storefront";
 
@@ -62,7 +63,7 @@ export function PdpPurchasePanel({
       : null;
 
   return (
-    <div className="flex h-full flex-col px-5 py-7 sm:px-8 sm:py-9 lg:px-10 lg:py-10 xl:px-11">
+    <div className="flex h-full flex-col px-5 py-7 sm:px-8 sm:py-9 lg:px-10 lg:py-10 xl:px-11" data-testid="pdp-purchase-panel">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-md bg-primary-orange/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.09em] text-primary-orange">
           {product.petType === "all" ? "For Dogs & Cats" : `For ${product.petType}s`}
@@ -165,8 +166,16 @@ export function PdpPurchasePanel({
       )}
 
       {!(product.hasVariants && product.variants.length === 0) && (
+        <PdpDeliveryCheck
+          productId={product.id}
+          variantId={selectedVariant?.id ?? null}
+          quantity={quantity}
+        />
+      )}
+
+      {!(product.hasVariants && product.variants.length === 0) && (
         <div className="mt-7 flex w-full flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex h-14 w-full shrink-0 items-center justify-between rounded-lg border border-deep-brown/15 bg-[#FFF9F1] px-1 sm:w-36">
+          <div className="flex h-16 w-full shrink-0 items-center justify-between rounded-lg border border-deep-brown/15 bg-[#FFF9F1] px-1 sm:w-36">
             <button
               type="button"
               onClick={onMinus}
@@ -194,7 +203,7 @@ export function PdpPurchasePanel({
             type="button"
             onClick={onAddToCart}
             disabled={isOutOfStock || (product.hasVariants && !selectedVariant) || cartStatus === "adding"}
-            className="inline-flex h-14 min-w-0 w-full flex-1 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary-orange px-5 text-base font-semibold text-white transition-colors duration-150 hover:bg-terracotta active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 sm:px-7"
+            className="inline-flex h-16 w-full min-w-0 shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-primary-orange px-5 text-base font-semibold text-white transition-colors duration-150 hover:bg-terracotta active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 sm:w-auto sm:flex-1 sm:shrink sm:px-7"
           >
             <ShoppingBag className="shrink-0" size={18} strokeWidth={1.9} aria-hidden="true" />
             {cartStatus === "adding" ? "Adding..." : "Add to Cart"}

@@ -18,7 +18,7 @@ export function ReviewCard({ review, fullReview = false }: { review: StorefrontR
   const [imageError, setImageError] = useState(false);
   const reviewDate = formatReviewDate(review.createdAt);
   return (
-    <article className="flex h-full min-h-[18rem] flex-col rounded-2xl border border-deep-brown/10 bg-white p-5 shadow-[0_8px_24px_rgba(74,37,17,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(74,37,17,0.1)] sm:p-6">
+    <article className="flex h-full min-h-[14rem] flex-col rounded-2xl border border-deep-brown/10 bg-white p-5 shadow-[0_8px_24px_rgba(74,37,17,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(74,37,17,0.1)] sm:p-6">
       <StaticStars rating={review.rating} size={16} />
       {review.title && <h3 className={`mt-4 text-lg font-semibold leading-tight text-text-primary ${fullReview ? "" : "line-clamp-2"}`}>{review.title}</h3>}
       <p className={`mt-3 whitespace-pre-line text-sm leading-relaxed text-text-primary/72 ${fullReview ? "" : "line-clamp-4"}`}>{review.review}</p>

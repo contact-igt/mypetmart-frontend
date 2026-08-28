@@ -5,6 +5,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ProductCard } from "./product-card";
 import { CustomerAuthProvider } from "../context/customer-auth-context";
+import { CartProvider } from "../context/cart-context";
 import { WishlistProvider } from "../context/wishlist-context";
 import { AuthTokenStore } from "../lib/auth/auth-api";
 import type { ProductListItem } from "@/types/storefront";
@@ -17,6 +18,10 @@ vi.mock("next/navigation", () => ({
     replace: vi.fn(),
   }),
   usePathname: () => "/shop",
+}));
+
+vi.mock("./product-rating-badge", () => ({
+  ProductRatingBadge: () => null,
 }));
 
 process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:5000/api/v1";
@@ -40,9 +45,11 @@ const product: ProductListItem = {
 function renderCard() {
   return render(
     <CustomerAuthProvider>
-      <WishlistProvider>
-        <ProductCard product={product} />
-      </WishlistProvider>
+      <CartProvider>
+        <WishlistProvider>
+          <ProductCard product={product} />
+        </WishlistProvider>
+      </CartProvider>
     </CustomerAuthProvider>
   );
 }
@@ -79,7 +86,7 @@ describe("ProductCard wishlist heart", () => {
     });
 
     // Only the bootstrap refresh call should have happened — no wishlist add request.
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("does not trigger the card's Product Detail navigation when the heart is clicked", async () => {
@@ -177,9 +184,11 @@ describe("ProductCard brand label", () => {
   function renderCardWith(overrides: Partial<ProductListItem>) {
     return render(
       <CustomerAuthProvider>
-        <WishlistProvider>
-          <ProductCard product={{ ...product, ...overrides }} />
-        </WishlistProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <ProductCard product={{ ...product, ...overrides }} />
+          </WishlistProvider>
+        </CartProvider>
       </CustomerAuthProvider>
     );
   }
@@ -205,7 +214,7 @@ describe("ProductCard brand label", () => {
     expect(screen.queryByText("Royal Canin")).not.toBeInTheDocument();
   });
 
-  it("covers the square image frame without padding and uses the dog theme", async () => {
+  it("renders a contained product image in the responsive square frame", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
     );
@@ -225,9 +234,21 @@ describe("ProductCard brand label", () => {
       },
     });
 
-    expect(await screen.findByAltText("Full product")).toHaveClass("object-cover");
-    expect(screen.getByAltText("Full product")).not.toHaveClass("p-3");
+    expect(await screen.findByAltText("Full product")).toHaveClass("object-contain");
     expect(container.querySelector(".aspect-square")).toBeInTheDocument();
-    expect(container.querySelector(".bg-mint-sage")).toBeInTheDocument();
+  });
+
+  it("uses real pricing and stock fields for the sale state and cart CTA", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
+    );
+
+    renderCardWith({ compareAtPrice: "999.00", inStock: true });
+
+    expect(await screen.findByRole("heading", { name: "Comfort Dog Collar" })).toBeInTheDocument();
+    expect(screen.getByText("-50%")).toBeInTheDocument();
+    expect(screen.getByText("Dog Essentials")).toBeInTheDocument();
+    expect(screen.getByText(/in stock/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add to Cart" })).toBeEnabled();
   });
 });
