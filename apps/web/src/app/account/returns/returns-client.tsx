@@ -29,6 +29,7 @@ export function ReturnsClient() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -48,7 +49,13 @@ export function ReturnsClient() {
     return () => {
       isSubscribed = false;
     };
-  }, [page]);
+  }, [page, reloadKey]);
+
+  const retry = () => {
+    setError(null);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  };
 
   if (loading && !data) {
     return (
@@ -63,6 +70,13 @@ export function ReturnsClient() {
     return (
       <div className="rounded-2xl border border-terracotta/30 bg-terracotta/10 p-6 text-center space-y-4">
         <p className="text-sm font-semibold text-terracotta">{error}</p>
+        <button
+          type="button"
+          onClick={retry}
+          className="inline-flex min-h-11 items-center rounded-xl bg-terracotta px-5 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/40"
+        >
+          Try Again
+        </button>
       </div>
     );
   }
@@ -146,7 +160,7 @@ export function ReturnsClient() {
             type="button"
             disabled={page <= 1 || loading}
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            className="rounded-xl border border-deep-brown/20 px-4 py-2 text-xs font-bold text-deep-brown hover:bg-cream-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex min-h-11 items-center rounded-xl border border-deep-brown/20 px-4 py-2 text-xs font-bold text-deep-brown transition-colors hover:bg-cream-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
             &larr; Previous
           </button>
@@ -157,7 +171,7 @@ export function ReturnsClient() {
             type="button"
             disabled={page >= totalPages || loading}
             onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-            className="rounded-xl border border-deep-brown/20 px-4 py-2 text-xs font-bold text-deep-brown hover:bg-cream-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex min-h-11 items-center rounded-xl border border-deep-brown/20 px-4 py-2 text-xs font-bold text-deep-brown transition-colors hover:bg-cream-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next &rarr;
           </button>

@@ -5,20 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type MouseEvent } from "react";
 import type { Product as MockProduct } from "@/data/products";
-import type { ProductListItem } from "@/types/storefront";
 import { HeartIcon } from "@/components/icons";
 import { ProductImagePlaceholder, type PlaceholderTone } from "@/components/image-placeholder";
+import { ProductRatingBadge } from "@/components/product-rating-badge";
+import { useCart } from "@/context/cart-context";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useWishlist } from "@/context/wishlist-context";
-
-const CARD_SURFACES: Record<string, string> = {
-  grooming: "bg-[#F7D09D]",
-  dog: "bg-mint-sage",
-  "walking-essentials": "bg-[#FFF8EF]",
-  "paw-care": "bg-[#F4BD84]",
-  "dog-essentials": "bg-[#F3C496]",
-  "cat-essentials": "bg-[#FFF8ED]",
-};
+import { discountPercent } from "@/lib/pricing";
+import type { ProductListItem } from "@/types/storefront";
 
 const TONES: Record<string, PlaceholderTone> = {
   grooming: "terracotta",
@@ -28,18 +22,10 @@ const TONES: Record<string, PlaceholderTone> = {
   "dog-essentials": "brown",
 };
 
-const MOCK_IMAGES: Record<string, string> = {
-  Grooming: "/assest/Grooming.png",
-  "Walking Essentials": "/assest/walking-essentials.png",
-  "Paw Care": "/assest/paw-care.png",
-  "Dog Essentials": "/assest/dog-essentials.png",
-  "Cat Essentials": "/assest/cat-essentials.png",
-};
-
-const formatPrice = (priceVal: number | string) => {
-  const num = typeof priceVal === "number" ? priceVal : parseFloat(priceVal);
-  return isNaN(num) ? "0" : num.toLocaleString("en-IN", { maximumFractionDigits: 0 });
-};
+function formatPrice(value: string | number) {
+  const price = typeof value === "number" ? value : Number.parseFloat(value);
+  return Number.isFinite(price) ? price.toLocaleString("en-IN", { maximumFractionDigits: 0 }) : "0";
+}
 
 interface NormalizedProduct {
   id: number | null;
@@ -49,67 +35,77 @@ interface NormalizedProduct {
   price: string | number;
   compareAtPrice: string | number | null;
   hasVariants: boolean;
-  inStock: boolean;
-  stock: number;
+  available: boolean;
+  inStock: boolean | null;
+  categoryName: string;
   categorySlug: string;
   imageUrl: string | null;
   imageAlt: string | null;
 }
 
-function normalizeProduct(p: ProductListItem | MockProduct): NormalizedProduct {
-  if ("id" in p) {
-    // Real ProductListItem
+function normalizeProduct(product: ProductListItem | MockProduct): NormalizedProduct {
+  if ("id" in product) {
     return {
-      id: p.id,
-      name: p.name,
-      brand: p.brand,
-      slug: p.slug,
-      price: p.price,
-      compareAtPrice: p.compareAtPrice,
-      hasVariants: p.hasVariants,
-      inStock: p.inStock,
-      stock: p.stock,
-      categorySlug: p.category.slug,
-      imageUrl: p.primaryImage ? p.primaryImage.url : null,
-      imageAlt: p.primaryImage ? p.primaryImage.alt : null,
-    };
-  } else {
-    // Mock Product — no numeric id from the backend, so it cannot be wishlisted.
-    return {
-      id: null,
-      name: p.name,
-      brand: null,
-      slug: p.slug,
-      price: p.price,
-      compareAtPrice: p.originalPrice > p.price ? p.originalPrice : null,
-      hasVariants: false,
-      inStock: true,
-      stock: 10,
-      categorySlug: p.category.toLowerCase().replace(/\s+/g, "-"),
-      imageUrl: MOCK_IMAGES[p.category] || null,
-      imageAlt: p.imageLabel,
+      id: product.id,
+      name: product.name,
+      brand: product.brand,
+      slug: product.slug,
+      price: product.price,
+      compareAtPrice: product.compareAtPrice,
+      hasVariants: product.hasVariants,
+      available: !(("available" in product) && product.available === false),
+      inStock: product.inStock && product.stock > 0,
+      categoryName: product.category.name,
+      categorySlug: product.category.slug,
+      imageUrl: product.primaryImage?.url ?? null,
+      imageAlt: product.primaryImage?.alt ?? null,
     };
   }
+
+  return {
+    id: null,
+    name: product.name,
+    brand: null,
+    slug: product.slug,
+    price: product.price,
+    compareAtPrice: product.originalPrice > product.price ? product.originalPrice : null,
+    hasVariants: false,
+    available: true,
+    inStock: null,
+    categoryName: product.category,
+    categorySlug: product.category.toLowerCase().replace(/\s+/g, "-"),
+    imageUrl: null,
+    imageAlt: product.imageLabel,
+  };
 }
 
 export function ProductCard({ product }: { product: ProductListItem | MockProduct }) {
   const normalized = normalizeProduct(product);
-  const isOutOfStock = !normalized.inStock || normalized.stock === 0;
-  const [imageError, setImageError] = useState(false);
   const router = useRouter();
   const { status } = useCustomerAuth();
+  const { add: addToCart } = useCart();
   const { isWishlisted, isPending, add, remove } = useWishlist();
+  const [imageError, setImageError] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const productId = normalized.id;
   const wishlisted = productId !== null && isWishlisted(productId);
   const wishlistPending = productId !== null && isPending(productId);
+  const price = typeof normalized.price === "number" ? normalized.price : Number.parseFloat(normalized.price);
+  const compareAtPrice = normalized.compareAtPrice == null
+    ? null
+    : typeof normalized.compareAtPrice === "number"
+      ? normalized.compareAtPrice
+      : Number.parseFloat(normalized.compareAtPrice);
+  const discount = Number.isFinite(price) ? discountPercent(price, Number.isFinite(compareAtPrice) ? compareAtPrice : null) : null;
+  const unavailable = !normalized.available || normalized.inStock === false;
+  const productHref = `/products/${normalized.slug}`;
+  const tone = TONES[normalized.categorySlug] ?? "peach";
 
-  const handleWishlistClick = (e: MouseEvent<HTMLButtonElement>) => {
-    // The whole card is a Link to the Product Detail route — stop the heart
-    // click from also triggering that navigation.
-    e.preventDefault();
-    e.stopPropagation();
-
+  const handleWishlistClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
     if (productId === null || wishlistPending) return;
 
     if (status !== "authenticated") {
@@ -117,95 +113,151 @@ export function ProductCard({ product }: { product: ProductListItem | MockProduc
       return;
     }
 
-    if (wishlisted) {
-      void remove(productId);
-    } else {
-      void add(productId);
+    void (wishlisted ? remove(productId) : add(productId));
+  };
+
+  const handleAddToCart = async () => {
+    if (productId === null || unavailable || normalized.hasVariants || adding) return;
+    setAdding(true);
+    setAddError(null);
+    try {
+      await addToCart(productId, 1);
+    } catch {
+      setAddError("Unable to add this product to your cart.");
+    } finally {
+      setAdding(false);
     }
   };
 
-  // Safe decimal comparison via paise
-  const priceVal = Math.round((typeof normalized.price === "number" ? normalized.price : parseFloat(normalized.price)) * 100);
-  const compareVal = normalized.compareAtPrice
-    ? Math.round((typeof normalized.compareAtPrice === "number" ? normalized.compareAtPrice : parseFloat(normalized.compareAtPrice)) * 100)
-    : 0;
-  const hasDiscount = normalized.compareAtPrice !== null && compareVal > priceVal;
-
-  const cardSurfaceClass = CARD_SURFACES[normalized.categorySlug] || "bg-[#FFF8EF]";
-  const tone = TONES[normalized.categorySlug] || "peach";
-
   return (
-    <Link href={`/products/${normalized.slug}`} className="group block focus:outline-none">
-      <article className="overflow-hidden rounded-[26px] bg-[#FFF8EF] shadow-[0_10px_22px_rgba(88,51,29,0.04)] transition-transform duration-200 group-hover:-translate-y-1">
-        <div className="relative aspect-square overflow-hidden bg-white">
+    <article className="group/card flex h-full min-w-0 flex-col overflow-hidden rounded-[24px] border border-deep-brown/15 bg-white shadow-[0_10px_30px_rgba(88,51,29,0.06)] transition-[box-shadow,transform,border-color] duration-150 hover:-translate-y-1 hover:border-deep-brown/20 hover:shadow-[0_18px_40px_rgba(88,51,29,0.12)]">
+      <div className="relative aspect-square overflow-hidden rounded-t-[24px] bg-[#F8F0E6] sm:aspect-[4/3]">
+        <Link
+          href={productHref}
+          className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-deep-brown/50"
+          aria-label={normalized.name}
+        >
           {normalized.imageUrl && !imageError ? (
             <Image
               src={normalized.imageUrl}
               alt={normalized.imageAlt || normalized.name}
               fill
-              sizes="(min-width: 1024px) 20vw, (min-width: 640px) 45vw, 100vw"
-              className="object-cover"
+              sizes="(min-width: 1280px) 25vw, (min-width: 640px) 45vw, 50vw"
+              className="object-contain p-3 transition-transform duration-150 ease-out group-hover/card:scale-[1.045] sm:p-5"
               onError={() => setImageError(true)}
             />
           ) : (
             <ProductImagePlaceholder label={normalized.name} tone={tone} className="absolute inset-0 h-full w-full" />
           )}
+        </Link>
 
-          {isOutOfStock && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-              <span className="rounded-full bg-white/90 px-4 py-2 text-xs font-bold uppercase tracking-wider text-text-primary">
-                Out of Stock
-              </span>
-            </div>
-          )}
+        {discount !== null && (
+          <span className="absolute left-3 top-3 rounded-full bg-terracotta px-2.5 py-1 text-[11px] font-bold text-white shadow-sm sm:left-4 sm:top-4 sm:px-3 sm:py-1.5 sm:text-xs">
+            -{discount}%
+          </span>
+        )}
+        <button
+          type="button"
+          aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          title={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          aria-pressed={wishlisted}
+          disabled={wishlistPending}
+          onClick={handleWishlistClick}
+          className={`absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-deep-brown/10 bg-white/95 shadow-sm transition-colors duration-150 hover:border-deep-brown/25 hover:bg-cream-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:opacity-50 sm:right-4 sm:top-4 ${
+            wishlisted ? "text-terracotta" : "text-text-primary"
+          }`}
+        >
+          <HeartIcon width={19} height={19} fill={wishlisted ? "currentColor" : "none"} />
+        </button>
+      </div>
 
-          <button
-            type="button"
-            aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-            title={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-            aria-pressed={wishlisted}
-            disabled={wishlistPending}
-            className={`absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center transition-opacity duration-150 hover:opacity-60 disabled:opacity-50 ${
-              wishlisted ? "text-terracotta" : "text-text-primary"
-            }`}
-            onClick={handleWishlistClick}
+      <div className="flex flex-1 flex-col p-3.5 sm:p-5">
+        <p className="min-h-4 text-[10px] font-bold uppercase tracking-[0.1em] text-terracotta sm:text-[11px]">
+          {normalized.categoryName}
+        </p>
+        {normalized.brand && (
+          <p className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-text-primary/50 sm:text-[11px]">
+            {normalized.brand}
+          </p>
+        )}
+        <h3 className="mt-1.5 min-h-[2.8rem] sm:mt-2 sm:min-h-[3.1rem]">
+          <Link
+            href={productHref}
+            className="line-clamp-2 text-base font-bold leading-[1.28] text-text-primary transition-colors duration-150 hover:text-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 sm:text-[1.2rem]"
           >
-            <HeartIcon width={19} height={19} fill={wishlisted ? "currentColor" : "none"} />
-          </button>
+            {normalized.name}
+          </Link>
+        </h3>
+
+        <div className="mt-1.5 min-h-5 sm:mt-2">
+          {productId !== null && (
+            <ProductRatingBadge productId={productId} href={`${productHref}#product-reviews`} compact />
+          )}
         </div>
 
-        <div className={`${cardSurfaceClass} min-h-[143px] p-5 transition-colors duration-200`}>
-          <div className="flex flex-col justify-between h-full">
-            <div>
-              {normalized.brand && (
-                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-text-primary/50">
-                  {normalized.brand}
-                </p>
-              )}
-              <h3
-                className="min-h-[3rem] text-[1.2rem] leading-[1.15] text-text-primary"
-                style={{ fontFamily: "var(--font-display-italic)" }}
-              >
-                {normalized.name}
-              </h3>
-            </div>
-
-            <div className="mt-3 flex items-baseline gap-2">
-              <span
-                className="text-[1.2rem] leading-none text-text-primary"
-                style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}
-              >
-                {normalized.hasVariants ? "From " : ""}₹{formatPrice(normalized.price)}
-              </span>
-              {hasDiscount && normalized.compareAtPrice && (
-                <span className="text-sm text-text-primary/55 line-through">
-                  ₹{formatPrice(normalized.compareAtPrice)}
-                </span>
-              )}
-            </div>
-          </div>
+        <div className="mt-2 flex min-h-8 flex-wrap items-baseline gap-x-1.5 gap-y-1 sm:mt-3 sm:gap-x-2">
+          <span className="text-[1.2rem] font-bold leading-none text-text-primary sm:text-[1.45rem]">
+            {normalized.hasVariants ? "From ₹" : "₹"}{formatPrice(normalized.price)}
+          </span>
+          {normalized.compareAtPrice != null && discount !== null && (
+            <span className="text-xs text-text-primary/50 line-through sm:text-base">
+              ₹{formatPrice(normalized.compareAtPrice)}
+            </span>
+          )}
         </div>
-      </article>
-    </Link>
+
+        <div className="mt-2 min-h-5 text-xs font-semibold sm:mt-3 sm:text-sm">
+          {normalized.inStock === false ? (
+            <span className="inline-flex items-center gap-1.5 text-terracotta">
+              <span className="h-1.5 w-1.5 rounded-full bg-terracotta" aria-hidden="true" />
+              Out of Stock
+            </span>
+          ) : !normalized.available ? (
+            <span className="inline-flex items-center gap-1.5 text-terracotta">
+              <span className="h-1.5 w-1.5 rounded-full bg-terracotta" aria-hidden="true" />
+              Unavailable
+            </span>
+          ) : normalized.inStock === true ? (
+            <span className="inline-flex items-center gap-1.5 text-emerald-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
+              In Stock
+            </span>
+          ) : normalized.inStock === false ? (
+            <span className="inline-flex items-center gap-1.5 text-terracotta">
+              <span className="h-1.5 w-1.5 rounded-full bg-terracotta" aria-hidden="true" />
+              Out of Stock
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-auto pt-3 sm:pt-5">
+          {productId === null ? (
+            <Link
+              href={productHref}
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-deep-brown px-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 sm:h-12 sm:px-4 sm:text-sm"
+            >
+              View Product
+            </Link>
+          ) : normalized.hasVariants ? (
+            <Link
+              href={productHref}
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary-orange px-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 sm:h-12 sm:px-4 sm:text-sm"
+            >
+              Choose Options
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled={unavailable || adding}
+              onClick={handleAddToCart}
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary-orange px-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-terracotta disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-primary-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 sm:h-12 sm:px-4 sm:text-sm"
+            >
+              {normalized.inStock === false ? "Out of Stock" : !normalized.available ? "Unavailable" : adding ? "Adding..." : "Add to Cart"}
+            </button>
+          )}
+          {addError && <p className="mt-2 text-xs text-terracotta sm:text-sm" role="alert">{addError}</p>}
+        </div>
+      </div>
+    </article>
   );
 }

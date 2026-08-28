@@ -187,6 +187,11 @@ function setupMockFetch(customHandler?: (url: string, init?: RequestInit) => Pro
   return fetchMock;
 }
 
+// The PDP renders two Add to Cart surfaces: the desktop purchase panel and the
+// mobile bottom-sticky bar (`md:hidden`). jsdom applies no CSS, so both are in
+// the tree during tests — scope panel-specific queries so they stay unambiguous.
+const inPanel = () => within(screen.getByTestId("pdp-purchase-panel"));
+
 function renderProductDetail(product: ProductDetail) {
   return render(
     <CustomerAuthProvider>
@@ -239,8 +244,8 @@ describe("ProductDetail Storefront Component", () => {
 
     expect(screen.getByRole("heading", { name: "Comfort Dog Collar" })).toBeInTheDocument();
     expect(screen.getByText("Comfy Co")).toBeInTheDocument();
-    expect(screen.getByText("₹499")).toBeInTheDocument();
-    expect(screen.getByText("₹599")).toBeInTheDocument(); // compare price
+    expect(inPanel().getByText("₹499")).toBeInTheDocument();
+    expect(inPanel().getByText("₹599")).toBeInTheDocument(); // compare price
     expect(screen.getByText("COLLAR-SIMPLE")).toBeInTheDocument();
     expect(screen.getByText(/A super comfortable dog collar\./)).toBeInTheDocument();
     expect(screen.getByLabelText("Product tags")).toHaveTextContent("#collar");
@@ -254,10 +259,10 @@ describe("ProductDetail Storefront Component", () => {
     renderProductDetail(mockVariantProduct);
 
     expect(screen.getByRole("heading", { name: "Premium Dog Food" })).toBeInTheDocument();
-    expect(screen.getByText("From ₹899")).toBeInTheDocument();
+    expect(inPanel().getByText("From ₹899")).toBeInTheDocument();
     expect(screen.getByText("Choose an option below to view availability.")).toBeInTheDocument();
 
-    const addToCartButton = screen.getByRole("button", { name: /Add to Cart/i });
+    const addToCartButton = inPanel().getByRole("button", { name: /Add to Cart/i });
     expect(addToCartButton).toBeDisabled();
   });
 
@@ -273,12 +278,12 @@ describe("ProductDetail Storefront Component", () => {
 
     // Select 3kg Pack
     fireEvent.click(variantBtn1);
-    expect(screen.getByText("₹899")).toBeInTheDocument();
-    expect(screen.getByText("₹999")).toBeInTheDocument(); // compare price for 3kg
+    expect(inPanel().getByText("₹899")).toBeInTheDocument();
+    expect(inPanel().getByText("₹999")).toBeInTheDocument(); // compare price for 3kg
 
     // Select 10kg Pack
     fireEvent.click(variantBtn2);
-    expect(screen.getByText("₹2,499")).toBeInTheDocument();
+    expect(inPanel().getByText("₹2,499")).toBeInTheDocument();
     expect(screen.queryByText("₹999")).not.toBeInTheDocument();
   });
 
@@ -302,7 +307,7 @@ describe("ProductDetail Storefront Component", () => {
 
     renderProductDetail(mockSimpleProduct);
 
-    const addToCartButton = screen.getByRole("button", { name: /Add to Cart/i });
+    const addToCartButton = inPanel().getByRole("button", { name: /Add to Cart/i });
     fireEvent.click(addToCartButton);
 
     await waitFor(() => {
@@ -330,7 +335,7 @@ describe("ProductDetail Storefront Component", () => {
     const variantBtn = screen.getByRole("button", { name: "10kg Pack" });
     fireEvent.click(variantBtn);
 
-    const addToCartButton = screen.getByRole("button", { name: /Add to Cart/i });
+    const addToCartButton = inPanel().getByRole("button", { name: /Add to Cart/i });
     fireEvent.click(addToCartButton);
 
     await waitFor(() => {
@@ -359,13 +364,13 @@ describe("ProductDetail Storefront Component", () => {
     const variantBtn = screen.getByRole("button", { name: "3kg Pack" });
     fireEvent.click(variantBtn);
 
-    const plusBtn = screen.getByRole("button", { name: "Increase quantity" });
+    const plusBtn = inPanel().getByRole("button", { name: "Increase quantity" });
 
     // Click plus 4 times
     for (let i = 0; i < 4; i++) {
       fireEvent.click(plusBtn);
     }
-    expect(screen.getByText("5")).toBeInTheDocument();
+    expect(inPanel().getByText("5")).toBeInTheDocument();
     expect(plusBtn).toBeDisabled();
   });
 
@@ -380,7 +385,7 @@ describe("ProductDetail Storefront Component", () => {
     const variantBtn = screen.getByRole("button", { name: "10kg Pack" });
     fireEvent.click(variantBtn);
 
-    const plusBtn = screen.getByRole("button", { name: "Increase quantity" }) as HTMLButtonElement;
+    const plusBtn = inPanel().getByRole("button", { name: "Increase quantity" }) as HTMLButtonElement;
 
     // Click plus 20 times (or more)
     for (let i = 0; i < 25; i++) {
@@ -388,7 +393,7 @@ describe("ProductDetail Storefront Component", () => {
         fireEvent.click(plusBtn);
       }
     }
-    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(inPanel().getByText("20")).toBeInTheDocument();
     expect(plusBtn).toBeDisabled();
   });
 
@@ -401,9 +406,9 @@ describe("ProductDetail Storefront Component", () => {
     renderProductDetail(oosProduct);
 
     expect(screen.getAllByText("Out of Stock").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Increase quantity" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Decrease quantity" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: /Add to Cart/i })).toBeDisabled();
+    expect(inPanel().getByRole("button", { name: "Increase quantity" })).toBeDisabled();
+    expect(inPanel().getByRole("button", { name: "Decrease quantity" })).toBeDisabled();
+    expect(inPanel().getByRole("button", { name: /Add to Cart/i })).toBeDisabled();
   });
 
   it("10. Zero variants shows product unavailable", async () => {
@@ -515,7 +520,7 @@ describe("ProductDetail Storefront Component", () => {
 
     renderProductDetail(mockSimpleProduct);
 
-    const addToCartButton = screen.getByRole("button", { name: /Add to Cart/i });
+    const addToCartButton = inPanel().getByRole("button", { name: /Add to Cart/i });
     fireEvent.click(addToCartButton);
 
     await waitFor(() => {
@@ -546,7 +551,7 @@ describe("ProductDetail Storefront Component", () => {
 
     renderProductDetail(mockSimpleProduct);
 
-    const addToCartButton = screen.getByRole("button", { name: /Add to Cart/i });
+    const addToCartButton = inPanel().getByRole("button", { name: /Add to Cart/i });
     fireEvent.click(addToCartButton);
 
     await waitFor(() => {
@@ -1198,7 +1203,7 @@ describe("ProductDetail Storefront Component", () => {
       ],
     });
 
-    const video = view.container.querySelector("video")!;
+    const video = view.container.querySelector('video[src="https://r2.example.com/demo.mp4"]')!;
     expect(video).toHaveAttribute("controls");
     expect(video).toHaveAttribute("playsinline");
     expect(video).toHaveAttribute("preload", "metadata");
@@ -1437,7 +1442,7 @@ describe("ProductDetail Storefront Component", () => {
 
     expect(screen.getByText("Key Features")).toBeInTheDocument();
     expect(screen.getAllByText("Specifications").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: /Add to Cart/i })).toBeInTheDocument();
+    expect(inPanel().getByRole("button", { name: /Add to Cart/i })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: mockSimpleProduct.images[0]!.alt })).toBeInTheDocument();
   });
 
@@ -1482,9 +1487,10 @@ describe("ProductDetail Storefront Component", () => {
 
       renderProductDetail({ ...mockSimpleProduct, relatedProducts: relatedItems });
 
-      expect(screen.getByRole("heading", { name: "You may also like." })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: /Rugged Dog Leash/ })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: /Padded Dog Harness/ })).toBeInTheDocument();
+      const relatedSection = screen.getByRole("heading", { name: "You may also like." }).closest("section")!;
+      expect(relatedSection).toBeInTheDocument();
+      expect(within(relatedSection).getAllByRole("link", { name: /Rugged Dog Leash/ }).length).toBeGreaterThan(0);
+      expect(within(relatedSection).getAllByRole("link", { name: /Padded Dog Harness/ }).length).toBeGreaterThan(0);
     });
 
     it("59. Related Product cards show name, price, and a discount when compareAtPrice is set", async () => {
@@ -1494,10 +1500,10 @@ describe("ProductDetail Storefront Component", () => {
 
       renderProductDetail({ ...mockSimpleProduct, relatedProducts: relatedItems });
 
-      const harnessLink = screen.getByRole("link", { name: /Padded Dog Harness/ });
-      expect(within(harnessLink).getByText("₹799")).toBeInTheDocument();
-      expect(within(harnessLink).getByText("₹999")).toBeInTheDocument();
-      expect(harnessLink).toHaveAttribute("href", "/products/padded-dog-harness");
+      const harnessCard = screen.getByRole("heading", { name: "Padded Dog Harness" }).closest("article")!;
+      expect(within(harnessCard).getByText("₹799")).toBeInTheDocument();
+      expect(within(harnessCard).getByText("₹999")).toBeInTheDocument();
+      expect(within(harnessCard).getAllByRole("link", { name: /Padded Dog Harness/ })[0]).toHaveAttribute("href", "/products/padded-dog-harness");
     });
 
     it("60. never renders the current Product itself inside Related Products", async () => {
@@ -1530,8 +1536,154 @@ describe("ProductDetail Storefront Component", () => {
       renderProductDetail({ ...mockSimpleProduct, relatedProducts: relatedItems });
 
       expect(screen.getByRole("heading", { name: "Comfort Dog Collar" })).toBeInTheDocument();
-      expect(screen.getByText("₹499")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Add to Cart/i })).toBeInTheDocument();
+      expect(inPanel().getByText("₹499")).toBeInTheDocument();
+      expect(inPanel().getByRole("button", { name: /Add to Cart/i })).toBeInTheDocument();
+    });
+  });
+
+  describe("Mobile sticky Add to Cart bar", () => {
+    const inStickyBar = () => within(screen.getByTestId("pdp-sticky-cta"));
+
+    it("63. renders a sticky Add to Cart bar mirroring the desktop panel action", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail(mockSimpleProduct);
+
+      const bar = screen.getByTestId("pdp-sticky-cta");
+      expect(bar).toHaveClass("md:hidden"); // hidden from the md breakpoint up
+      expect(bar).toHaveClass("fixed");
+      expect(inStickyBar().getByRole("button", { name: /Add to Cart/i })).toBeEnabled();
+    });
+
+    it("64. sticky Add to Cart calls the same cart action and payload as the panel", async () => {
+      const fetchMock = setupMockFetch(async (url, init) => {
+        if (url.includes("/auth/refresh") || url.includes("/auth/me")) {
+          return jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401);
+        }
+        if (url.includes("/storefront/cart/items") && init?.method === "POST") {
+          return jsonResponse({ success: true, data: { id: 7, status: "active", itemCount: 1, subtotal: "499.00", items: [] } });
+        }
+        return undefined;
+      });
+
+      renderProductDetail(mockSimpleProduct);
+
+      fireEvent.click(inStickyBar().getByRole("button", { name: /Add to Cart/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Added to cart successfully!")).toBeInTheDocument();
+      });
+
+      const cartPosts = fetchMock.mock.calls.filter(
+        (call) => call[0].toString().includes("/storefront/cart/items") && call[1]?.method === "POST"
+      );
+      expect(cartPosts).toHaveLength(1); // no duplicate cart request
+      expect(JSON.parse(cartPosts[0]![1]!.body as string)).toEqual({ productId: 101, quantity: 1 });
+      expect(inStickyBar().getByRole("button", { name: /Added to Cart/i })).toBeInTheDocument();
+    });
+
+    it("65. sticky bar shows the existing loading treatment while a request is in flight", async () => {
+      let resolveAdd: (v: unknown) => void = () => {};
+      setupMockFetch(async (url, init) => {
+        if (url.includes("/auth/refresh") || url.includes("/auth/me")) {
+          return jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401);
+        }
+        if (url.includes("/storefront/cart/items") && init?.method === "POST") {
+          return new Promise((resolve) => {
+            resolveAdd = resolve;
+          });
+        }
+        return undefined;
+      });
+
+      renderProductDetail(mockSimpleProduct);
+
+      const stickyButton = inStickyBar().getByRole("button", { name: /Add to Cart/i });
+      fireEvent.click(stickyButton);
+
+      await waitFor(() => {
+        expect(inStickyBar().getByRole("button", { name: /Adding\.\.\./i })).toBeDisabled();
+      });
+
+      await act(async () => {
+        resolveAdd(jsonResponse({ success: true, data: { id: 7, status: "active", itemCount: 1, subtotal: "499.00", items: [] } }));
+      });
+    });
+
+    it("66. sticky bar reflects the out-of-stock state with the existing wording", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail({ ...mockSimpleProduct, stock: 0 });
+
+      expect(inStickyBar().getByRole("button", { name: /Out of Stock/i })).toBeDisabled();
+      expect(inStickyBar().getByRole("button", { name: "Decrease quantity" })).toBeDisabled();
+      expect(inStickyBar().getByRole("button", { name: "Increase quantity" })).toBeDisabled();
+    });
+
+    it("66b. sticky Add to Cart shows the product's real current price", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail(mockSimpleProduct); // price "499.00", compareAtPrice "599.00"
+
+      const stickyButton = inStickyBar().getByRole("button", { name: /Add to Cart/i });
+      // Price is rendered in the bar and announced in the button's accessible name.
+      expect(stickyButton).toHaveAccessibleName(/₹499/);
+      expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("₹499")).toBeInTheDocument();
+      expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("₹599")).toBeInTheDocument(); // struck-through compare price
+    });
+
+    it("66c. sticky price follows the selected variant and starts with a 'From' hint", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail(mockVariantProduct); // 3kg Pack "899.00", 10kg Pack "2499.00"
+
+      // Before a variant is chosen the bar shows the starting price.
+      expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("From ₹899")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "10kg Pack" }));
+
+      expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("₹2,499")).toBeInTheDocument();
+      expect(within(screen.getByTestId("pdp-sticky-cta")).queryByText("From ₹899")).not.toBeInTheDocument();
+      expect(inStickyBar().getByRole("button", { name: /Add to Cart/i })).toHaveAccessibleName(/₹2,499/);
+    });
+
+    it("67. sticky bar does not bypass variant selection validation", async () => {
+      const fetchMock = setupMockFetch(async (url) => {
+        if (url.includes("/auth/refresh") || url.includes("/auth/me")) {
+          return jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401);
+        }
+        return undefined;
+      });
+
+      renderProductDetail(mockVariantProduct);
+
+      const stickyButton = inStickyBar().getByRole("button", { name: /Select an option/i });
+      expect(stickyButton).toBeDisabled();
+      fireEvent.click(stickyButton);
+      expect(
+        fetchMock.mock.calls.some((call) => call[0].toString().includes("/storefront/cart/items"))
+      ).toBe(false);
+
+      fireEvent.click(screen.getByRole("button", { name: "3kg Pack" }));
+      expect(inStickyBar().getByRole("button", { name: /Add to Cart/i })).toBeEnabled();
+    });
+
+    it("68. no sticky bar when a variant product has no purchasable options", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail({ ...mockVariantProduct, variants: [] });
+
+      expect(screen.queryByTestId("pdp-sticky-cta")).not.toBeInTheDocument();
     });
   });
 });

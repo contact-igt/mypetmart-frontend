@@ -147,14 +147,14 @@ export function GuestOrderClient({ token }: { token: string }) {
 
       {/* Bookmark reminder — this link is the only way back to this page */}
       <div className="rounded-2xl border border-primary-orange/30 bg-peach-hero/20 p-4 text-xs font-semibold text-deep-brown">
-        📌 Save or bookmark this page&apos;s link — it&apos;s the only way to check this order&apos;s status later.
+        Save or bookmark this page&apos;s link — it&apos;s the only way to check this order&apos;s status later.
       </div>
 
       {/* Pending Order Status Banner (No payment action) */}
       {isPendingOrder && (
         <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-5 text-deep-brown space-y-3">
           <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm uppercase tracking-wider">
-            <span>📌 Order Pending Payment</span>
+            <span>Order Pending Payment</span>
           </div>
           <p className="text-xs font-medium text-amber-900/90 leading-relaxed">
             {canPay

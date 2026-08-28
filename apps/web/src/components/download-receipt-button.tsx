@@ -43,7 +43,7 @@ export function DownloadReceiptButton({
         type="button"
         onClick={handleClick}
         disabled={state === "loading"}
-        className="inline-flex items-center justify-center rounded-xl border border-deep-brown/20 bg-cream-bg px-4 py-2 text-xs font-bold text-deep-brown hover:bg-primary-orange hover:text-white hover:border-primary-orange transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex min-h-11 items-center justify-center rounded-xl border border-deep-brown/20 bg-cream-bg px-4 py-2 text-xs font-bold text-deep-brown transition-all hover:border-primary-orange hover:bg-primary-orange hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {state === "loading" ? "Preparing..." : "Download Receipt"}
       </button>

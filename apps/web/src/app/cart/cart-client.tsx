@@ -128,7 +128,7 @@ export function CartClient() {
           <button
             type="button"
             onClick={handleRetry}
-            className="motion-press px-5 py-2.5 bg-primary-orange text-white rounded-xl text-sm font-semibold hover:bg-terracotta transition-colors"
+            className="motion-press inline-flex min-h-11 items-center justify-center px-5 py-2.5 bg-primary-orange text-white rounded-xl text-sm font-semibold hover:bg-terracotta transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
           >
             Retry Loading
           </button>
@@ -141,7 +141,13 @@ export function CartClient() {
     return (
       <div className="site-container py-16 text-center" aria-live="polite">
         <div className="motion-enter max-w-md mx-auto rounded-3xl bg-white border border-border-subtle p-10 shadow-[0_8px_20px_rgba(88,51,29,0.02)]">
-          <span className="text-4xl block mb-4">🛒</span>
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-peach-hero/40 text-primary-orange">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="9" cy="21" r="1" />
+              <circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+            </svg>
+          </div>
           <h1
             className="text-2xl text-text-primary leading-tight font-medium mb-3"
             style={{ fontFamily: "var(--font-display-italic)" }}
@@ -181,12 +187,12 @@ export function CartClient() {
           <div className="text-sm text-text-primary leading-relaxed">
             {mergeReport.adjustedItems.length > 0 && (
               <p className="font-semibold text-primary-orange">
-                ✓ Some quantities were adjusted to available stock.
+                Some quantities were adjusted to available stock.
               </p>
             )}
             {mergeReport.skippedItems.length > 0 && (
               <p className="text-text-muted mt-1">
-                ✓ Some items in your guest cart could no longer be added.
+                Some items in your guest cart could no longer be added.
               </p>
             )}
           </div>
@@ -260,7 +266,7 @@ export function CartClient() {
                         onClick={() => handleRemove(item.cartItemId)}
                         disabled={isRemoving || isUpdating || isClearing}
                         aria-label={`Remove ${item.productName}`}
-                        className="text-xs font-bold text-terracotta/70 hover:text-terracotta hover:underline transition-all cursor-pointer shrink-0 disabled:opacity-50"
+                        className="-mr-1 -mt-1 inline-flex min-h-9 shrink-0 items-center px-1 text-xs font-bold text-terracotta/70 transition-all hover:text-terracotta hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/40 disabled:opacity-50"
                       >
                         Remove
                       </button>
@@ -318,7 +324,7 @@ export function CartClient() {
                 {/* Controls (Quantity + subtotal) */}
                 <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 shrink-0 sm:min-w-[120px] border-t sm:border-t-0 border-border-subtle pt-3 sm:pt-0">
                   {/* Quantity selector */}
-                  <div className="flex items-center justify-between border border-border-subtle rounded-xl bg-[#FFF8EF] p-1 h-10 w-28 shrink-0">
+                  <div className="flex items-center justify-between border border-border-subtle rounded-xl bg-[#FFF8EF] p-1 h-11 w-32 shrink-0">
                     <button
                       type="button"
                       onClick={() =>
@@ -337,11 +343,11 @@ export function CartClient() {
                         item.quantity <= 1
                       }
                       aria-label={`Decrease quantity of ${item.productName}`}
-                      className="w-8 h-8 inline-flex items-center justify-center text-text-primary hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer font-bold transition-colors"
+                      className="w-9 h-9 inline-flex items-center justify-center text-text-primary hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
                     >
                       -
                     </button>
-                    <span className="w-8 text-center text-xs font-bold text-text-primary" aria-live="polite">
+                    <span className="w-10 text-center text-sm font-bold text-text-primary" aria-live="polite">
                       {item.quantity}
                     </span>
                     <button
@@ -363,7 +369,7 @@ export function CartClient() {
                         item.quantity >= 20
                       }
                       aria-label={`Increase quantity of ${item.productName}`}
-                      className="w-8 h-8 inline-flex items-center justify-center text-text-primary hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer font-bold transition-colors"
+                      className="w-9 h-9 inline-flex items-center justify-center text-text-primary hover:bg-white rounded-lg disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
                     >
                       +
                     </button>
@@ -427,7 +433,7 @@ export function CartClient() {
 
           {hasUnavailableItems && (
             <p className="mt-4 text-xs font-semibold text-terracotta leading-relaxed">
-              ⚠️ Please remove or update any unavailable items before proceeding.
+              Please remove or update any unavailable items before proceeding.
             </p>
           )}
         </div>

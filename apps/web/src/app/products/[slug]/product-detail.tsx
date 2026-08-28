@@ -11,6 +11,7 @@ import { ProductReviewsSection } from "@/components/product-reviews-section";
 import { ProductCard } from "@/components/product-card";
 import { PdpGallery } from "@/components/pdp/pdp-gallery";
 import { PdpPurchasePanel } from "@/components/pdp/pdp-purchase-panel";
+import { PdpStickyCta } from "@/components/pdp/pdp-sticky-cta";
 import { PdpFeaturesGrid } from "@/components/pdp/pdp-features-grid";
 import { PdpInfoTabs } from "@/components/pdp/pdp-info-tabs";
 import { PdpFaqAccordion } from "@/components/pdp/pdp-faq-accordion";
@@ -62,6 +63,87 @@ const PRODUCT_MEDIA: Record<string, ProductMedia[]> = {
   "dog-anti-slip-pads": PAW_PAD_MEDIA,
   "dog-anti-slip-paw-pads": PAW_PAD_MEDIA,
 };
+
+function PdpContentBlocks({ product, blocks }: { product: ProductDetail; blocks: ProductDetail["contentBlocks"] }) {
+  if (blocks.length === 0) return null;
+
+  return (
+    <section className="mt-20 flex flex-col gap-8 sm:mt-24" aria-labelledby="product-content-heading">
+      <h2 id="product-content-heading" className="sr-only">More about this product</h2>
+      {blocks.map((block, index) => {
+        const hasMedia = Boolean(block.media);
+        const hasText = Boolean(block.heading || block.description);
+        const mediaEl = block.media ? (
+          block.media.mediaType === "video" ? (
+            <video
+              src={block.media.publicUrl}
+              controls
+              playsInline
+              preload="metadata"
+              aria-label={block.media.title || block.heading || "Product content video"}
+              className="aspect-video w-full rounded-[22px] bg-deep-brown object-contain"
+            >
+              Your browser does not support video playback.
+            </video>
+          ) : (
+            <div className="relative aspect-video w-full overflow-hidden rounded-[22px] border border-border-subtle bg-[#FFF8EF]">
+              <Image
+                src={block.media.publicUrl}
+                alt={block.media.title || block.heading || product.name}
+                fill
+                loading="lazy"
+                sizes="(min-width: 1024px) 50vw, 100vw"
+                className="object-cover"
+              />
+            </div>
+          )
+        ) : null;
+        const textEl = hasText ? (
+          <div className="flex flex-col justify-center gap-3">
+            {block.heading && (
+              <h3
+                className="text-2xl font-medium text-text-primary sm:text-3xl"
+                style={{ fontFamily: "var(--font-display-italic)" }}
+              >
+                {block.heading}
+              </h3>
+            )}
+            {block.description && (
+              <p className="text-text-muted text-sm leading-relaxed whitespace-pre-line">
+                {block.description}
+              </p>
+            )}
+          </div>
+        ) : null;
+
+        if (!hasMedia || !hasText || block.layout === "media_full") {
+          return (
+            <div key={index} className="flex flex-col gap-6 rounded-[28px] border border-deep-brown/10 bg-white p-4 sm:p-6">
+              {mediaEl}
+              {textEl}
+            </div>
+          );
+        }
+
+        return (
+          <div key={index} className="grid grid-cols-1 gap-6 rounded-[28px] border border-deep-brown/10 bg-white p-4 sm:p-6 lg:grid-cols-2 lg:items-center">
+            {block.layout === "media_right" ? (
+              <>
+                <div className="order-2 lg:order-1">{textEl}</div>
+                <div className="order-1 lg:order-2">{mediaEl}</div>
+              </>
+            ) : (
+              <>
+                <div className="order-1">{mediaEl}</div>
+                <div className="order-2">{textEl}</div>
+              </>
+            )}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
 
 // Deterministic (no Math.random/Date — must match between server and client
 // render) rotation through the shared testimonial pool, so each product page
@@ -261,7 +343,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
   };
 
   return (
-    <div className="site-container pb-20 pt-5 sm:pt-7 lg:pb-28">
+    <div className="site-container pb-28 pt-5 sm:pt-7 md:pb-20 lg:pb-28">
       {/* Breadcrumb */}
       <nav className="mb-5 flex min-w-0 items-center gap-2 overflow-hidden text-xs font-semibold text-text-muted sm:mb-7 sm:text-sm" aria-label="Breadcrumb">
         <Link href="/" className="shrink-0 transition-colors hover:text-primary-orange">Home</Link>
@@ -316,102 +398,35 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
         </div>
       </section>
 
-      <PdpFeaturesGrid features={product.features} />
-
       <PdpInfoTabs product={product} selectedVariant={selectedVariant} />
 
-      <PdpFaqAccordion faqs={product.faqs} />
-
-      {activeContentBlocks.length > 0 && (
-        <section className="mt-20 flex flex-col gap-8 sm:mt-24">
-          {activeContentBlocks.map((block, index) => {
-            const hasMedia = Boolean(block.media);
-            const hasText = Boolean(block.heading || block.description);
-            const mediaEl = block.media ? (
-              block.media.mediaType === "video" ? (
-                <video
-                  src={block.media.publicUrl}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  aria-label={block.media.title || block.heading || "Product content video"}
-                  className="aspect-video w-full rounded-[22px] bg-deep-brown object-contain"
-                >
-                  Your browser does not support video playback.
-                </video>
-              ) : (
-                <div className="relative aspect-video w-full overflow-hidden rounded-[22px] border border-border-subtle bg-[#FFF8EF]">
-                  <Image
-                    src={block.media.publicUrl}
-                    alt={block.media.title || block.heading || product.name}
-                    fill
-                    loading="lazy"
-                    sizes="(min-width: 1024px) 50vw, 100vw"
-                    className="object-cover"
-                  />
-                </div>
-              )
-            ) : null;
-            const textEl = hasText ? (
-              <div className="flex flex-col justify-center gap-3">
-                {block.heading && (
-                  <h2
-                    className="text-2xl font-medium text-text-primary sm:text-3xl"
-                    style={{ fontFamily: "var(--font-display-italic)" }}
-                  >
-                    {block.heading}
-                  </h2>
-                )}
-                {block.description && (
-                  <p className="text-text-muted text-sm leading-relaxed whitespace-pre-line">
-                    {block.description}
-                  </p>
-                )}
-              </div>
-            ) : null;
-
-            // A block with only media, or only text, has nothing to position
-            // relative to — render it full-width regardless of `layout`,
-            // rather than leaving an empty grid column (see CLAUDE.md
-            // Enhanced Product Content §29/§30).
-            if (!hasMedia || !hasText) {
-              return (
-                <div key={index} className="flex flex-col gap-6 rounded-[28px] border border-deep-brown/10 bg-white p-4 sm:p-6">
-                  {mediaEl}
-                  {textEl}
-                </div>
-              );
-            }
-
-            if (block.layout === "media_full") {
-              return (
-                <div key={index} className="flex flex-col gap-6 rounded-[28px] border border-deep-brown/10 bg-white p-4 sm:p-6">
-                  {mediaEl}
-                  {textEl}
-                </div>
-              );
-            }
-
-            return (
-              <div key={index} className="grid grid-cols-1 gap-6 rounded-[28px] border border-deep-brown/10 bg-white p-4 sm:p-6 lg:grid-cols-2 lg:items-center">
-                {block.layout === "media_right" ? (
-                  <>
-                    <div className="order-2 lg:order-1">{textEl}</div>
-                    <div className="order-1 lg:order-2">{mediaEl}</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="order-1">{mediaEl}</div>
-                    <div className="order-2">{textEl}</div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </section>
-      )}
+      <PdpFeaturesGrid features={product.features} />
 
       <ProductReviewsSection productId={product.id} product={{ name: product.name, slug: product.slug, image: product.primaryImage?.url ?? null }} />
+
+      {productTestimonials.length > 0 && (testimonials === undefined ? (
+        product.testimonialVideos.length > 0 ? (
+          <section className="mt-20 sm:mt-24" aria-labelledby="product-testimonial-heading">
+            <div className="mb-7 max-w-2xl">
+              <span className="pill-label border border-deep-brown/10 bg-white text-text-primary">Customer stories</span>
+              <h2 id="product-testimonial-heading" className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl" style={{ fontFamily: "var(--font-display-italic)" }}>What pet parents say about this product.</h2>
+            </div>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {product.testimonialVideos.map((assignment) => <TestimonialVideoCard key={assignment.id} testimonial={{ id: assignment.id, mediaUrl: assignment.media.publicUrl, title: assignment.title, caption: assignment.caption }} product={legacyTestimonialProduct} variant="commerce" />)}
+            </div>
+          </section>
+        ) : (
+          <section className="mt-20 sm:mt-24" aria-labelledby="product-testimonials-heading">
+            <div className="mb-7 max-w-2xl"><span className="pill-label border border-deep-brown/10 bg-white text-text-primary">Real pet parents</span><h2 id="product-testimonials-heading" className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl" style={{ fontFamily: "var(--font-display-italic)" }}>Hear from pet parents shopping with us.</h2><p className="body-copy mt-3 text-text-muted">General customer stories from across My Pet Mart — not reviews of this specific product.</p></div>
+            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">{TESTIMONIAL_VIDEOS.slice(0, 4).map((src, index) => <PlayableVideoCard key={src} src={src} label={`Pet parent testimonial ${index + 1}`} caption="Pet parent story" />)}</div>
+          </section>
+        )
+      ) : (
+        <section className="mt-20 sm:mt-24" aria-labelledby="product-testimonial-heading">
+          <h2 id="product-testimonial-heading" className="sr-only">Customer stories</h2>
+          <TestimonialCarousel testimonials={productTestimonials} eyebrow="Customer stories" title="What pet parents say about this product." description="Real experiences from pet parents who chose this product." compact />
+        </section>
+      ))}
 
       {(hasDynamicProductVideos || showLegacyProductMedia) && (
         <section className="mt-20 sm:mt-24" aria-labelledby="product-media-heading">
@@ -490,33 +505,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
         </section>
       )}
 
-      {testimonials === undefined ? (
-        product.testimonialVideos.length > 0 ? (
-          <section className="mt-20 sm:mt-24" aria-labelledby="product-testimonial-heading">
-            <div className="mb-7 max-w-2xl">
-              <span className="pill-label border border-deep-brown/10 bg-white text-text-primary">Customer stories</span>
-              <h2 id="product-testimonial-heading" className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl" style={{ fontFamily: "var(--font-display-italic)" }}>What pet parents say about this product.</h2>
-            </div>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {product.testimonialVideos.map((assignment) => <TestimonialVideoCard key={assignment.id} testimonial={{ id: assignment.id, mediaUrl: assignment.media.publicUrl, title: assignment.title, caption: assignment.caption }} product={legacyTestimonialProduct} variant="commerce" />)}
-            </div>
-          </section>
-        ) : (
-          <section className="mt-20 sm:mt-24" aria-labelledby="product-testimonials-heading">
-            <div className="mb-7 max-w-2xl"><span className="pill-label border border-deep-brown/10 bg-white text-text-primary">Real pet parents</span><h2 id="product-testimonials-heading" className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl" style={{ fontFamily: "var(--font-display-italic)" }}>Hear from pet parents shopping with us.</h2><p className="body-copy mt-3 text-text-muted">General customer stories from across My Pet Mart — not reviews of this specific product.</p></div>
-            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">{TESTIMONIAL_VIDEOS.slice(0, 4).map((src, index) => <PlayableVideoCard key={src} src={src} label={`Pet parent testimonial ${index + 1}`} caption="Pet parent story" />)}</div>
-          </section>
-        )
-      ) : (
-        <section className="mt-20 sm:mt-24" aria-labelledby="product-testimonial-heading">
-          <h2 id="product-testimonial-heading" className="sr-only">Customer stories</h2>
-          <TestimonialCarousel testimonials={productTestimonials} eyebrow="Customer stories" title="What pet parents say about this product." description="Real experiences from pet parents who chose this product." compact />
-        </section>
-      )}
-
-      {/* FAQ section placeholder — future phase. No FAQ data exists on the
-          Product yet, so nothing renders here until a real FAQ field/API
-          ships (never fabricate placeholder Q&A copy). */}
+      <PdpFaqAccordion faqs={product.faqs} />
 
       {product.relatedProducts.length > 0 && (
         <section className="mt-20 sm:mt-24" aria-labelledby="related-products-heading">
@@ -537,6 +526,23 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
           </div>
         </section>
       )}
+
+      <PdpContentBlocks product={product} blocks={activeContentBlocks} />
+
+      <PdpStickyCta
+        product={product}
+        selectedVariant={selectedVariant}
+        quantity={quantity}
+        onMinus={handleMinus}
+        onPlus={handlePlus}
+        maxQuantity={maxQuantity}
+        isOutOfStock={isOutOfStock}
+        currentPrice={currentPrice}
+        currentComparePrice={currentComparePrice}
+        hasDiscount={hasDiscount}
+        cartStatus={cartStatus}
+        onAddToCart={handleAddToCart}
+      />
     </div>
   );
 }

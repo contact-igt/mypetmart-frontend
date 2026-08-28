@@ -39,10 +39,15 @@ export function SiteFooter() {
 
             <nav aria-label="Shop footer links">
               <h2 className="text-lg font-bold text-white">Shop</h2>
-              <ul className="mt-4 space-y-3 text-base text-white/75">
+              <ul className="mt-3 space-y-1 text-base text-white/75">
                 {SHOP_LINKS.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="transition-colors hover:text-white">{link.label}</Link>
+                    <Link
+                      href={link.href}
+                      className="-mx-2 inline-block rounded-lg px-2 py-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                    >
+                      {link.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -50,10 +55,15 @@ export function SiteFooter() {
 
             <nav aria-label="Help footer links">
               <h2 className="text-lg font-bold text-white">Help</h2>
-              <ul className="mt-4 space-y-3 text-base text-white/75">
+              <ul className="mt-3 space-y-1 text-base text-white/75">
                 {HELP_LINKS.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="transition-colors hover:text-white">{link.label}</Link>
+                    <Link
+                      href={link.href}
+                      className="-mx-2 inline-block rounded-lg px-2 py-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                    >
+                      {link.label}
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -61,10 +71,14 @@ export function SiteFooter() {
 
             <address className="not-italic">
               <h2 className="text-lg font-bold text-white">Get in touch</h2>
-              <div className="mt-4 space-y-3 text-base leading-[1.55] text-white/75">
-                <p><a href="tel:+919444025511" className="transition-colors hover:text-white">+91 94440 25511</a></p>
-                <p><a href="mailto:mypetmartstore@gmail.com" className="transition-colors hover:text-white">mypetmartstore@gmail.com</a></p>
-                <p>12A, JR Enclave, MGR Nagar,<br />Ayyapakkam, Chennai – 600077</p>
+              <div className="mt-3 space-y-1 text-base leading-[1.55] text-white/75">
+                <p>
+                  <a href="tel:+919444025511" className="-mx-2 inline-block rounded-lg px-2 py-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">+91 94440 25511</a>
+                </p>
+                <p>
+                  <a href="mailto:mypetmartstore@gmail.com" className="-mx-2 inline-block break-all rounded-lg px-2 py-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40">mypetmartstore@gmail.com</a>
+                </p>
+                <p className="pt-1">12A, JR Enclave, MGR Nagar,<br />Ayyapakkam, Chennai – 600077</p>
               </div>
             </address>
           </div>

@@ -45,9 +45,9 @@ export function AccountClient() {
   return (
     <AccountShell subtitle="Here is a quick overview of your MyPetMart account and profile.">
       {customer ? (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5 sm:gap-6">
           {/* Profile Summary Card */}
-          <div className="rounded-2xl border border-deep-brown/15 bg-white p-6 shadow-xs">
+          <div className="rounded-2xl border border-deep-brown/15 bg-white p-5 shadow-xs sm:p-6">
             <div className="flex items-center justify-between border-b border-deep-brown/10 pb-4">
               <h2 className="font-baloo text-xl font-bold text-deep-brown">
                 Profile Summary
@@ -105,7 +105,7 @@ export function AccountClient() {
           </div>
 
           {/* Account Status Card */}
-          <div className="rounded-2xl border border-deep-brown/15 bg-white p-6 shadow-xs">
+          <div className="rounded-2xl border border-deep-brown/15 bg-white p-5 shadow-xs sm:p-6">
             <h2 className="border-b border-deep-brown/10 pb-4 font-baloo text-xl font-bold text-deep-brown">
               Account Details & Status
             </h2>
@@ -168,7 +168,7 @@ export function AccountClient() {
             <div className="grid gap-4 sm:grid-cols-3">
               <Link
                 href="/shop"
-                className="group flex flex-col justify-between rounded-2xl border border-deep-brown/15 bg-white p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary-orange hover:shadow-md"
+                className="group flex flex-col justify-between rounded-2xl border border-deep-brown/15 bg-white p-5 shadow-xs transition-colors hover:border-primary-orange"
               >
                 <div className="flex items-center gap-3 text-primary-orange">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-peach-hero/40">
@@ -186,7 +186,7 @@ export function AccountClient() {
 
               <Link
                 href="/contact"
-                className="group flex flex-col justify-between rounded-2xl border border-deep-brown/15 bg-white p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary-orange hover:shadow-md"
+                className="group flex flex-col justify-between rounded-2xl border border-deep-brown/15 bg-white p-5 shadow-xs transition-colors hover:border-primary-orange"
               >
                 <div className="flex items-center gap-3 text-primary-orange">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-peach-hero/40">
@@ -204,7 +204,7 @@ export function AccountClient() {
 
               <Link
                 href="/account/profile"
-                className="group flex flex-col justify-between rounded-2xl border border-deep-brown/15 bg-white p-5 shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary-orange hover:shadow-md"
+                className="group flex flex-col justify-between rounded-2xl border border-deep-brown/15 bg-white p-5 shadow-xs transition-colors hover:border-primary-orange"
               >
                 <div className="flex items-center gap-3 text-primary-orange">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-peach-hero/40">

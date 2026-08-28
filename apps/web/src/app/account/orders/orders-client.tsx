@@ -236,7 +236,7 @@ function OrderCard({ order, onReorder, reorderState }: { order: CustomerOrderLis
           {canTrack && (
             <Link
               href={`/account/orders/${order.id}#shipment-heading`}
-              className="inline-flex items-center justify-center rounded-xl border border-deep-brown/20 bg-cream-bg px-4 py-2 text-xs font-bold text-deep-brown hover:bg-primary-orange hover:text-white hover:border-primary-orange transition-all"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-deep-brown/20 bg-cream-bg px-4 py-2 text-xs font-bold text-deep-brown transition-all hover:border-primary-orange hover:bg-primary-orange hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
             >
               Track Order
             </Link>
@@ -245,13 +245,13 @@ function OrderCard({ order, onReorder, reorderState }: { order: CustomerOrderLis
             type="button"
             onClick={() => onReorder(order.id)}
             disabled={reorderState === "loading"}
-            className="inline-flex items-center justify-center rounded-xl border border-deep-brown/20 bg-cream-bg px-4 py-2 text-xs font-bold text-deep-brown hover:bg-primary-orange hover:text-white hover:border-primary-orange transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-deep-brown/20 bg-cream-bg px-4 py-2 text-xs font-bold text-deep-brown transition-all hover:border-primary-orange hover:bg-primary-orange hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {reorderState === "loading" ? "Adding..." : reorderState === "error" ? "Try Again" : "Reorder"}
           </button>
           <Link
             href={`/account/orders/${order.id}`}
-            className="inline-flex items-center justify-center rounded-xl bg-primary-orange px-4 py-2 text-xs font-bold text-white hover:bg-terracotta transition-all"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary-orange px-4 py-2 text-xs font-bold text-white transition-all hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
           >
             View Details &rarr;
           </Link>
@@ -285,7 +285,7 @@ function FilterFields({
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="e.g. MPM-000123"
-          className="w-full rounded-xl border border-deep-brown/20 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-orange"
+          className="w-full min-h-11 rounded-xl border border-deep-brown/20 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-orange"
         />
       </div>
       <div>
@@ -296,7 +296,7 @@ function FilterFields({
           id="order-status-filter"
           value={filters.status}
           onChange={(e) => onFilterChange({ status: e.target.value, from: filters.from, to: filters.to })}
-          className="w-full rounded-xl border border-deep-brown/20 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-orange"
+          className="w-full min-h-11 rounded-xl border border-deep-brown/20 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-orange"
         >
           {ORDER_STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -314,7 +314,7 @@ function FilterFields({
           type="date"
           value={filters.from}
           onChange={(e) => onFilterChange({ status: filters.status, from: e.target.value, to: filters.to })}
-          className="w-full rounded-xl border border-deep-brown/20 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-orange"
+          className="w-full min-h-11 rounded-xl border border-deep-brown/20 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-orange"
         />
       </div>
       <div>
@@ -326,7 +326,7 @@ function FilterFields({
           type="date"
           value={filters.to}
           onChange={(e) => onFilterChange({ status: filters.status, from: filters.from, to: e.target.value })}
-          className="w-full rounded-xl border border-deep-brown/20 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-orange"
+          className="w-full min-h-11 rounded-xl border border-deep-brown/20 bg-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-orange"
         />
       </div>
     </div>
@@ -517,10 +517,22 @@ export function OrdersClient() {
         <button
           type="button"
           onClick={() => setMobileFiltersOpen((prev) => !prev)}
-          className="w-full rounded-xl border border-deep-brown/20 bg-white px-4 py-2.5 text-xs font-bold text-deep-brown flex items-center justify-between"
+          aria-expanded={mobileFiltersOpen}
+          className="flex min-h-11 w-full items-center justify-between rounded-xl border border-deep-brown/20 bg-white px-4 py-2.5 text-xs font-bold text-deep-brown focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
         >
           <span>Filters{hasActiveFilters ? " (active)" : ""}</span>
-          <span aria-hidden="true">{mobileFiltersOpen ? "▲" : "▼"}</span>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`h-4 w-4 shrink-0 transition-transform duration-150 ${mobileFiltersOpen ? "rotate-180" : ""}`}
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </button>
         {mobileFiltersOpen && (
           <div className="mt-3 rounded-2xl border border-deep-brown/15 bg-white p-4 shadow-xs">
@@ -564,7 +576,7 @@ export function OrdersClient() {
             type="button"
             disabled={page <= 1 || loading}
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            className="rounded-xl border border-deep-brown/20 px-3 py-2 text-xs font-bold text-deep-brown hover:bg-cream-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex min-h-11 items-center rounded-xl border border-deep-brown/20 px-3 py-2 text-xs font-bold text-deep-brown transition-colors hover:bg-cream-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
             &larr; Previous
           </button>
@@ -580,7 +592,7 @@ export function OrdersClient() {
                 type="button"
                 onClick={() => setPage(entry)}
                 aria-current={entry === page ? "page" : undefined}
-                className={`h-8 min-w-8 rounded-lg px-2 text-xs font-bold transition-colors ${
+                className={`inline-flex h-10 min-w-10 items-center justify-center rounded-lg px-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 ${
                   entry === page ? "bg-primary-orange text-white" : "text-deep-brown hover:bg-cream-bg"
                 }`}
               >
@@ -597,7 +609,7 @@ export function OrdersClient() {
             type="button"
             disabled={page >= data.totalPages || loading}
             onClick={() => setPage((prev) => Math.min(data.totalPages, prev + 1))}
-            className="rounded-xl border border-deep-brown/20 px-3 py-2 text-xs font-bold text-deep-brown hover:bg-cream-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex min-h-11 items-center rounded-xl border border-deep-brown/20 px-3 py-2 text-xs font-bold text-deep-brown transition-colors hover:bg-cream-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next &rarr;
           </button>

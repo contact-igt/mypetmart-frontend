@@ -41,11 +41,11 @@ export function ProfileClient() {
   return (
     <AccountShell subtitle="View and manage your personal account profile information.">
       {customer ? (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5 sm:gap-6">
           {/* Personal Details Card */}
-          <div className="rounded-2xl border border-deep-brown/15 bg-white p-6 shadow-xs">
-            <div className="flex items-center justify-between border-b border-deep-brown/10 pb-4">
-              <div>
+          <div className="rounded-2xl border border-deep-brown/15 bg-white p-5 shadow-xs sm:p-6">
+            <div className="flex flex-col-reverse items-start gap-2 border-b border-deep-brown/10 pb-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <div className="min-w-0">
                 <h2 className="font-baloo text-xl font-bold text-deep-brown">
                   Personal Profile Details
                 </h2>
@@ -53,7 +53,7 @@ export function ProfileClient() {
                   Your registered customer identity details.
                 </p>
               </div>
-              <span className="rounded-full bg-peach-hero/40 px-3 py-1 text-xs font-semibold text-deep-brown">
+              <span className="shrink-0 rounded-full bg-peach-hero/40 px-3 py-1 text-xs font-semibold text-deep-brown">
                 Read-only
               </span>
             </div>
@@ -98,7 +98,7 @@ export function ProfileClient() {
           </div>
 
           {/* Security & Verification Card */}
-          <div className="rounded-2xl border border-deep-brown/15 bg-white p-6 shadow-xs">
+          <div className="rounded-2xl border border-deep-brown/15 bg-white p-5 shadow-xs sm:p-6">
             <div className="border-b border-deep-brown/10 pb-4">
               <h2 className="font-baloo text-xl font-bold text-deep-brown">
                 Account Security & Verification

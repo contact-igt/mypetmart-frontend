@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useCustomerAuth } from "@/context/customer-auth-context";
-import { UserIcon, ShieldCheckIcon, LogOutIcon, MapPinIcon, ShoppingBagIcon, ReturnIcon } from "@/components/account/account-icons";
+import { LogOutIcon } from "@/components/account/account-icons";
+import { AccountNav } from "@/components/account/account-nav";
 
 type AccountShellProps = {
   children: ReactNode;
@@ -13,7 +13,6 @@ type AccountShellProps = {
 
 export function AccountShell({ children, subtitle }: AccountShellProps) {
   const router = useRouter();
-  const pathname = usePathname();
   const { status, customer, logout } = useCustomerAuth();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -50,23 +49,17 @@ export function AccountShell({ children, subtitle }: AccountShellProps) {
     return null;
   }
 
-  const isOverviewActive = pathname === "/account";
-  const isProfileActive = pathname === "/account/profile";
-  const isOrdersActive = pathname.startsWith("/account/orders");
-  const isReturnsActive = pathname.startsWith("/account/returns");
-  const isAddressesActive = pathname.startsWith("/account/addresses");
-
   return (
-    <main className="flex-1 bg-cream-bg py-8 md:py-12 min-h-[calc(100vh-144px)]">
+    <main className="flex-1 bg-cream-bg py-6 sm:py-8 md:py-12 min-h-[calc(100vh-144px)]">
       <div className="site-container">
         {/* Welcome Header */}
-        <div className="border-b border-deep-brown/15 pb-6">
+        <div className="border-b border-deep-brown/15 pb-5 sm:pb-6">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-            <div>
+            <div className="min-w-0">
               <span className="text-xs font-bold uppercase tracking-wider text-primary-orange">
                 My Account
               </span>
-              <h1 className="font-baloo text-3xl font-extrabold text-deep-brown sm:text-4xl">
+              <h1 className="font-baloo text-2xl font-extrabold text-deep-brown sm:text-4xl">
                 Welcome back, {customer.name}!
               </h1>
               <p className="mt-1 text-sm text-text-primary/75">
@@ -74,99 +67,32 @@ export function AccountShell({ children, subtitle }: AccountShellProps) {
               </p>
             </div>
             {customer.referenceCode && (
-              <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-deep-brown/20 bg-white px-3.5 py-1 text-xs font-semibold text-deep-brown shadow-xs sm:mt-0">
-                <span className="text-deep-brown/60">Customer ID:</span>
-                <span className="font-mono text-primary-orange font-bold">{customer.referenceCode}</span>
+              <div className="mt-3 inline-flex max-w-full items-center gap-1.5 self-start rounded-full border border-deep-brown/20 bg-white px-3.5 py-1 text-xs font-semibold text-deep-brown shadow-xs sm:mt-0 sm:self-auto">
+                <span className="shrink-0 text-deep-brown/60">Customer ID:</span>
+                <span className="truncate font-mono font-bold text-primary-orange">{customer.referenceCode}</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Layout Grid */}
-        <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-start">
-          {/* Navigation */}
-          <nav
-            aria-label="Account navigation"
-            className="flex flex-row overflow-x-auto gap-2 p-1.5 rounded-2xl border border-deep-brown/15 bg-white shadow-xs lg:w-60 lg:shrink-0 lg:flex-col lg:p-3"
-          >
-            <Link
-              href="/account"
-              aria-current={isOverviewActive ? "page" : undefined}
-              className={`flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-                isOverviewActive
-                  ? "bg-primary-orange text-white shadow-xs"
-                  : "text-deep-brown hover:bg-cream-bg hover:text-primary-orange"
-              }`}
-            >
-              <UserIcon width={18} height={18} />
-              Overview
-            </Link>
-
-            <Link
-              href="/account/orders"
-              aria-current={isOrdersActive ? "page" : undefined}
-              className={`flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-                isOrdersActive
-                  ? "bg-primary-orange text-white shadow-xs"
-                  : "text-deep-brown hover:bg-cream-bg hover:text-primary-orange"
-              }`}
-            >
-              <ShoppingBagIcon width={18} height={18} />
-              My Orders
-            </Link>
-
-            <Link
-              href="/account/returns"
-              aria-current={isReturnsActive ? "page" : undefined}
-              className={`flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-                isReturnsActive
-                  ? "bg-primary-orange text-white shadow-xs"
-                  : "text-deep-brown hover:bg-cream-bg hover:text-primary-orange"
-              }`}
-            >
-              <ReturnIcon width={18} height={18} />
-              My Returns
-            </Link>
-
-            <Link
-              href="/account/profile"
-              aria-current={isProfileActive ? "page" : undefined}
-              className={`flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-                isProfileActive
-                  ? "bg-primary-orange text-white shadow-xs"
-                  : "text-deep-brown hover:bg-cream-bg hover:text-primary-orange"
-              }`}
-            >
-              <ShieldCheckIcon width={18} height={18} />
-              Profile
-            </Link>
-
-            <Link
-              href="/account/addresses"
-              aria-current={isAddressesActive ? "page" : undefined}
-              className={`flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-                isAddressesActive
-                  ? "bg-primary-orange text-white shadow-xs"
-                  : "text-deep-brown hover:bg-cream-bg hover:text-primary-orange"
-              }`}
-            >
-              <MapPinIcon width={18} height={18} />
-              Address Book
-            </Link>
-
-            <div className="my-1 hidden border-t border-deep-brown/10 lg:block" />
-
+        <div className="mt-6 flex flex-col gap-6 lg:mt-8 lg:flex-row lg:items-start lg:gap-8">
+          {/* Navigation — icon + label tab cards (horizontally scrollable) on
+              mobile, vertical sidebar on desktop. Sign Out is a distinct
+              control kept out of the scroll row at both breakpoints. */}
+          <div className="flex min-w-0 flex-col gap-3 lg:w-60 lg:shrink-0">
+            <AccountNav />
 
             <button
               type="button"
               disabled={loggingOut}
               onClick={handleLogout}
-              className="flex items-center gap-3 whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold text-terracotta hover:bg-terracotta/10 transition-colors disabled:opacity-50"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-deep-brown/15 bg-white px-4 py-2.5 text-sm font-semibold text-terracotta shadow-xs transition-colors hover:bg-terracotta/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:opacity-50 lg:justify-start lg:px-3.5 lg:py-3"
             >
               <LogOutIcon width={18} height={18} />
               {loggingOut ? "Signing out..." : "Sign Out"}
             </button>
-          </nav>
+          </div>
 
           {/* Main Content Area */}
           <div className="flex-1 min-w-0">{children}</div>
