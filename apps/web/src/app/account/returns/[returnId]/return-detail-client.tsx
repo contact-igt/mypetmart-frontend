@@ -24,6 +24,7 @@ const RETURN_STATUS_COPY: Record<string, { title: string; body: string }> = {
   approved: { title: "Return approved", body: "Your return has been approved. A refund will be initiated by our team." },
   rejected: { title: "Return rejected", body: "This return request was not approved." },
   resolved: { title: "Return resolved", body: "This return has been fully processed." },
+  cancelled: { title: "Return cancelled", body: "This return request has been cancelled. No refund was initiated by this action." },
 };
 
 // Deliberately no promise of immediate bank credit — matches the spec's
@@ -51,6 +52,10 @@ export function ReturnDetailClient({ returnIdStr }: { returnIdStr: string }) {
   const [loading, setLoading] = useState(isValidId);
   const [error, setError] = useState<string | null>(null);
   const [isNotFound, setIsNotFound] = useState(!isValidId);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isValidId) return;
@@ -101,10 +106,28 @@ export function ReturnDetailClient({ returnIdStr }: { returnIdStr: string }) {
     );
   }
 
+  const canCancel = detail.canCancel === true;
+
+  async function handleCancel() {
+    if (!canCancel || cancelling) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      const updated = await ReturnApi.cancel(numericId, cancelReason.trim() || undefined);
+      setDetail(updated);
+      setCancelConfirmOpen(false);
+      setCancelReason("");
+    } catch (err: unknown) {
+      setCancelError(err instanceof AppAuthError ? err.message : "Could not cancel this return. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   const statusCopy = detail.resolution === "replacement"
-    ? {
-        title: detail.status === "requested" ? "Replacement requested" : detail.status === "rejected" ? "Replacement rejected" : detail.status === "resolved" ? "Replacement completed" : "Replacement approved",
-        body: detail.status === "requested" ? "We're reviewing your replacement request." : detail.status === "rejected" ? "This replacement request was not approved." : detail.replacement ? REPLACEMENT_STATUS_COPY[detail.replacement.status] : "Your replacement has been approved.",
+      ? {
+        title: detail.status === "requested" ? "Replacement requested" : detail.status === "rejected" ? "Replacement rejected" : detail.status === "resolved" ? "Replacement completed" : detail.status === "cancelled" ? "Replacement request cancelled" : "Replacement approved",
+        body: detail.status === "requested" ? "We're reviewing your replacement request." : detail.status === "rejected" ? "This replacement request was not approved." : detail.status === "cancelled" ? "This replacement request has been cancelled." : detail.replacement ? REPLACEMENT_STATUS_COPY[detail.replacement.status] : "Your replacement has been approved.",
       }
     : RETURN_STATUS_COPY[detail.status] ?? { title: detail.status, body: "" };
 
@@ -126,6 +149,15 @@ export function ReturnDetailClient({ returnIdStr }: { returnIdStr: string }) {
               </Link>
             </p>
           </div>
+          {canCancel && (
+            <button
+              type="button"
+              onClick={() => setCancelConfirmOpen(true)}
+              className="rounded-xl border border-terracotta/40 px-3 py-2 text-xs font-bold text-terracotta hover:bg-terracotta/10"
+            >
+              Cancel Return
+            </button>
+          )}
         </div>
 
         <div>
@@ -142,7 +174,20 @@ export function ReturnDetailClient({ returnIdStr }: { returnIdStr: string }) {
             <span className="block font-bold text-deep-brown/50 uppercase tracking-wide text-[10px]">Resolved</span>
             <span className="text-deep-brown">{formatDate(detail.resolvedAt)}</span>
           </div>
+          {detail.cancelledAt && (
+            <div>
+              <span className="block font-bold text-deep-brown/50 uppercase tracking-wide text-[10px]">Cancelled</span>
+              <span className="text-deep-brown">{formatDate(detail.cancelledAt)}</span>
+            </div>
+          )}
         </div>
+
+        {detail.cancellationReason && (
+          <div>
+            <span className="block font-bold text-deep-brown/50 uppercase tracking-wide text-[10px] mb-1">Cancellation note</span>
+            <p className="text-sm text-deep-brown">{detail.cancellationReason}</p>
+          </div>
+        )}
 
         <div>
           <span className="block font-bold text-deep-brown/50 uppercase tracking-wide text-[10px] mb-1">Reason</span>
@@ -192,6 +237,29 @@ export function ReturnDetailClient({ returnIdStr }: { returnIdStr: string }) {
           <p className="text-xs text-text-primary/75">{REPLACEMENT_STATUS_COPY[detail.replacement.status]}</p>
         </div>
         <ShipmentTracking shipment={detail.replacement.shipment} emptyMessage="Your replacement shipment has not been prepared yet." />
+        </div>
+      )}
+
+      {cancelConfirmOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-deep-brown/50 p-4" role="dialog" aria-modal="true" aria-labelledby="cancel-return-title">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 id="cancel-return-title" className="font-baloo text-xl font-bold text-deep-brown">Cancel this return?</h2>
+            <p className="mt-2 text-sm text-text-primary/75">This only cancels the return request. It does not initiate or reverse a refund.</p>
+            <label htmlFor="cancel-return-reason" className="mt-4 block text-xs font-bold uppercase tracking-wide text-deep-brown/60">Reason (optional)</label>
+            <textarea
+              id="cancel-return-reason"
+              value={cancelReason}
+              onChange={(event) => setCancelReason(event.target.value)}
+              rows={3}
+              maxLength={2000}
+              className="mt-1 w-full resize-none rounded-xl border border-deep-brown/15 px-3 py-2 text-sm text-deep-brown focus:border-primary-orange focus:outline-none"
+            />
+            {cancelError && <p className="mt-2 text-xs font-semibold text-terracotta">{cancelError}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setCancelConfirmOpen(false)} disabled={cancelling} className="rounded-xl border border-deep-brown/15 px-4 py-2 text-xs font-bold text-deep-brown disabled:opacity-50">Keep Return</button>
+              <button type="button" onClick={() => { void handleCancel(); }} disabled={cancelling} className="rounded-xl bg-terracotta px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{cancelling ? "Cancelling..." : "Cancel Return"}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

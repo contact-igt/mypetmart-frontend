@@ -22,6 +22,7 @@ const RETURN_STATUS_STYLE: Record<ReturnStatus, string> = {
   approved: "bg-blue-50 text-blue-800 border-blue-300",
   rejected: "bg-rose-50 text-rose-800 border-rose-300",
   resolved: "bg-emerald-50 text-emerald-800 border-emerald-300",
+  cancelled: "bg-slate-50 text-slate-700 border-slate-300",
 };
 
 export function ReturnsClient() {

@@ -10,17 +10,22 @@ export const metadata = {
 };
 
 type Props = {
-  searchParams: Promise<{ status?: string; txnid?: string; orderId?: string }>;
+  searchParams: Promise<{ status?: string; txnid?: string; orderId?: string; provider?: string }>;
 };
 
 export default async function PaymentResultPage({ searchParams }: Props) {
-  const { status, txnid, orderId } = await searchParams;
+  const { status, txnid, orderId, provider } = await searchParams;
 
   return (
     <main className="flex-1 bg-cream-bg py-8 md:py-12 min-h-[calc(100vh-144px)] flex items-center">
       <div className="site-container">
         <div className="mx-auto w-full max-w-[640px]">
-          <PaymentResultClient status={status === "success" ? "success" : "failure"} txnid={txnid ?? null} orderId={orderId ?? null} />
+          <PaymentResultClient
+            status={status === "success" ? "success" : "failure"}
+            txnid={txnid ?? null}
+            orderId={orderId ?? null}
+            provider={provider === "breeze" ? "breeze" : "payu"}
+          />
         </div>
       </div>
     </main>

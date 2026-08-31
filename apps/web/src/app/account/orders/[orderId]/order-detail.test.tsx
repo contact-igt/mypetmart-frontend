@@ -470,7 +470,7 @@ describe("Order Detail Page & Client Tests", () => {
     });
   });
 
-  it("7. Shows the Returns & Refunds summary with product name, status, and a link to return details", async () => {
+  it("7. Keeps cancelled return history while leaving item quantity eligible for a new request", async () => {
     vi.spyOn(AuthApi, "refresh").mockResolvedValue("test-token");
     vi.spyOn(AuthApi, "getMe").mockResolvedValue({ id: 1, name: "Test Customer" });
     vi.spyOn(ReturnApi, "list").mockResolvedValue({
@@ -486,12 +486,12 @@ describe("Order Detail Page & Client Tests", () => {
           purchasedQuantity: 1,
           quantity: 1,
           resolution: "refund",
-          status: "requested",
+          status: "cancelled",
           reason: "Wrong item",
           resolutionNote: null,
           requestedAt: "2026-08-16T10:00:00Z",
           resolvedAt: null,
-          refunds: [{ id: 1, refundNumber: "RFD-000001", status: "pending", amount: "500.00", currency: "INR", initiatedAt: "2026-08-16T10:05:00Z", completedAt: null, failedAt: null, failureMessage: null }],
+          refunds: [],
           replacement: null,
           returnShipment: null,
         },
@@ -558,8 +558,8 @@ describe("Order Detail Page & Client Tests", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Returns & Refunds")).toBeInTheDocument();
-      expect(screen.getByText(/Return requested/)).toBeInTheDocument();
-      expect(screen.getByText(/Refund pending/)).toBeInTheDocument();
+      expect(screen.getByText(/Return cancelled/)).toBeInTheDocument();
+      expect(screen.getByText("Request Refund or Replacement")).toBeInTheDocument();
       const returnLink = screen.getByText(/View Return Details/i).closest("a");
       expect(returnLink).toHaveAttribute("href", "/account/returns/501");
     });

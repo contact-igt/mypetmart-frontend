@@ -339,7 +339,7 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
                         <div className="mt-2">
                           {(() => {
                             const itemReturns = returnsByItem.get(item.id) ?? [];
-                            const activeReturns = itemReturns.filter((r) => r.status !== "rejected");
+                            const activeReturns = itemReturns.filter((r) => ["requested", "approved", "resolved"].includes(r.status));
                             const remaining = item.quantity - activeReturns.reduce((total, r) => total + r.quantity, 0);
                             return (
                               remaining > 0 && (

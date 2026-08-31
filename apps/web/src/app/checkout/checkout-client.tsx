@@ -16,6 +16,7 @@ import { AppAuthError } from "@/lib/auth/auth-errors";
 import { AddressLocationAssist, type LocationSelection } from "@/components/address/address-location-assist";
 import { ProceedToPaymentButton } from "@/components/payment/proceed-to-payment-button";
 import { ConfirmCodOrderButton } from "@/components/payment/confirm-cod-order-button";
+import { BreezePayButton } from "@/components/payment/breeze-pay-button";
 import type { CodConfirmationResultJSON } from "@/types/payment";
 import { TrustBadges } from "@/components/checkout/trust-badges";
 import { CheckoutStickyCta } from "@/components/checkout/checkout-sticky-cta";
@@ -94,7 +95,12 @@ export function CheckoutClient() {
   // exists, on the same "Order Created" screen the PayU handoff already
   // lives on. Defaults to Pay Online so PayU's existing behavior/flow is
   // unchanged unless the customer explicitly picks Cash on Delivery.
-  const [paymentMethod, setPaymentMethod] = useState<"payu" | "cod">("payu");
+  // Breeze is a build-time-flagged online option that coexists with PayU and
+  // COD (NEXT_PUBLIC_BREEZE_ENABLED is a non-secret feature flag — the Breeze
+  // Web SDK needs no frontend key). When the flag is off, checkout is
+  // visually and behaviourally identical to before.
+  const breezeEnabled = process.env.NEXT_PUBLIC_BREEZE_ENABLED === "true";
+  const [paymentMethod, setPaymentMethod] = useState<"payu" | "breeze" | "cod">("payu");
   const [codConfirmation, setCodConfirmation] = useState<CodConfirmationResultJSON | null>(null);
 
   // Invalidate preview only when actual preview input fields change
@@ -533,7 +539,7 @@ export function CheckoutClient() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 gap-2.5 pb-1 sm:grid-cols-2 sm:gap-3" role="radiogroup" aria-label="Payment method">
+                  <div className={`grid grid-cols-1 gap-2.5 pb-1 sm:gap-3 ${breezeEnabled ? "sm:grid-cols-3" : "sm:grid-cols-2"}`} role="radiogroup" aria-label="Payment method">
                     <label
                       className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold text-deep-brown transition-colors ${
                         paymentMethod === "payu"
@@ -550,6 +556,24 @@ export function CheckoutClient() {
                       />
                       Pay Online
                     </label>
+                    {breezeEnabled && (
+                      <label
+                        className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold text-deep-brown transition-colors ${
+                          paymentMethod === "breeze"
+                            ? "border-primary-orange bg-peach-hero/20 ring-1 ring-primary-orange"
+                            : "border-deep-brown/15 bg-white hover:border-deep-brown/30"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="payment-method"
+                          checked={paymentMethod === "breeze"}
+                          onChange={() => setPaymentMethod("breeze")}
+                          className="h-4 w-4 text-primary-orange focus:ring-primary-orange"
+                        />
+                        Pay with Breeze
+                      </label>
+                    )}
                     <label
                       className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold text-deep-brown transition-colors ${
                         paymentMethod === "cod"
@@ -579,6 +603,17 @@ export function CheckoutClient() {
                       ) : null}
                       <p className="text-[11px] text-text-primary/60">
                         You&apos;ll be redirected to PayU to complete payment. Your cart remains available.
+                      </p>
+                    </>
+                  ) : paymentMethod === "breeze" ? (
+                    <>
+                      {isAuthenticated ? (
+                        <BreezePayButton input={{ orderId: createdOrder.id }} />
+                      ) : createdOrder.guestAccessToken ? (
+                        <BreezePayButton input={{ guestAccessToken: createdOrder.guestAccessToken }} />
+                      ) : null}
+                      <p className="text-[11px] text-text-primary/60">
+                        Verify your mobile number with an OTP, then complete payment. Your cart remains available.
                       </p>
                     </>
                   ) : (
