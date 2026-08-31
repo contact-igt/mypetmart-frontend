@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { ReturnDetailClient } from "./return-detail-client";
 import { ReturnApi } from "@/lib/return-api";
@@ -23,6 +23,7 @@ function baseDetail(overrides: Partial<ReturnRequestDetailJSON> = {}): ReturnReq
     resolutionNote: null,
     requestedAt: "2026-08-18T10:00:00Z",
     resolvedAt: null,
+    canCancel: true,
     refunds: [],
     replacement: null,
     returnShipment: null,
@@ -77,5 +78,32 @@ describe("ReturnDetailClient — return shipment tracking", () => {
     expect(screen.getByText("Pickup scheduled")).toBeInTheDocument();
     expect(screen.getByText(/Delhivery/u)).toBeInTheDocument();
     expect(screen.getByText("RAWB-777")).toBeInTheDocument();
+  });
+
+  it("uses backend cancellation eligibility and updates after cancellation", async () => {
+    const getReturn = vi.spyOn(ReturnApi, "getReturn");
+    getReturn.mockResolvedValueOnce(baseDetail({ canCancel: true })).mockResolvedValueOnce(baseDetail({ status: "cancelled", canCancel: false }));
+    const cancel = vi.spyOn(ReturnApi, "cancel").mockResolvedValue(baseDetail({ status: "cancelled", canCancel: false }));
+
+    render(<ReturnDetailClient returnIdStr="701" />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cancel Return" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Cancel Return" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("dialog").querySelector("button.bg-terracotta") as HTMLButtonElement);
+
+    await waitFor(() => {
+      expect(cancel).toHaveBeenCalledWith(701, undefined);
+      expect(screen.queryByRole("button", { name: "Cancel Return" })).not.toBeInTheDocument();
+      expect(screen.getByText("Return cancelled")).toBeInTheDocument();
+    });
+  });
+
+  it.each(["rejected", "resolved", "cancelled"] as const)("does not show cancellation when backend marks %s ineligible", async (status) => {
+    vi.spyOn(ReturnApi, "getReturn").mockResolvedValue(baseDetail({ status, canCancel: false }));
+
+    render(<ReturnDetailClient returnIdStr="701" />);
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Cancel Return" })).not.toBeInTheDocument());
   });
 });

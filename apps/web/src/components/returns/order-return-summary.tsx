@@ -6,6 +6,7 @@ const RETURN_STATUS_LABELS: Record<string, string> = {
   approved: "Return approved",
   rejected: "Return rejected",
   resolved: "Return resolved",
+  cancelled: "Return cancelled",
 };
 
 const REFUND_STATUS_LABELS: Record<string, string> = {

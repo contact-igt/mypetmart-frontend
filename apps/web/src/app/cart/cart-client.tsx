@@ -409,7 +409,7 @@ export function CartClient() {
             </span>
           </div>
 
-          <TrustBadges items={["secure", "tracking", "returns"]} />
+          <TrustBadges items={["secure", "tracking", "returns"]} layout="stacked" />
 
           <div className="mt-4 flex flex-col gap-3">
             <Link

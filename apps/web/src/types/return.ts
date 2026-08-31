@@ -1,4 +1,4 @@
-export type ReturnStatus = "requested" | "approved" | "rejected" | "resolved";
+export type ReturnStatus = "requested" | "approved" | "rejected" | "resolved" | "cancelled";
 export type ReturnShipmentStatus = "pending" | "approved" | "pickup_scheduled" | "picked_up" | "in_transit" | "delivered" | "failed" | "cancelled";
 export type RefundStatus = "pending" | "processing" | "succeeded" | "failed";
 export type ReturnResolution = "refund" | "replacement";
@@ -45,6 +45,9 @@ export interface ReturnRequestJSON {
   resolutionNote: string | null;
   requestedAt: string;
   resolvedAt: string | null;
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  cancellationSource?: "customer" | "admin" | null;
   refunds: ReturnRefundSummaryJSON[];
   replacement: ReplacementJSON | null;
   // null when no reverse pickup has been created yet for this return —
@@ -93,6 +96,10 @@ export interface ReturnNoteJSON {
 
 export interface ReturnRequestDetailJSON extends ReturnRequestJSON {
   notes: ReturnNoteJSON[];
+  // Detail GET responses include this backend-computed field. It stays
+  // optional at the client boundary because the create endpoint intentionally
+  // returns the lighter ReturnRequestJSON shape.
+  canCancel?: boolean;
   maxRefundableAmount: string;
   currency: string;
 }

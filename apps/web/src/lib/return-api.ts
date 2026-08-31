@@ -21,4 +21,11 @@ export const ReturnApi = {
   async getReturn(id: number): Promise<ReturnRequestDetailJSON> {
     return fetchWithAuth<ReturnRequestDetailJSON>(`/storefront/returns/${id}`, { method: "GET" });
   },
+
+  async cancel(id: number, reason?: string): Promise<ReturnRequestDetailJSON> {
+    return fetchWithAuth<ReturnRequestDetailJSON>(`/storefront/returns/${id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify(reason ? { reason } : {}),
+    });
+  },
 };

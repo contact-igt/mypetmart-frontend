@@ -23,6 +23,25 @@ export interface PaymentInitiationResultJSON {
   fields: PayuHostedCheckoutFieldsJSON;
 }
 
+// Mirrors backend PaymentModels/breeze.types.ts BreezeStartPaymentParamsJSON.
+// Returned by POST /storefront/payments/breeze/initiate. Server-authoritative
+// values for the Breeze Web SDK `sendOTP -> verifyOTP -> startPayment` flow —
+// no secret is included (Breeze requires no frontend key).
+export interface BreezeStartPaymentParamsJSON {
+  provider: "breeze";
+  merchantId: string;
+  environment: string;
+  shopUrl: string;
+  orderRef: string; // pass as startPayment.orderId
+  amountPaise: number; // pass as startPayment.amount
+  currency: string;
+  customerPhone: string;
+  customerEmail: string | null;
+  customerName: string | null;
+  returnUrl: string;
+  orderId: number; // internal id — only used to poll /payments/status
+}
+
 // Mirrors backend PaymentModels/payment.types.ts PaymentStatusResultJSON.
 // MyPetMart-normalized state only — never the raw PayU payload.
 export interface PaymentStatusResultJSON {

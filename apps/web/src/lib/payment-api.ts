@@ -1,5 +1,12 @@
 import { fetchWithAuth } from "./auth/auth-api";
-import type { CodConfirmationResultJSON, ConfirmCodOrderInput, InitiatePaymentInput, PaymentInitiationResultJSON, PaymentStatusResultJSON } from "@/types/payment";
+import type {
+  BreezeStartPaymentParamsJSON,
+  CodConfirmationResultJSON,
+  ConfirmCodOrderInput,
+  InitiatePaymentInput,
+  PaymentInitiationResultJSON,
+  PaymentStatusResultJSON,
+} from "@/types/payment";
 
 export const PaymentApi = {
   /**
@@ -11,6 +18,21 @@ export const PaymentApi = {
    */
   async initiate(input: InitiatePaymentInput): Promise<PaymentInitiationResultJSON> {
     return fetchWithAuth<PaymentInitiationResultJSON>("/storefront/payments/initiate", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  /**
+   * Breeze online payment. Prepares a provider:"breeze" Payment Attempt for
+   * an existing pending Order (customer or guest, same identity rules as
+   * initiate()) and returns the server-authoritative values the Breeze Web
+   * SDK needs for its `sendOTP -> verifyOTP -> startPayment` flow. The amount
+   * is always Payment.amount (snapshotted from the Order) — never anything
+   * the browser sends.
+   */
+  async breezeInitiate(input: InitiatePaymentInput): Promise<BreezeStartPaymentParamsJSON> {
+    return fetchWithAuth<BreezeStartPaymentParamsJSON>("/storefront/payments/breeze/initiate", {
       method: "POST",
       body: JSON.stringify(input),
     });

@@ -7,17 +7,19 @@ import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useCart } from "@/context/cart-context";
 import { PaymentApi } from "@/lib/payment-api";
 import { ProceedToPaymentButton } from "@/components/payment/proceed-to-payment-button";
+import { BreezePayButton } from "@/components/payment/breeze-pay-button";
 import { clearGuestPaymentToken, readGuestPaymentToken } from "../guest-payment-token";
 import type { InitiatePaymentInput, PaymentStatusResultJSON } from "@/types/payment";
 
 type PaymentResultClientProps = {
-  // Display hints from PayU's own browser redirect only — never trusted as
-  // proof of anything. The real outcome always comes from
+  // Display hints from the provider's own browser redirect / SDK event only —
+  // never trusted as proof of anything. The real outcome always comes from
   // PaymentApi.getStatus(), which asks the backend for its server-verified
-  // state (reconciling against PayU's Verify Payment API when uncertain).
+  // state (reconciling against the provider when uncertain).
   status: "success" | "failure";
   txnid: string | null;
   orderId: string | null;
+  provider?: "payu" | "breeze";
 };
 
 type ReconciliationState =
@@ -48,7 +50,8 @@ function ReferenceBox({ orderId, txnid }: { orderId: string | number | null; txn
   );
 }
 
-export function PaymentResultClient({ status, txnid, orderId }: PaymentResultClientProps) {
+export function PaymentResultClient({ status, txnid, orderId, provider = "payu" }: PaymentResultClientProps) {
+  const providerLabel = provider === "breeze" ? "Breeze" : "PayU";
   const { status: authStatus, customer } = useCustomerAuth();
   const { refresh } = useCart();
   const refreshRef = useRef(refresh);
@@ -127,7 +130,7 @@ export function PaymentResultClient({ status, txnid, orderId }: PaymentResultCli
         <div>
           <h1 className="font-baloo text-2xl font-extrabold text-deep-brown">Verifying your payment&hellip;</h1>
           <p className="mt-2 text-sm text-text-primary/75 max-w-md mx-auto">
-            We&apos;re confirming the final result with PayU now — this page is not the final word on your payment.
+            We&apos;re confirming the final result with {providerLabel} now — this page is not the final word on your payment.
           </p>
         </div>
         <ReferenceBox orderId={orderId} txnid={txnid} />
@@ -258,7 +261,7 @@ export function PaymentResultClient({ status, txnid, orderId }: PaymentResultCli
         <ReferenceBox orderId={result.orderId} txnid={txnid} />
         {retryInput && (
           <div className="max-w-xs mx-auto">
-            <ProceedToPaymentButton input={retryInput} />
+            {provider === "breeze" ? <BreezePayButton input={retryInput} /> : <ProceedToPaymentButton input={retryInput} />}
           </div>
         )}
         {orderLink && (
@@ -279,7 +282,7 @@ export function PaymentResultClient({ status, txnid, orderId }: PaymentResultCli
       <div>
         <h1 className="font-baloo text-2xl font-extrabold text-deep-brown">Payment still processing</h1>
         <p className="mt-2 text-sm text-text-primary/75 max-w-md mx-auto">
-          PayU hasn&apos;t confirmed the final result yet. This can take a little while for some payment methods —
+          {providerLabel} hasn&apos;t confirmed the final result yet. This can take a little while for some payment methods —
           please check again shortly.
         </p>
       </div>
