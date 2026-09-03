@@ -4,6 +4,7 @@ import type { ProductListItem } from "@/types/storefront";
 import { BestSellersCarousel } from "./best-sellers-carousel";
 
 export const HOME_FEATURED_PRODUCT_COUNT = 8;
+export const HOME_FEATURED_FETCH_POOL_SIZE = 12;
 
 function SectionHeader() {
   return (
@@ -44,13 +45,20 @@ export function BestSellersSkeleton() {
 }
 
 export function BestSellersSection({ products }: { products: ProductListItem[] }) {
-  if (products.length === 0) return null;
-
   return (
     <section className="section-block bg-cream-bg py-14 sm:py-16" aria-labelledby="best-sellers-heading">
       <div className="site-container">
         <SectionHeader />
-        <BestSellersCarousel products={products} />
+        {products.length > 0 ? (
+          <BestSellersCarousel products={products} />
+        ) : (
+          <div className="mt-8 rounded-[24px] border border-deep-brown/10 bg-white px-6 py-8 text-center sm:px-8">
+            <p className="text-base font-medium text-text-primary/70">New products are coming soon.</p>
+            <Link href="/shop" className="button-primary mt-4 inline-flex h-11 text-sm">
+              Browse the shop
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

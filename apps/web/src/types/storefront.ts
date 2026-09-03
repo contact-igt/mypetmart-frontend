@@ -43,6 +43,8 @@ export interface ProductListItem {
   inStock: boolean;
   category: ProductCategoryRef;
   primaryImage: ProductImage | null;
+  averageRating: number;
+  reviewCount: number;
 }
 
 export interface PaginatedProductList {

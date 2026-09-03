@@ -1462,6 +1462,8 @@ describe("ProductDetail Storefront Component", () => {
         inStock: true,
         category: { id: 1, name: "Dog Essentials", slug: "dog-essentials", petType: "dog" },
         primaryImage: null,
+        averageRating: 0,
+        reviewCount: 0,
       },
       {
         id: 202,
@@ -1477,6 +1479,8 @@ describe("ProductDetail Storefront Component", () => {
         inStock: true,
         category: { id: 1, name: "Dog Essentials", slug: "dog-essentials", petType: "dog" },
         primaryImage: null,
+        averageRating: 0,
+        reviewCount: 0,
       },
     ];
 

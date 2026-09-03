@@ -86,6 +86,28 @@ describe("FeaturedProductSpotlightClient", () => {
     expect(screen.queryByRole("button", { name: "Add to Cart" })).not.toBeInTheDocument();
   });
 
+  it("contains the hero product image without cropping or hover zoom", () => {
+    const image = {
+      id: 7,
+      url: "https://r2.example.com/pet-grooming-brush.jpg",
+      alt: "Pet grooming brush",
+      contentType: "image/jpeg",
+      sizeBytes: null,
+      width: 1200,
+      height: 1200,
+      sortOrder: 0,
+      isPrimary: true,
+    };
+
+    render(<FeaturedProductSpotlightClient product={{ ...product, primaryImage: image, images: [image] }} />);
+
+    const renderedImage = screen.getByRole("img", { name: "Pet grooming brush" });
+    expect(renderedImage).toHaveClass("object-contain");
+    expect(renderedImage).not.toHaveClass("object-cover");
+    expect(renderedImage).not.toHaveClass("hover:scale-[1.015]");
+    expect(renderedImage.parentElement).toHaveClass("absolute", "inset-8", "sm:inset-12", "lg:inset-16");
+  });
+
   it("adds then opens Cart for Buy Now", async () => {
     render(<FeaturedProductSpotlightClient product={product} />);
 

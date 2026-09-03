@@ -4,6 +4,8 @@
 // "X% off" label (AddToCartPanel, TestimonialVideoCard, future reuse) shares
 // one rounding convention instead of maintaining separate copies.
 export function discountPercent(price: number, compareAtPrice?: number | null): number | null {
-  if (compareAtPrice == null || compareAtPrice <= price) return null;
+  if (!Number.isFinite(price) || price <= 0) return null;
+  if (compareAtPrice == null || !Number.isFinite(compareAtPrice) || compareAtPrice <= 0) return null;
+  if (compareAtPrice <= price) return null;
   return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);
 }

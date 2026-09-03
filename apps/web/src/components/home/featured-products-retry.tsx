@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BestSellersSection, BestSellersSkeleton, HOME_FEATURED_PRODUCT_COUNT } from "./best-sellers-section";
+import { BestSellersSection, BestSellersSkeleton, HOME_FEATURED_FETCH_POOL_SIZE, HOME_FEATURED_PRODUCT_COUNT } from "./best-sellers-section";
 import { getStorefrontProducts } from "@/lib/storefront-api";
 import type { ProductListItem } from "@/types/storefront";
 
@@ -21,12 +21,14 @@ export function FeaturedProductsRetry() {
     try {
       const { items } = await getStorefrontProducts({
         page: 1,
-        pageSize: HOME_FEATURED_PRODUCT_COUNT,
+        pageSize: HOME_FEATURED_FETCH_POOL_SIZE,
         sort: "newest",
-        featured: true,
       });
-      setPhase({ status: "loaded", products: items.slice(0, HOME_FEATURED_PRODUCT_COUNT) });
-    } catch {
+      const featured = items.filter((item) => item.featured);
+      const rest = items.filter((item) => !item.featured);
+      setPhase({ status: "loaded", products: [...featured, ...rest].slice(0, HOME_FEATURED_PRODUCT_COUNT) });
+    } catch (error) {
+      console.error("Homepage featured products retry failed", error);
       setPhase({ status: "error" });
     }
   }
