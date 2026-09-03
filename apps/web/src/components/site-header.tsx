@@ -32,22 +32,24 @@ export function SiteHeader() {
   const mobileNavPanelRef = useRef<HTMLDivElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const { status, customer, logout } = useCustomerAuth();
-  const wishlistHref = status === "authenticated" ? "/wishlist" : "/signin";
+
+  // The server always renders with auth status "loading". SiteHeader sits inside
+  // a Suspense boundary, so by the time it hydrates the provider effect may have
+  // already resolved the status — which would make the first client render differ
+  // from the server HTML and trip a hydration mismatch. Gate every auth-dependent
+  // branch on `hydrated` so server and first client render are always identical.
+  useEffect(() => setHydrated(true), []);
+  const isAuthenticated = hydrated && status === "authenticated";
+
+  const wishlistHref = isAuthenticated ? "/wishlist" : "/signin";
 
   const firstName = customer?.name?.trim().split(/\s+/)[0];
-  const accountLabel =
-    status === "authenticated"
-      ? "Account"
-      : status === "loading"
-        ? ""
-        : "Account";
-  const accountMenuAriaLabel =
-    status === "authenticated"
-      ? `Open account menu for ${firstName || customer?.name || "your account"}`
-      : status === "loading"
-        ? "Account menu"
-        : "Sign in to MyPetMart";
+  const accountLabel = "Account";
+  const accountMenuAriaLabel = isAuthenticated
+    ? `Open account menu for ${firstName || customer?.name || "your account"}`
+    : "Sign in to MyPetMart";
 
   const { itemCount } = useCart();
 
@@ -181,7 +183,7 @@ export function SiteHeader() {
 
             <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-deep-brown/15 bg-white p-2 shadow-[0_14px_40px_rgba(62,35,25,0.18)]">
               <nav aria-label="Account menu" className="flex flex-col">
-                {status === "authenticated" ? (
+                {isAuthenticated ? (
                   <>
                     <p className="truncate px-3 py-2 text-sm font-bold text-deep-brown">
                       Hi, {customer?.name ?? "Pet Parent"}

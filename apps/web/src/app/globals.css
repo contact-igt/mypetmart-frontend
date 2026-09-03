@@ -379,41 +379,6 @@
     margin-inline: -0.5rem;
     padding-block: 0.25rem;
   }
-  /* Only slick.css (structural) is imported in layout.tsx, not slick-theme.css
-     — react-slick's default dots have no styling at all without it, so each
-     dot renders as a raw <button>1</button>/<button>2</button> stacked one
-     per line instead of a row of small indicator dots. */
-  .testimonial-slider .slick-dots {
-    display: flex;
-    list-style: none;
-    justify-content: center;
-    gap: 0.5rem;
-    margin: 1.25rem 0 0;
-    padding: 0;
-  }
-  .testimonial-slider .slick-dots li {
-    margin: 0;
-    display: flex;
-  }
-  .testimonial-slider .slick-dots li button {
-    width: 0.5rem;
-    height: 0.5rem;
-    padding: 0;
-    border: none;
-    border-radius: var(--radius-pill);
-    background: var(--color-border-subtle);
-    font-size: 0;
-    line-height: 0;
-    text-indent: -9999px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: background-color var(--duration-hover) var(--easing-standard), transform var(--duration-hover) var(--easing-standard);
-  }
-  .testimonial-slider .slick-dots li.slick-active button {
-    background: var(--color-primary-orange);
-    transform: scale(1.3);
-  }
-
   .best-sellers-carousel .slick-track {
     align-items: stretch;
     display: flex;

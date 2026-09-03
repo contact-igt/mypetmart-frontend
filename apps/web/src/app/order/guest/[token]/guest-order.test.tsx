@@ -7,6 +7,10 @@ import { OrderApi } from "@/lib/order-api";
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import type { GuestOrderDetailJSON } from "@/types/order";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
+
 process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:5000/api/v1";
 
 function baseOrder(overrides: Partial<GuestOrderDetailJSON> = {}): GuestOrderDetailJSON {
@@ -138,6 +142,22 @@ describe("Guest Order Recovery Page", () => {
       const payButton = screen.getByRole("button", { name: /Proceed to Payment/i });
       expect(payButton).not.toBeDisabled();
     });
+  });
+
+  it("recognizes a pending COD order and never offers PayU retry", async () => {
+    vi.spyOn(OrderApi, "getGuestOrder").mockResolvedValue(
+      baseOrder({
+        status: "confirmed",
+        paymentStatus: "pending",
+        payments: [{ provider: "cod", method: "cod", status: "pending", providerOrderId: null, paidAt: null, refundedAt: null }],
+      })
+    );
+
+    render(<GuestOrderClient token={"g".repeat(64)} />);
+
+    await waitFor(() => expect(screen.getByText("Order Confirmed")).toBeInTheDocument());
+    expect(screen.getByText(/Cash on Delivery — payment due when your order arrives/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Proceed to Payment/i })).not.toBeInTheDocument();
   });
 
   it("shows a disabled payment-unavailable button for a cancelled order", async () => {

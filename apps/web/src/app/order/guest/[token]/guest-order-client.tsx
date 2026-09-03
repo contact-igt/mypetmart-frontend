@@ -12,6 +12,8 @@ import { StatusBadge } from "@/app/account/orders/orders-client";
 import { ShipmentTracking } from "@/components/shipment-tracking";
 import { OrderTracker } from "@/components/order-tracker";
 import { DownloadReceiptButton } from "@/components/download-receipt-button";
+import { CancelPendingOrderButton } from "@/components/order/cancel-pending-order-button";
+import { useOptionalCart } from "@/context/cart-context";
 
 function formatDate(dateString: string): string {
   try {
@@ -33,6 +35,7 @@ export function GuestOrderClient({ token }: { token: string }) {
   const [isNotFound, setIsNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
+  const cartContext = useOptionalCart();
 
   const handleImageError = (itemId: number) => {
     setImageErrors((prev) => {
@@ -122,8 +125,13 @@ export function GuestOrderClient({ token }: { token: string }) {
     );
   }
 
-  const isPendingOrder = order.status === "pending" || order.paymentStatus === "pending";
-  const canPay = order.paymentStatus === "pending" && order.status !== "cancelled";
+  // COD remains paymentStatus="pending" until delivery. Only an online
+  // pending Order is eligible for PayU retry.
+  const isCodOrder = order.payments.some((payment) => payment.provider === "cod");
+  const isPendingOrder = !isCodOrder && order.status === "pending" && order.paymentStatus === "pending";
+  const showPaymentPendingBanner = isPendingOrder || (!isCodOrder && order.status === "cancelled" && order.paymentStatus === "pending");
+  const canPay = isPendingOrder;
+  const showCodPendingNotice = isCodOrder && order.paymentStatus === "pending";
 
   return (
     <div className="space-y-6">
@@ -151,7 +159,7 @@ export function GuestOrderClient({ token }: { token: string }) {
       </div>
 
       {/* Pending Order Status Banner (No payment action) */}
-      {isPendingOrder && (
+      {showPaymentPendingBanner && (
         <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-5 text-deep-brown space-y-3">
           <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm uppercase tracking-wider">
             <span>Order Pending Payment</span>
@@ -162,8 +170,19 @@ export function GuestOrderClient({ token }: { token: string }) {
               : "Your order has been recorded in pending state."}
           </p>
           {canPay ? (
-            <div className="max-w-xs">
-              <ProceedToPaymentButton input={{ guestAccessToken: token }} />
+            <div className="flex max-w-xl flex-col gap-3 sm:flex-row">
+              <div className="sm:flex-1">
+                <ProceedToPaymentButton input={{ guestAccessToken: token }} />
+              </div>
+              <div className="sm:flex-1">
+                <CancelPendingOrderButton
+                  guestToken={token}
+                  onSuccess={(cancelledOrder) => {
+                    setOrder(cancelledOrder);
+                    void cartContext?.refresh();
+                  }}
+                />
+              </div>
             </div>
           ) : (
             <button
@@ -174,6 +193,13 @@ export function GuestOrderClient({ token }: { token: string }) {
               Payment unavailable
             </button>
           )}
+        </div>
+      )}
+
+      {showCodPendingNotice && (
+        <div className="rounded-2xl border border-deep-brown/15 bg-cream-bg p-5 text-deep-brown space-y-2">
+          <p className="text-sm font-extrabold">Order Confirmed</p>
+          <p className="text-xs font-medium">Cash on Delivery — payment due when your order arrives.</p>
         </div>
       )}
 

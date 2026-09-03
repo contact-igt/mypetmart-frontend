@@ -60,6 +60,27 @@ export const OrderApi = {
   },
 
   /**
+   * Cancels an authenticated customer's own unfinished pending Order. The
+   * backend is the final authority for payment safety and returns the same
+   * authoritative detail DTO as getOrder().
+   */
+  async cancelPendingOrder(id: number): Promise<OrderDetailJSON> {
+    return fetchWithAuth<OrderDetailJSON>(`/storefront/orders/${id}/cancel`, {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Cancels a guest's unfinished pending Order using its opaque recovery
+   * token. The token is encoded as a route segment and is never logged.
+   */
+  async cancelPendingGuestOrder(token: string): Promise<GuestOrderDetailJSON> {
+    return fetchWithAuth<GuestOrderDetailJSON>(`/storefront/orders/guest/${encodeURIComponent(token)}/cancel`, {
+      method: "POST",
+    });
+  },
+
+  /**
    * Downloads the PDF receipt for an authenticated customer's own Order.
    * Ownership is enforced entirely server-side (same guarantee as getOrder).
    */
@@ -80,4 +101,3 @@ export const OrderApi = {
     });
   },
 };
-

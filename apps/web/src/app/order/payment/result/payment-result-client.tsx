@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useCart } from "@/context/cart-context";
+import { broadcastCartInvalidated } from "@/lib/cart/cart-sync-channel";
 import { PaymentApi } from "@/lib/payment-api";
 import { ProceedToPaymentButton } from "@/components/payment/proceed-to-payment-button";
 import { BreezePayButton } from "@/components/payment/breeze-pay-button";
@@ -103,9 +104,11 @@ export function PaymentResultClient({ status, txnid, orderId, provider = "payu" 
           clearGuestPaymentToken();
         }
         if (result.paymentStatus === "paid" && !result.commerceException) {
-          // The backend finalized the exact order-producing cart. Inform the
-          // CartContext to refresh so that the stale finalized cart is discarded
-          // and a new active cart is fetched, updating the cart count to 0.
+          // The backend finalized the exact order-producing cart. Tell every
+          // other open tab to revalidate, then refresh this one so the stale
+          // finalized cart is discarded and the cart count drops to 0. A failed
+          // refresh never changes the payment/order outcome shown here.
+          broadcastCartInvalidated("payment-paid");
           void refreshRef.current();
         }
         if (!cancelled) setState({ kind: "resolved", result, retryInput: input });

@@ -124,6 +124,6 @@ export interface GuestOrderDetailJSON extends Omit<OrderDetailJSON, "shippingAdd
 }
 
 export type CreateOrderInput =
-  | { savedAddressId: number; shippingAddress?: never; contactEmail?: string }
-  | { shippingAddress: CreateAddressInput; savedAddressId?: never; contactEmail?: string };
+  | { savedAddressId: number; shippingAddress?: never; contactEmail?: string; paymentMethod?: "payu" | "cod" }
+  | { shippingAddress: CreateAddressInput; savedAddressId?: never; contactEmail?: string; paymentMethod?: "payu" | "cod" };
 

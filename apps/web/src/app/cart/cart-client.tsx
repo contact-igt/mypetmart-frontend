@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCart } from "@/context/cart-context";
 import { ProductImagePlaceholder } from "@/components/image-placeholder";
 import { AppAuthError } from "@/lib/auth/auth-errors";
@@ -17,7 +17,7 @@ export function CartClient() {
   const {
     cart,
     loading,
-    error,
+    syncState,
     mergeReport,
     updatingItemIds,
     removingItemIds,
@@ -26,11 +26,25 @@ export function CartClient() {
     remove,
     clear,
     refresh,
+    revalidate,
     setMergeReport,
   } = useCart();
 
   const [lineErrors, setLineErrors] = useState<Record<number, string>>({});
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
+  const [retrying, setRetrying] = useState(false);
+
+  // Reconcile against the authoritative server cart whenever the Cart page is
+  // shown — the CartProvider only loads once per auth transition, so a cart
+  // finalized elsewhere (another tab/device, a completed order) would otherwise
+  // still be listed here. Freshness-gated in the provider, so this is a no-op
+  // when the cart was just loaded.
+  useEffect(() => {
+    void revalidate("cart-page-mount");
+  }, [revalidate]);
+
+  // A cart whose last authoritative sync failed must not be shown as current.
+  const cartSyncFailed = syncState === "stale" || syncState === "error";
 
   const handleImageError = (itemId: number) => {
     setImageErrors((prev) => {
@@ -105,11 +119,16 @@ export function CartClient() {
 
   // Re-fetch helper for page-level retry
   const handleRetry = async () => {
-    await refresh();
+    setRetrying(true);
+    try {
+      await refresh();
+    } finally {
+      setRetrying(false);
+    }
   };
 
   const hasUnavailableItems = cart.items.some((item) => !item.available);
-  const isCheckoutDisabled = cart.itemCount === 0 || hasUnavailableItems;
+  const isCheckoutDisabled = cart.itemCount === 0 || hasUnavailableItems || cartSyncFailed;
 
   if (loading) {
     return (
@@ -120,17 +139,21 @@ export function CartClient() {
     );
   }
 
-  if (error) {
+  // A failed authoritative refresh is NOT an empty cart — never render the
+  // friendly empty state (or stale purchasable lines as if current) here.
+  if (cartSyncFailed) {
     return (
       <div className="site-container py-12 text-center" aria-live="assertive">
         <div className="motion-enter rounded-2xl bg-[#FFF0ED] border border-red-100 p-8 max-w-md mx-auto">
-          <p className="text-terracotta font-semibold mb-4">{error}</p>
+          <p className="text-terracotta font-semibold mb-1">We couldn&apos;t refresh your cart.</p>
+          <p className="text-text-muted text-sm mb-4">Your cart information may be out of date.</p>
           <button
             type="button"
             onClick={handleRetry}
-            className="motion-press inline-flex min-h-11 items-center justify-center px-5 py-2.5 bg-primary-orange text-white rounded-xl text-sm font-semibold hover:bg-terracotta transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
+            disabled={retrying}
+            className="motion-press inline-flex min-h-11 items-center justify-center px-5 py-2.5 bg-primary-orange text-white rounded-xl text-sm font-semibold hover:bg-terracotta transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 disabled:opacity-60"
           >
-            Retry Loading
+            {retrying ? "Trying..." : "Try Again"}
           </button>
         </div>
       </div>

@@ -14,11 +14,13 @@ export function CheckoutStickyCta({
   total,
   disabled,
   submitting,
+  label,
   onPlaceOrder,
 }: {
   total: string;
   disabled: boolean;
   submitting: boolean;
+  label: string;
   onPlaceOrder: () => void;
 }) {
   return (
@@ -47,7 +49,7 @@ export function CheckoutStickyCta({
               : "cursor-pointer bg-primary-orange hover:bg-terracotta"
           }`}
         >
-          {submitting ? "Placing Order..." : "Place Order"}
+          {submitting ? "Creating Order..." : label}
         </button>
       </div>
     </div>

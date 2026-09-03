@@ -18,6 +18,8 @@ import { DownloadReceiptButton } from "@/components/download-receipt-button";
 import { OrderReturnSummary } from "@/components/returns/order-return-summary";
 import { useReorder } from "@/hooks/use-reorder";
 import type { CustomerOrderPaymentJSON } from "@/types/order";
+import { useOptionalCart } from "@/context/cart-context";
+import { CancelPendingOrderButton } from "@/components/order/cancel-pending-order-button";
 
 const PAYMENT_PROVIDER_LABELS: Record<string, string> = {
   payu: "Online Payment",
@@ -69,6 +71,7 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
   const [returnsByItem, setReturnsByItem] = useState<Map<number, ReturnRequestJSON[]>>(new Map());
   const [returnsRefreshKey, setReturnsRefreshKey] = useState(0);
   const { reorder, states: reorderStates } = useReorder();
+  const cartContext = useOptionalCart();
 
   useEffect(() => {
     if (!isValidId) return;
@@ -189,8 +192,9 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
   // "pending" must never be read as "still owes an online payment": the
   // retry-payment banner/button below is PayU-only.
   const isCodOrder = order.payments.some((p) => p.provider === "cod");
-  const isPendingOrder = !isCodOrder && (order.status === "pending" || order.paymentStatus === "pending");
-  const canPay = order.paymentStatus === "pending" && order.status !== "cancelled" && !isCodOrder;
+  const isPendingOrder = !isCodOrder && order.status === "pending" && order.paymentStatus === "pending";
+  const showPaymentPendingBanner = isPendingOrder || (!isCodOrder && order.status === "cancelled" && order.paymentStatus === "pending");
+  const canPay = isPendingOrder;
   const showCodPendingNotice = isCodOrder && order.paymentStatus === "pending";
   const displayPayment = pickDisplayPayment(order.payments);
 
@@ -236,8 +240,8 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
         <p className="text-xs font-semibold text-terracotta">Some items from this order are no longer available.</p>
       )}
 
-      {/* Pending Order Status Banner (No payment action) */}
-      {isPendingOrder && (
+      {/* Pending online Orders can either resume PayU or be safely abandoned. */}
+      {showPaymentPendingBanner && (
         <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-5 text-deep-brown space-y-3">
           <div className="flex items-center gap-2 text-amber-900 font-extrabold text-sm uppercase tracking-wider">
             <span>Order Pending Payment</span>
@@ -248,8 +252,19 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
               : "Your order has been recorded in pending state."}
           </p>
           {canPay ? (
-            <div className="max-w-xs">
-              <ProceedToPaymentButton input={{ orderId: order.id }} />
+            <div className="flex max-w-xl flex-col gap-3 sm:flex-row">
+              <div className="sm:flex-1">
+                <ProceedToPaymentButton input={{ orderId: order.id }} />
+              </div>
+              <div className="sm:flex-1">
+                <CancelPendingOrderButton
+                  orderId={order.id}
+                  onSuccess={(cancelledOrder) => {
+                    setOrder(cancelledOrder);
+                    void cartContext?.refresh();
+                  }}
+                />
+              </div>
             </div>
           ) : (
             <button

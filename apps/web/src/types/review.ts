@@ -11,6 +11,9 @@ export interface PublicReviewJSON {
   customerDisplayName?: string;
   verifiedPurchase: boolean;
   reviewSource?: ReviewSource;
+  // Admin-set public review date ("YYYY-MM-DD") or null — optional so older
+  // cached responses stay valid. Display date is `reviewDate ?? createdAt`.
+  reviewDate?: string | null;
   createdAt: string;
 }
 
@@ -47,6 +50,9 @@ export interface StorefrontReviewFeedItem {
   review: string;
   customerName: string;
   verifiedPurchase: boolean;
+  // Both optional to stay compatible with older cached feed responses. Display
+  // date is `reviewDate ?? createdAt` (see @/lib/review-date).
+  reviewDate?: string | null;
   createdAt?: string;
   product: {
     id: number;

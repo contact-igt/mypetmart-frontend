@@ -217,6 +217,7 @@ export function ProductReviewsSection({ productId, product }: { productId: numbe
     review: item.review,
     customerName: item.customerName ?? item.customerDisplayName ?? "Customer",
     verifiedPurchase: item.verifiedPurchase,
+    reviewDate: item.reviewDate ?? null,
     createdAt: item.createdAt,
     product: { id: productId, name: product?.name ?? "This product", slug: product?.slug ?? "", image: product?.image ?? null },
   }));
@@ -329,7 +330,7 @@ export function ProductReviewsSection({ productId, product }: { productId: numbe
         </div>
 
         <div className="min-w-0">
-          <ReviewCarousel reviews={carouselReviews} compact showHeader={false} singleCard fullReview showArrows loading={loadingList && carouselReviews.length === 0} />
+          <ReviewCarousel reviews={carouselReviews} compact showHeader={false} singleCard showArrows loading={loadingList && carouselReviews.length === 0} />
         </div>
       </div>
     </section>
