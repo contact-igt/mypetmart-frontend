@@ -24,7 +24,7 @@ describe("ReviewCarousel", () => {
     expect(screen.queryByText("No approved reviews yet.")).not.toBeInTheDocument();
   });
 
-  it("uses custom arrows without pagination dots for a single-card carousel", () => {
+  it("16. single-card PDP carousel renders custom arrows and no pagination dots", () => {
     const { container } = render(
       <ReviewCarousel
         reviews={[
@@ -43,7 +43,42 @@ describe("ReviewCarousel", () => {
     expect(container.querySelector(".slick-dots")).not.toBeInTheDocument();
   });
 
-  it("keeps product review details readable in the single-card presentation", () => {
+  it("15. homepage/default carousel renders zero pagination dots with multiple reviews", () => {
+    const reviews = [1, 2, 3, 4].map((n) => ({
+      id: n,
+      rating: 5,
+      title: `Review ${n}`,
+      review: `Body ${n}`,
+      customerName: `Customer ${n}`,
+      verifiedPurchase: n % 2 === 0,
+      product: { id: 4, name: "Brush", slug: "brush", image: null },
+    }));
+    const { container } = render(<ReviewCarousel reviews={reviews} />);
+
+    expect(container.querySelector(".slick-dots")).not.toBeInTheDocument();
+    expect(container.querySelectorAll("li.slick-active")).toHaveLength(0);
+  });
+
+  it("17 & 18. keeps prev/next navigation and the swipeable slick track", () => {
+    const reviews = [1, 2, 3].map((n) => ({
+      id: n,
+      rating: 4,
+      title: `Review ${n}`,
+      review: `Body ${n}`,
+      customerName: `Customer ${n}`,
+      verifiedPurchase: false,
+      product: { id: 4, name: "Brush", slug: "brush", image: null },
+    }));
+    const { container } = render(<ReviewCarousel reviews={reviews} showArrows />);
+
+    expect(screen.getAllByRole("button", { name: "Previous review" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Next review" }).length).toBeGreaterThan(0);
+    // react-slick's swipeable/touch container is still rendered.
+    expect(container.querySelector(".slick-list")).toBeInTheDocument();
+    expect(container.querySelector(".slick-track")).toBeInTheDocument();
+  });
+
+  it("20. maps a supplied review date into the single-card presentation", () => {
     render(
       <ReviewCarousel
         reviews={[{
@@ -53,18 +88,20 @@ describe("ReviewCarousel", () => {
           review: "The full customer review remains readable in the PDP presentation.",
           customerName: "Pet Parent",
           verifiedPurchase: false,
-          createdAt: "2026-08-27T00:00:00.000Z",
+          reviewDate: "2026-08-14",
+          createdAt: "2026-09-02T00:00:00.000Z",
           product: { id: 9, name: "A long product name that should wrap naturally", slug: "daily-brush", image: null },
         }]}
         compact
         showHeader={false}
         singleCard
-        fullReview
       />
     );
 
     expect(screen.getByRole("region", { name: "Product reviews" })).toBeInTheDocument();
     expect(screen.getByText("A long product name that should wrap naturally")).toBeInTheDocument();
-    expect(screen.getByText("27 Aug 2026")).toBeInTheDocument();
+    // reviewDate wins over createdAt.
+    expect(screen.getByText("14 Aug 2026")).toBeInTheDocument();
+    expect(screen.queryByText("2 Sep 2026")).not.toBeInTheDocument();
   });
 });

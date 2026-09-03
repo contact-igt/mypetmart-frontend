@@ -10,6 +10,8 @@ import { storeGuestPaymentToken } from "@/app/order/payment/guest-payment-token"
 type ProceedToPaymentButtonProps = {
   input: InitiatePaymentInput;
   className?: string;
+  autoStart?: boolean;
+  onFailure?: (error: unknown) => void;
 };
 
 /**
@@ -20,7 +22,7 @@ type ProceedToPaymentButtonProps = {
  * distinct steps: this component's only job is the handoff; it never marks
  * anything paid.
  */
-export function ProceedToPaymentButton({ input, className }: ProceedToPaymentButtonProps) {
+export function ProceedToPaymentButton({ input, className, autoStart = false, onFailure }: ProceedToPaymentButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,14 +60,24 @@ export function ProceedToPaymentButton({ input, className }: ProceedToPaymentBut
         router.push(`/order/payment/result?${query.toString()}`);
         return;
       }
+      onFailure?.(err);
       if (err instanceof AppAuthError) {
-        setError(err.message || "Unable to start payment. Please try again.");
+        setError(autoStart ? "Your order has been created, but payment could not be started. Please retry payment." : err.message || "Unable to start payment. Please try again.");
       } else {
-        setError("Unable to start payment. Please try again.");
+        setError(autoStart ? "Your order has been created, but payment could not be started. Please retry payment." : "Unable to start payment. Please try again.");
       }
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!autoStart) return;
+    const timer = window.setTimeout(() => void handleClick(), 0);
+    return () => window.clearTimeout(timer);
+    // The input is intentionally fixed for a created Order. A changed input
+    // represents a different recovery action and should be user-triggered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   if (handoff) {
     return (
@@ -89,7 +101,7 @@ export function ProceedToPaymentButton({ input, className }: ProceedToPaymentBut
         disabled={loading}
         className="w-full rounded-xl bg-primary-orange py-3 text-xs font-bold text-white hover:bg-terracotta transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {loading ? "Starting payment..." : "Proceed to Payment"}
+        {loading ? "Starting secure payment..." : autoStart ? "Retry Payment" : "Proceed to Payment"}
       </button>
       {error && <p className="mt-2 text-xs font-semibold text-terracotta text-center">{error}</p>}
     </div>

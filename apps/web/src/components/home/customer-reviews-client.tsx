@@ -9,7 +9,7 @@ import type { PublicReviewJSON, ReviewSummaryJSON, StorefrontReviewFeedItem } fr
 const REVIEW_LIMIT = 8;
 
 function legacyReviewToFeed(review: PublicReviewJSON, productId: number): StorefrontReviewFeedItem {
-  return { id: review.id, rating: review.rating, title: review.title, review: review.review, customerName: review.customerName || review.customerDisplayName || "Customer", verifiedPurchase: review.verifiedPurchase, product: { id: productId, name: "My Pet Mart product", slug: "", image: null } };
+  return { id: review.id, rating: review.rating, title: review.title, review: review.review, customerName: review.customerName || review.customerDisplayName || "Customer", verifiedPurchase: review.verifiedPurchase, reviewDate: review.reviewDate ?? null, createdAt: review.createdAt, product: { id: productId, name: "My Pet Mart product", slug: "", image: null } };
 }
 
 export function CustomerReviewsClient({ productId }: { productId: number | null }) {
@@ -40,7 +40,7 @@ export function CustomerReviewsClient({ productId }: { productId: number | null 
   }, [productId]);
 
   if (loading) {
-    return <section className="section-block bg-cream-bg py-14 sm:py-16"><div className="site-container"><div className="h-24 max-w-xl animate-pulse rounded-2xl bg-surface-secondary/40" /><div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"><div className="h-72 animate-pulse rounded-2xl bg-white" /><div className="hidden h-72 animate-pulse rounded-2xl bg-white sm:block" /><div className="hidden h-72 animate-pulse rounded-2xl bg-white lg:block" /></div></div></section>;
+    return <section className="section-block bg-cream-bg py-14 sm:py-16"><div className="site-container"><div className="h-24 max-w-xl animate-pulse rounded-2xl bg-surface-secondary/40" /><div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"><div className="h-[22rem] animate-pulse rounded-2xl bg-white" /><div className="hidden h-[22rem] animate-pulse rounded-2xl bg-white sm:block" /><div className="hidden h-[22rem] animate-pulse rounded-2xl bg-white lg:block" /></div></div></section>;
   }
 
   if (productId !== null) {

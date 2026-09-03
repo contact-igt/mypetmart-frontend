@@ -6,12 +6,14 @@ import Slider, { type Settings } from "react-slick";
 import { ReviewCard } from "./review-card";
 import type { StorefrontReviewFeedItem } from "@/types/review";
 
-export function ReviewCarousel({ reviews, eyebrow = "Customer reviews", title = "Loved by pets. Trusted by parents.", description = "Honest words from the My Pet Mart community.", compact = false, showHeader = true, singleCard = false, fullReview = false, loading = false, showArrows = false }: { reviews: StorefrontReviewFeedItem[]; eyebrow?: string; title?: string; description?: string; compact?: boolean; showHeader?: boolean; singleCard?: boolean; fullReview?: boolean; loading?: boolean; showArrows?: boolean }) {
+export function ReviewCarousel({ reviews, eyebrow = "Customer reviews", title = "Loved by pets. Trusted by parents.", description = "Honest words from the My Pet Mart community.", compact = false, showHeader = true, singleCard = false, loading = false, showArrows = false }: { reviews: StorefrontReviewFeedItem[]; eyebrow?: string; title?: string; description?: string; compact?: boolean; showHeader?: boolean; singleCard?: boolean; loading?: boolean; showArrows?: boolean }) {
   const sliderRef = useRef<Slider>(null);
   const canNavigate = reviews.length > 1;
   const settings: Settings = {
     arrows: false,
-    dots: singleCard ? false : canNavigate,
+    // Pagination dots removed from every review carousel (Stage 4) — navigation
+    // is the prev/next arrows + swipe/touch drag below.
+    dots: false,
     infinite: reviews.length > 3,
     slidesToScroll: 1,
     slidesToShow: singleCard ? 1 : 3,
@@ -40,7 +42,7 @@ export function ReviewCarousel({ reviews, eyebrow = "Customer reviews", title = 
             <button type="button" aria-label="Previous review" onClick={() => sliderRef.current?.slickPrev()} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-deep-brown bg-white/95 text-deep-brown shadow-sm transition-colors hover:bg-deep-brown hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-orange"><ArrowLeft size={18} aria-hidden="true" /></button>
             <button type="button" aria-label="Next review" onClick={() => sliderRef.current?.slickNext()} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-deep-brown bg-white/95 text-deep-brown shadow-sm transition-colors hover:bg-deep-brown hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-orange"><ArrowRight size={18} aria-hidden="true" /></button>
           </div>}
-          <Slider ref={sliderRef} {...settings}>{reviews.map((review) => <div key={review.id} className={`h-full ${singleCard ? "px-0" : "px-2"} pb-5`}><ReviewCard review={review} fullReview={fullReview} /></div>)}</Slider>
+          <Slider ref={sliderRef} {...settings}>{reviews.map((review) => <div key={review.id} className={`h-full ${singleCard ? "px-0" : "px-2"} pb-5`}><ReviewCard review={review} /></div>)}</Slider>
         </div>}
       </div>
     </section>

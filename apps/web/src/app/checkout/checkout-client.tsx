@@ -4,23 +4,26 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCustomerAuth } from "@/context/customer-auth-context";
+import { useOptionalCart } from "@/context/cart-context";
+import { broadcastCartInvalidated } from "@/lib/cart/cart-sync-channel";
 import { AddressApi } from "@/lib/address-api";
 import { CheckoutApi } from "@/lib/checkout-api";
 import { OrderApi } from "@/lib/order-api";
 import { CartApi } from "@/lib/cart-api";
 import type { Address, CreateAddressInput } from "@/types/address";
-import type { CheckoutPreviewPayload, CheckoutPreviewResult } from "@/types/checkout";
+import type { CheckoutPaymentMethod, CheckoutPreviewPayload, CheckoutPreviewResult } from "@/types/checkout";
 import type { CreateOrderResultJSON, CreateOrderInput } from "@/types/order";
 import type { Cart } from "@/types/storefront";
 import { AppAuthError } from "@/lib/auth/auth-errors";
-import { AddressLocationAssist, type LocationSelection } from "@/components/address/address-location-assist";
 import { ProceedToPaymentButton } from "@/components/payment/proceed-to-payment-button";
 import { ConfirmCodOrderButton } from "@/components/payment/confirm-cod-order-button";
-import { BreezePayButton } from "@/components/payment/breeze-pay-button";
 import type { CodConfirmationResultJSON } from "@/types/payment";
+import { storeGuestPaymentToken } from "@/app/order/payment/guest-payment-token";
+import { readGuestPaymentToken } from "@/app/order/payment/guest-payment-token";
 import { TrustBadges } from "@/components/checkout/trust-badges";
 import { CheckoutStickyCta } from "@/components/checkout/checkout-sticky-cta";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { CancelPendingOrderButton, getPendingOrderCancellationMessage } from "@/components/order/cancel-pending-order-button";
 
 type AddressFormData = {
   label: string;
@@ -56,6 +59,13 @@ const initialFormData: AddressFormData = {
 
 export function CheckoutClient() {
   const { status, customer } = useCustomerAuth();
+  const cartContext = useOptionalCart();
+  // Latest context in a ref so async flows (COD confirmation, error reconcile)
+  // can reach it without adding it to effect dependency lists.
+  const cartContextRef = useRef(cartContext);
+  useEffect(() => {
+    cartContextRef.current = cartContext;
+  });
   const isAuthenticated = status === "authenticated" && Boolean(customer);
 
   // Below the checkout's two-column breakpoint the primary action moves into a
@@ -84,132 +94,36 @@ export function CheckoutClient() {
   const [isCartError, setIsCartError] = useState(false);
   const [isPendingOrderError, setIsPendingOrderError] = useState(false);
   const [pendingOrderRedirectId, setPendingOrderRedirectId] = useState<number | null>(null);
+  const [pendingOrderNumber, setPendingOrderNumber] = useState<string | null>(null);
+  const [pendingGuestToken, setPendingGuestToken] = useState<string | null>(null);
+  const [pendingCancellationError, setPendingCancellationError] = useState<string | null>(null);
 
   // Order Submission & Distinct Network Uncertainty State
   const [submittingOrder, setSubmittingOrder] = useState(false);
   const [isOrderStatusUnknown, setIsOrderStatusUnknown] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<CreateOrderResultJSON | null>(null);
+  const [postOrderError, setPostOrderError] = useState<string | null>(null);
+  // A commerce action succeeded but the follow-up authoritative cart refresh
+  // did not — the order is fine, only the local cart view is behind.
+  const [cartSyncWarning, setCartSyncWarning] = useState(false);
   const isSubmittingRef = useRef(false);
+  const previewGenerationRef = useRef(0);
 
-  // Payment method selection (Phase 1 COD) — chosen only after the Order
-  // exists, on the same "Order Created" screen the PayU handoff already
-  // lives on. Defaults to Pay Online so PayU's existing behavior/flow is
-  // unchanged unless the customer explicitly picks Cash on Delivery.
-  // Breeze is a build-time-flagged online option that coexists with PayU and
-  // COD (NEXT_PUBLIC_BREEZE_ENABLED is a non-secret feature flag — the Breeze
-  // Web SDK needs no frontend key). When the flag is off, checkout is
-  // visually and behaviourally identical to before.
-  const breezeEnabled = process.env.NEXT_PUBLIC_BREEZE_ENABLED === "true";
-  const [paymentMethod, setPaymentMethod] = useState<"payu" | "breeze" | "cod">("payu");
-  const [codConfirmation, setCodConfirmation] = useState<CodConfirmationResultJSON | null>(null);
-
-  // Invalidate preview only when actual preview input fields change
-  const handleFormFieldChange = (field: keyof AddressFormData, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    // Invalidate preview if an inline address field that affects shipping preview changes
-    const previewImpactingFields: Array<keyof AddressFormData> = [
-      "recipientName",
-      "phone",
-      "line1",
-      "line2",
-      "city",
-      "state",
-      "postalCode",
-      "country",
-      "latitude",
-      "longitude",
-      "contactEmail",
-    ];
-    if (previewImpactingFields.includes(field) && activePreviewPayload && !activePreviewPayload.savedAddressId) {
-      setActivePreviewPayload(null);
-      setPreviewResult(null);
-    }
-  };
-
-  const handleLocationSelect = useCallback((selection: LocationSelection) => {
-    setFormData((prev) => ({
-      ...prev,
-      line1: selection.fields.line1 !== undefined ? selection.fields.line1 : prev.line1,
-      line2: selection.fields.line2 !== undefined ? selection.fields.line2 : prev.line2,
-      city: selection.fields.city !== undefined ? selection.fields.city : prev.city,
-      state: selection.fields.state !== undefined ? selection.fields.state : prev.state,
-      postalCode: selection.fields.postalCode !== undefined ? selection.fields.postalCode : prev.postalCode,
-      country: selection.fields.country !== undefined ? selection.fields.country : prev.country,
-      latitude: selection.latitude,
-      longitude: selection.longitude,
-    }));
-    // Invalidate stale preview when map location coordinates/fields are chosen
-    setActivePreviewPayload(null);
-    setPreviewResult(null);
+  // Reconcile the shared CartContext after a commerce action that finalized the
+  // cart server-side (COD confirmation, verified payment). The action's own
+  // success is authoritative and is never rolled back if this fails.
+  const reconcileCartAfterCommerce = useCallback(async (source: "cod-confirmed" | "payment-paid") => {
+    broadcastCartInvalidated(source);
+    const ok = await cartContextRef.current?.refresh();
+    setCartSyncWarning(ok === false);
   }, []);
 
-  // Load initial cart and (if authenticated) addresses
-  useEffect(() => {
-    async function init() {
-      setLoading(true);
-      try {
-        const cartData = await CartApi.getCart();
-        setCart(cartData);
+  // Pay Online is the existing checkout default. The selected method is sent
+  // to preview and Order creation so serviceability stays payment-specific.
+  const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>("payu");
+  const [codConfirmation, setCodConfirmation] = useState<CodConfirmationResultJSON | null>(null);
 
-        if (isAuthenticated) {
-          const addresses = await AddressApi.getAddresses();
-          setSavedAddresses(addresses);
-          const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
-          if (defaultAddr) {
-            setSelectedAddressId(defaultAddr.id);
-            const payload: CheckoutPreviewPayload = { savedAddressId: defaultAddr.id };
-            const preview = await CheckoutApi.preview(payload);
-            setPreviewResult(preview);
-            setActivePreviewPayload(payload);
-          } else {
-            setIsAddingNewAddress(true);
-          }
-        }
-      } catch (err: unknown) {
-        if (err instanceof AppAuthError) {
-          setError(err.message);
-        } else {
-          setError("Failed to load checkout data.");
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (status !== "loading") {
-      init();
-    }
-  }, [status, isAuthenticated]);
-
-  // Handle selecting a saved address
-  const handleSelectSavedAddress = async (addressId: number) => {
-    setSelectedAddressId(addressId);
-    setIsAddingNewAddress(false);
-    setError(null);
-    setIsCartError(false);
-    setIsOrderStatusUnknown(false);
-    setPreviewing(true);
-
-    const payload: CheckoutPreviewPayload = { savedAddressId: addressId };
-
-    try {
-      const preview = await CheckoutApi.preview(payload);
-      setPreviewResult(preview);
-      setActivePreviewPayload(payload);
-    } catch (err: unknown) {
-      setActivePreviewPayload(null);
-      setPreviewResult(null);
-      if (err instanceof AppAuthError) {
-        setError(err.message);
-      } else {
-        setError("Failed to preview address.");
-      }
-    } finally {
-      setPreviewing(false);
-    }
-  };
-
-  const validateAddressForm = (): boolean => {
+  const addressValidationErrors = useCallback((): Partial<Record<keyof AddressFormData, string>> => {
     const errors: Partial<Record<keyof AddressFormData, string>> = {};
 
     if (!formData.recipientName.trim()) {
@@ -217,6 +131,8 @@ export function CheckoutClient() {
     }
     if (!formData.phone.trim()) {
       errors.phone = "Phone number is required";
+    } else if (formData.phone.replace(/\D/g, "").length < 10) {
+      errors.phone = "Phone number must have at least 10 digits";
     }
     if (!formData.line1.trim()) {
       errors.line1 = "Address line 1 is required";
@@ -227,8 +143,8 @@ export function CheckoutClient() {
     if (!formData.state.trim()) {
       errors.state = "State is required";
     }
-    if (!formData.postalCode.trim()) {
-      errors.postalCode = "Postal code is required";
+    if (!/^\d{6}$/.test(formData.postalCode.trim())) {
+      errors.postalCode = "Enter a valid 6-digit PIN code";
     }
     if (!isAuthenticated) {
       const emailPattern = /^\S+@\S+\.\S+$/;
@@ -239,27 +155,17 @@ export function CheckoutClient() {
       }
     }
 
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+    return errors;
+  }, [formData, isAuthenticated]);
 
-  // Submit address form (Guest inline OR Authenticated new address)
-  const handleAddressSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateAddressForm()) return;
-
-    setPreviewing(true);
-    setError(null);
-    setIsCartError(false);
-    setIsOrderStatusUnknown(false);
-
+  const buildInlineAddress = useCallback((): CreateAddressInput => {
     const hasNumericCoords =
       typeof formData.latitude === "number" &&
       typeof formData.longitude === "number" &&
       !isNaN(formData.latitude) &&
       !isNaN(formData.longitude);
 
-    const addressInput: CreateAddressInput = {
+    return {
       label: formData.label.trim() || undefined,
       recipientName: formData.recipientName.trim(),
       phone: formData.phone.trim(),
@@ -274,85 +180,232 @@ export function CheckoutClient() {
         ? { latitude: formData.latitude as number, longitude: formData.longitude as number }
         : {}),
     };
+  }, [formData]);
 
+  const validateAddressForm = useCallback((): boolean => {
+    const errors = addressValidationErrors();
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [addressValidationErrors]);
+
+  const inlineAddressReady = Object.keys(addressValidationErrors()).length === 0;
+
+  const getCurrentPreviewPayload = useCallback((): CheckoutPreviewPayload | null => {
+    if (isAuthenticated && savedAddresses.length > 0 && !isAddingNewAddress && selectedAddressId) {
+      return {
+        savedAddressId: selectedAddressId,
+        billingSameAsShipping: true,
+        paymentMethod,
+      };
+    }
+    if (!inlineAddressReady) return null;
+    return {
+      shippingAddress: buildInlineAddress(),
+      contactEmail: formData.contactEmail.trim() || undefined,
+      billingSameAsShipping: true,
+      paymentMethod,
+    };
+  }, [buildInlineAddress, formData.contactEmail, inlineAddressReady, isAddingNewAddress, isAuthenticated, paymentMethod, savedAddresses.length, selectedAddressId]);
+
+  const invalidatePreview = useCallback(() => {
+    previewGenerationRef.current += 1;
+    setActivePreviewPayload(null);
+    setPreviewResult(null);
+  }, []);
+
+  const runPreview = useCallback(async (payload: CheckoutPreviewPayload): Promise<CheckoutPreviewResult | null> => {
+    const generation = ++previewGenerationRef.current;
+    setPreviewing(true);
+    setError(null);
+    setIsCartError(false);
     try {
-      if (isAuthenticated && formData.saveToAccount) {
-        const newAddress = await AddressApi.create(addressInput);
-        const payload: CheckoutPreviewPayload = { savedAddressId: newAddress.id };
-        const preview = await CheckoutApi.preview(payload);
-        setPreviewResult(preview);
-        setActivePreviewPayload(payload);
-
-        const updatedList = await AddressApi.getAddresses();
-        setSavedAddresses(updatedList);
-        setSelectedAddressId(newAddress.id);
-        setIsAddingNewAddress(false);
-      } else {
-        const payload: CheckoutPreviewPayload = {
-          shippingAddress: addressInput,
-          contactEmail: formData.contactEmail.trim(),
-        };
-        const preview = await CheckoutApi.preview(payload);
-        setPreviewResult(preview);
-        setActivePreviewPayload(payload);
-      }
+      const preview = await CheckoutApi.preview(payload);
+      if (generation !== previewGenerationRef.current) return null;
+      setPreviewResult(preview);
+      setActivePreviewPayload(payload);
+      return preview;
     } catch (err: unknown) {
+      if (generation !== previewGenerationRef.current) return null;
       setActivePreviewPayload(null);
       setPreviewResult(null);
-      if (err instanceof AppAuthError) {
-        setError(err.message);
+      // The backend telling us the cart is empty is authoritative — reconcile
+      // the shared cart cache and show a cart-specific message (with a Review
+      // Cart action), never a generic "delivery availability" error.
+      if (err instanceof AppAuthError && (err.code === "CHECKOUT_CART_EMPTY" || err.code === "ORDER_CART_EMPTY")) {
+        setError("Your cart is empty. Add an item before checking out.");
+        setIsCartError(true);
+        setCart({ id: null, status: "ordered", itemCount: 0, subtotal: "0.00", items: [] });
+        cartContextRef.current?.markAuthoritativelyEmpty();
       } else {
-        setError("Failed to validate shipping address.");
+        setError(err instanceof AppAuthError ? err.message : "We couldn’t verify delivery availability right now. Please try again.");
       }
+      return null;
     } finally {
-      setPreviewing(false);
+      if (generation === previewGenerationRef.current) setPreviewing(false);
     }
+  }, []);
+
+  const handleFormFieldChange = (field: keyof AddressFormData, value: unknown) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    const inlineCheckout = !isAuthenticated || isAddingNewAddress || savedAddresses.length === 0;
+    if (field !== "label" && inlineCheckout) invalidatePreview();
   };
+
+  // Load the live cart and saved addresses. The preview effect below performs
+  // the first automatic payment-specific delivery check once state is ready.
+  useEffect(() => {
+    async function init() {
+      setLoading(true);
+      try {
+        const cartData = await CartApi.getCart();
+        setCart(cartData);
+        // Feed this authoritative fetch into the shared context so the header
+        // badge and Cart page stay consistent without a second request.
+        cartContextRef.current?.applyServerCart(cartData);
+        if (isAuthenticated) {
+          const addresses = await AddressApi.getAddresses();
+          setSavedAddresses(addresses);
+          const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
+          if (defaultAddr) setSelectedAddressId(defaultAddr.id);
+          else setIsAddingNewAddress(true);
+        } else {
+          setIsAddingNewAddress(false);
+        }
+      } catch (err: unknown) {
+        setError(err instanceof AppAuthError ? err.message : "Failed to load checkout data.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (status !== "loading") void init();
+  }, [status, isAuthenticated]);
+
+  // Saved addresses preview immediately; inline addresses preview only after
+  // the complete minimum address is valid and the debounce has elapsed.
+  useEffect(() => {
+    const payload = getCurrentPreviewPayload();
+    if (!payload) {
+      return;
+    }
+    const isSaved = Boolean(payload.savedAddressId);
+    const timer = window.setTimeout(() => void runPreview(payload), isSaved ? 0 : 400);
+    return () => window.clearTimeout(timer);
+  }, [getCurrentPreviewPayload, runPreview]);
+
+  const handleSelectSavedAddress = (addressId: number) => {
+    setSelectedAddressId(addressId);
+    setIsAddingNewAddress(false);
+    setError(null);
+    setIsCartError(false);
+    setIsOrderStatusUnknown(false);
+    invalidatePreview();
+  };
+
+  // Enter/submit remains a keyboard-friendly immediate preview shortcut; no
+  // visible verification step is required for placement.
+  const handleAddressSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateAddressForm()) return;
+    const payload = getCurrentPreviewPayload();
+    if (payload) void runPreview(payload);
+  };
+
+  const resolveAddressForOrder = async (): Promise<CheckoutPreviewPayload | null> => {
+    if (isAuthenticated && formData.saveToAccount && (isAddingNewAddress || savedAddresses.length === 0)) {
+      try {
+        const newAddress = await AddressApi.create(buildInlineAddress());
+        setSavedAddresses((prev) => [...prev, newAddress]);
+        setSelectedAddressId(newAddress.id);
+        setIsAddingNewAddress(false);
+        return { savedAddressId: newAddress.id, billingSameAsShipping: true, paymentMethod };
+      } catch (err: unknown) {
+        setError(err instanceof AppAuthError ? err.message : "We couldn’t save this address. Please try again.");
+        return null;
+      }
+    }
+    return getCurrentPreviewPayload();
+  };
+
+  const previewIsServiceable = (result: CheckoutPreviewResult): boolean => {
+    if (result.serviceability) return result.serviceability.serviceable;
+    if (typeof result.readiness.serviceable === "boolean") return result.readiness.serviceable;
+    // Compatibility for older mocked/legacy responses. Stage 1 responses
+    // always include serviceability and readiness.serviceable.
+    return result.readiness.addressReady && result.readiness.cartReady;
+  };
+
+  const previewMatches = (payload: CheckoutPreviewPayload) =>
+    Boolean(
+      activePreviewPayload &&
+        JSON.stringify(activePreviewPayload) === JSON.stringify(payload) &&
+        previewResult &&
+        previewResult.paymentMethod !== null &&
+        (previewResult.paymentMethod === undefined || previewResult.paymentMethod === paymentMethod)
+    );
 
   // Place Order Action Handshake
   const handlePlaceOrder = async () => {
-    // 1. In-flight double submission guard & network uncertainty lock
     if (isSubmittingRef.current || submittingOrder || previewing || isOrderStatusUnknown) return;
-
-    // 2. Validate state readiness
-    if (
-      !cart ||
-      cart.items.length === 0 ||
-      !previewResult ||
-      !previewResult.readiness.cartReady ||
-      !previewResult.readiness.addressReady ||
-      !activePreviewPayload
-    ) {
-      setError("Checkout is not ready for order creation. Please verify your address and cart.");
+    if (!cart || cart.items.length === 0) {
+      setError("Your cart is empty. Add an item before placing your order.");
       return;
     }
 
-    // Lock synchronous submission flag
     isSubmittingRef.current = true;
     setSubmittingOrder(true);
     setError(null);
     setIsCartError(false);
     setIsPendingOrderError(false);
     setPendingOrderRedirectId(null);
-
-    // Resolve CreateOrderInput payload strictly matching preview payload
-    let orderInput: CreateOrderInput;
-    if (activePreviewPayload.savedAddressId) {
-      orderInput = { savedAddressId: activePreviewPayload.savedAddressId };
-    } else if (activePreviewPayload.shippingAddress) {
-      orderInput = {
-        shippingAddress: activePreviewPayload.shippingAddress,
-        contactEmail: activePreviewPayload.contactEmail,
-      };
-    } else {
-      setError("Shipping address resolution failed.");
-      isSubmittingRef.current = false;
-      setSubmittingOrder(false);
-      return;
-    }
+    setPendingOrderNumber(null);
+    setPendingGuestToken(null);
+    setPendingCancellationError(null);
+    setPostOrderError(null);
 
     try {
+      const payload = await resolveAddressForOrder();
+      if (!payload) {
+        if (isAuthenticated || !inlineAddressReady) setFormErrors(addressValidationErrors());
+        return;
+      }
+
+      // Never create an Order from an invalidated or payment-mismatched
+      // preview. The final request is authoritative for this click.
+      let finalPreview = previewResult;
+      if (!finalPreview || !previewMatches(payload)) {
+        finalPreview = await runPreview(payload);
+      }
+      if (!finalPreview) {
+        // runPreview already set the precise error (cart empty / delivery
+        // unavailable / transient). Don't override it with a generic message.
+        return;
+      }
+      if (
+        !finalPreview.readiness.cartReady ||
+        !finalPreview.readiness.addressReady ||
+        !previewIsServiceable(finalPreview)
+      ) {
+        setError(
+          finalPreview.serviceability && !finalPreview.serviceability.serviceable
+            ? paymentMethod === "cod"
+              ? "Cash on Delivery is not available for this delivery address."
+              : "Delivery is currently unavailable for this PIN code."
+            : "We couldn't verify delivery availability right now. Please try again."
+        );
+        return;
+      }
+
+      const orderInput: CreateOrderInput = payload.savedAddressId
+        ? { savedAddressId: payload.savedAddressId, paymentMethod }
+        : {
+            shippingAddress: payload.shippingAddress!,
+            contactEmail: payload.contactEmail,
+            paymentMethod,
+          };
       const order = await OrderApi.create(orderInput);
+      // Preserve recovery immediately. Payment/COD is a separate operation
+      // and must never cause a second Order creation after this point.
+      if (order.guestAccessToken) storeGuestPaymentToken(order.guestAccessToken);
       setCreatedOrder(order);
     } catch (err: unknown) {
       if (err instanceof AppAuthError) {
@@ -360,6 +413,11 @@ export function CheckoutClient() {
           case "ORDER_CART_EMPTY":
             setError("Your cart is empty. Add an item before placing your order.");
             setIsCartError(true);
+            // The backend is authoritative: there is no active cart. Reconcile
+            // the local + shared cart cache so the page, header and other tabs
+            // stop showing the phantom items.
+            setCart({ id: null, status: "ordered", itemCount: 0, subtotal: "0.00", items: [] });
+            cartContextRef.current?.markAuthoritativelyEmpty();
             break;
           case "ORDER_PRODUCT_NOT_AVAILABLE":
             setError("This product is no longer available. Review your cart.");
@@ -379,15 +437,27 @@ export function CheckoutClient() {
           case "ORDER_ADDRESS_NOT_FOUND":
             setError("The selected address is no longer available. Please choose another address.");
             break;
+          case "ORDER_DESTINATION_UNSERVICEABLE":
+          case "ORDER_SERVICEABILITY_UNAVAILABLE":
+            setError("Delivery is currently unavailable for this address. Please try another address or payment method.");
+            break;
           case "ORDER_ALREADY_PENDING": {
             setIsPendingOrderError(true);
             const rawId = (err.details as { orderId?: number } | undefined)?.orderId;
+            const rawOrderNumber = (err.details as { orderNumber?: string } | undefined)?.orderNumber;
             if (typeof rawId === "number" && rawId > 0) {
               setPendingOrderRedirectId(rawId);
             } else {
               setPendingOrderRedirectId(null);
             }
-            setError("You already have a pending order.");
+            setPendingOrderNumber(typeof rawOrderNumber === "string" ? rawOrderNumber : null);
+            // Guest creates normally re-issue a fresh token with the existing
+            // Order. If an older backend response only reports the duplicate,
+            // use the token already retained for this tab; never guess a guest
+            // recovery URL from a numeric Order ID.
+            setPendingGuestToken(!isAuthenticated ? readGuestPaymentToken() : null);
+            setPendingCancellationError(null);
+            setError(null);
             break;
           }
           case "AUTH_VALIDATION_FAILED":
@@ -410,6 +480,23 @@ export function CheckoutClient() {
     }
   };
 
+  const handlePendingOrderCancellation = async () => {
+    setIsPendingOrderError(false);
+    setPendingOrderRedirectId(null);
+    setPendingOrderNumber(null);
+    setPendingGuestToken(null);
+    setPendingCancellationError(null);
+    setError(null);
+
+    // Keep the address, payment method, and cart in place. Only the stale
+    // preview/blocker is invalidated, then the existing preview pipeline runs
+    // again for the same current payload.
+    invalidatePreview();
+    await cartContext?.refresh();
+    const payload = getCurrentPreviewPayload();
+    if (payload) await runPreview(payload);
+  };
+
   if (loading) {
     return (
       <main className="flex-1 bg-cream-bg flex items-center justify-center min-h-[calc(100vh-144px)] py-12">
@@ -428,14 +515,18 @@ export function CheckoutClient() {
         <div className="mx-auto max-w-[800px] px-5 sm:px-8">
           {/* Header */}
           <div className="text-center pb-6 border-b border-deep-brown/15">
-            <span className="inline-block rounded-full bg-mint-sage px-3 py-1 text-xs font-extrabold text-deep-brown uppercase tracking-wider mb-2">
-              Order Created
+            <span className={`inline-block rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider mb-2 ${codConfirmation ? "bg-mint-sage text-deep-brown" : "bg-peach-hero text-primary-orange"}`}>
+              {codConfirmation ? "Order Confirmed" : "Order Created"}
             </span>
             <h1 className="font-baloo text-3xl font-extrabold text-deep-brown sm:text-4xl">
               {`Order #${createdOrder.orderNumber}`}
             </h1>
             <p className="mt-2 text-sm font-medium text-text-primary/80">
-              Your order has been recorded in pending state. Payment setup is the next step.
+              {codConfirmation
+                ? "Cash on Delivery — payment will be collected when your order arrives."
+                : postOrderError
+                  ? "Your order has been created, but payment could not be started. You can retry payment for this order."
+                  : "Your order is being prepared for secure payment."}
             </p>
           </div>
 
@@ -525,109 +616,64 @@ export function CheckoutClient() {
               </div>
             </div>
 
-            {/* Proceed to Payment */}
+            {/* Payment handoff / COD confirmation. These start automatically
+                after the Order response has been stored in state. */}
             <div className="pt-4 border-t border-deep-brown/10 space-y-3 text-center">
               {codConfirmation ? (
                 <div className="rounded-xl border border-mint-sage bg-mint-sage/20 p-4">
-                  <p className="text-sm font-bold text-deep-brown">Order placed successfully</p>
+                  <p className="text-sm font-bold text-deep-brown">Order confirmed</p>
                   <p className="mt-1 text-xs font-semibold text-deep-brown/80">
                     Payment Method: Cash on Delivery
                   </p>
                   <p className="mt-1 text-[11px] text-text-primary/70">
                     Please keep ₹{codConfirmation.amount} ready at the time of delivery.
                   </p>
+                  {cartSyncWarning && (
+                    <div className="mt-3 border-t border-mint-sage/60 pt-3 text-[11px] text-deep-brown/80">
+                      <p>We couldn&apos;t refresh your cart right now. It will update automatically when the connection is restored.</p>
+                      <button
+                        type="button"
+                        onClick={() => void reconcileCartAfterCommerce("cod-confirmed")}
+                        className="mt-1 font-bold text-primary-orange hover:underline"
+                      >
+                        Retry Cart Sync
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
-                  <div className={`grid grid-cols-1 gap-2.5 pb-1 sm:gap-3 ${breezeEnabled ? "sm:grid-cols-3" : "sm:grid-cols-2"}`} role="radiogroup" aria-label="Payment method">
-                    <label
-                      className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold text-deep-brown transition-colors ${
-                        paymentMethod === "payu"
-                          ? "border-primary-orange bg-peach-hero/20 ring-1 ring-primary-orange"
-                          : "border-deep-brown/15 bg-white hover:border-deep-brown/30"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment-method"
-                        checked={paymentMethod === "payu"}
-                        onChange={() => setPaymentMethod("payu")}
-                        className="h-4 w-4 text-primary-orange focus:ring-primary-orange"
-                      />
-                      Pay Online
-                    </label>
-                    {breezeEnabled && (
-                      <label
-                        className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold text-deep-brown transition-colors ${
-                          paymentMethod === "breeze"
-                            ? "border-primary-orange bg-peach-hero/20 ring-1 ring-primary-orange"
-                            : "border-deep-brown/15 bg-white hover:border-deep-brown/30"
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="payment-method"
-                          checked={paymentMethod === "breeze"}
-                          onChange={() => setPaymentMethod("breeze")}
-                          className="h-4 w-4 text-primary-orange focus:ring-primary-orange"
-                        />
-                        Pay with Breeze
-                      </label>
-                    )}
-                    <label
-                      className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold text-deep-brown transition-colors ${
-                        paymentMethod === "cod"
-                          ? "border-primary-orange bg-peach-hero/20 ring-1 ring-primary-orange"
-                          : "border-deep-brown/15 bg-white hover:border-deep-brown/30"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="payment-method"
-                        checked={paymentMethod === "cod"}
-                        onChange={() => setPaymentMethod("cod")}
-                        className="h-4 w-4 text-primary-orange focus:ring-primary-orange"
-                      />
-                      Cash on Delivery
-                    </label>
-                  </div>
-
-                  <TrustBadges items={["secure", "cod", "tracking"]} />
-
+                  <TrustBadges items={paymentMethod === "payu" ? ["secure", "tracking"] : ["cod", "tracking"]} />
                   {paymentMethod === "payu" ? (
-                    <>
-                      {isAuthenticated ? (
-                        <ProceedToPaymentButton input={{ orderId: createdOrder.id }} />
-                      ) : createdOrder.guestAccessToken ? (
-                        <ProceedToPaymentButton input={{ guestAccessToken: createdOrder.guestAccessToken }} />
-                      ) : null}
-                      <p className="text-[11px] text-text-primary/60">
-                        You&apos;ll be redirected to PayU to complete payment. Your cart remains available.
-                      </p>
-                    </>
-                  ) : paymentMethod === "breeze" ? (
-                    <>
-                      {isAuthenticated ? (
-                        <BreezePayButton input={{ orderId: createdOrder.id }} />
-                      ) : createdOrder.guestAccessToken ? (
-                        <BreezePayButton input={{ guestAccessToken: createdOrder.guestAccessToken }} />
-                      ) : null}
-                      <p className="text-[11px] text-text-primary/60">
-                        Verify your mobile number with an OTP, then complete payment. Your cart remains available.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      {isAuthenticated ? (
-                        <ConfirmCodOrderButton input={{ orderId: createdOrder.id }} onConfirmed={setCodConfirmation} />
-                      ) : createdOrder.guestAccessToken ? (
-                        <ConfirmCodOrderButton input={{ guestAccessToken: createdOrder.guestAccessToken }} onConfirmed={setCodConfirmation} />
-                      ) : null}
-                      <p className="text-[11px] text-text-primary/60">
-                        Pay in cash when your order is delivered. No online payment is needed.
-                      </p>
-                    </>
-                  )}
+                    isAuthenticated ? (
+                      <ProceedToPaymentButton input={{ orderId: createdOrder.id }} autoStart onFailure={() => setPostOrderError("payment")} />
+                    ) : createdOrder.guestAccessToken ? (
+                      <ProceedToPaymentButton input={{ guestAccessToken: createdOrder.guestAccessToken }} autoStart onFailure={() => setPostOrderError("payment")} />
+                    ) : null
+                  ) : isAuthenticated ? (
+                    <ConfirmCodOrderButton
+                      input={{ orderId: createdOrder.id }}
+                      autoStart
+                      onConfirmed={(result) => {
+                        setCodConfirmation(result);
+                        void reconcileCartAfterCommerce("cod-confirmed");
+                      }}
+                      onFailure={() => setPostOrderError("cod")}
+                    />
+                  ) : createdOrder.guestAccessToken ? (
+                    <ConfirmCodOrderButton
+                      input={{ guestAccessToken: createdOrder.guestAccessToken }}
+                      autoStart
+                      onConfirmed={(result) => {
+                        setCodConfirmation(result);
+                        void reconcileCartAfterCommerce("cod-confirmed");
+                      }}
+                      onFailure={() => setPostOrderError("cod")}
+                    />
+                  ) : null}
+                  <p className="text-[11px] text-text-primary/60">
+                    {paymentMethod === "payu" ? "You’ll be redirected to PayU to complete payment." : "Pay in cash when your order is delivered."}
+                  </p>
                 </>
               )}
             </div>
@@ -673,17 +719,36 @@ export function CheckoutClient() {
   }
 
   const isCartEmpty = !cart || cart.items.length === 0;
+  const serviceabilityKnown = Boolean(previewResult?.serviceability || typeof previewResult?.readiness.serviceable === "boolean");
+  const previewServiceable = previewResult ? previewIsServiceable(previewResult) : false;
+  const currentPreviewPayload = getCurrentPreviewPayload();
   const isPreviewValid = Boolean(
     previewResult &&
       previewResult.readiness.cartReady &&
       previewResult.readiness.addressReady &&
-      activePreviewPayload
+      activePreviewPayload &&
+      currentPreviewPayload &&
+      JSON.stringify(activePreviewPayload) === JSON.stringify(currentPreviewPayload) &&
+      activePreviewPayload.paymentMethod === paymentMethod &&
+      (previewResult.paymentMethod === undefined || previewResult.paymentMethod === paymentMethod) &&
+      previewServiceable
   );
+
+  // If the shared cart context's last authoritative sync failed, its `cart` is
+  // stale — never let Place Order proceed off unverified cart state.
+  const cartContextUnsynced =
+    cartContext?.syncState === "stale" || cartContext?.syncState === "error";
 
   // Single source of truth for the Place Order gate, shared by the in-card
   // button and the mobile sticky bar so they can never drift apart.
   const placeOrderDisabled =
-    !isPreviewValid || submittingOrder || previewing || isCartEmpty || isOrderStatusUnknown;
+    !isPreviewValid ||
+    !paymentMethod ||
+    submittingOrder ||
+    previewing ||
+    isCartEmpty ||
+    isOrderStatusUnknown ||
+    cartContextUnsynced;
 
   // The payable amount shown in the Order Summary card — mirrored, not recomputed.
   const payableTotalDisplay =
@@ -693,6 +758,24 @@ export function CheckoutClient() {
     "0.00";
 
   const showStickyPlaceOrder = isCompactCheckout && !isCartEmpty;
+
+  const handlePaymentMethodChange = (method: CheckoutPaymentMethod) => {
+    if (method === paymentMethod) return;
+    setPaymentMethod(method);
+    setPostOrderError(null);
+    invalidatePreview();
+  };
+
+  const primaryCtaLabel = paymentMethod === "payu" ? `Place Order & Pay ₹${payableTotalDisplay}` : "Place Order";
+  const deliveryMessage = previewing
+    ? "Checking delivery availability..."
+    : !previewResult || !activePreviewPayload
+      ? "Enter your address to check delivery availability."
+      : !previewServiceable
+        ? paymentMethod === "cod"
+          ? "Cash on Delivery is not available for this delivery address."
+          : "Delivery is currently unavailable for this PIN code."
+        : "✓ Delivery available";
 
   return (
     <main
@@ -745,8 +828,70 @@ export function CheckoutClient() {
           </div>
         )}
 
+        {/* Existing pending Order recovery. Complete Payment reuses the
+            authoritative Order; cancellation is the only action that clears
+            the duplicate-create blocker. */}
+        {isPendingOrderError && (
+          <div className="mt-5 space-y-4 rounded-2xl border border-amber-300 bg-amber-50/80 p-5 text-deep-brown shadow-xs sm:mt-6">
+            <div>
+              <h2 className="font-baloo text-xl font-extrabold text-deep-brown">You have an unfinished order</h2>
+              <p className="mt-2 text-sm font-medium leading-relaxed text-amber-950/85">
+                {pendingOrderNumber
+                  ? `Order #${pendingOrderNumber} still has a pending payment.`
+                  : "Your existing order still has a pending payment."}
+              </p>
+            </div>
+
+            {pendingCancellationError && (
+              <p role="alert" className="rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs font-semibold leading-relaxed text-terracotta">
+                {pendingCancellationError}
+              </p>
+            )}
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+              {pendingOrderRedirectId && isAuthenticated ? (
+                <Link
+                  href={`/account/orders/${pendingOrderRedirectId}`}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-primary-orange bg-white px-4 py-3 text-center text-xs font-bold text-primary-orange transition-colors hover:bg-peach-hero/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-orange/40"
+                >
+                  Complete Payment
+                </Link>
+              ) : pendingGuestToken ? (
+                <Link
+                  href={`/order/guest/${pendingGuestToken}`}
+                  className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-primary-orange bg-white px-4 py-3 text-center text-xs font-bold text-primary-orange transition-colors hover:bg-peach-hero/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-orange/40"
+                >
+                  Complete Payment
+                </Link>
+              ) : (
+                <span className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-deep-brown/15 bg-white px-4 py-3 text-center text-xs font-semibold text-deep-brown/60">
+                  Payment link unavailable
+                </span>
+              )}
+
+              {pendingOrderRedirectId && isAuthenticated ? (
+                <CancelPendingOrderButton
+                  orderId={pendingOrderRedirectId}
+                  buttonLabel="Cancel Order & Continue"
+                  className="flex-1"
+                  onSuccess={handlePendingOrderCancellation}
+                  onError={(cancellationError) => setPendingCancellationError(getPendingOrderCancellationMessage(cancellationError))}
+                />
+              ) : pendingGuestToken ? (
+                <CancelPendingOrderButton
+                  guestToken={pendingGuestToken}
+                  buttonLabel="Cancel Order & Continue"
+                  className="flex-1"
+                  onSuccess={handlePendingOrderCancellation}
+                  onError={(cancellationError) => setPendingCancellationError(getPendingOrderCancellationMessage(cancellationError))}
+                />
+              ) : null}
+            </div>
+          </div>
+        )}
+
         {/* Standard Error Banner */}
-        {error && !isOrderStatusUnknown && (
+        {error && !isOrderStatusUnknown && !isPendingOrderError && (
           <div className="mt-5 flex flex-col items-start gap-3 rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs font-semibold text-terracotta sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:p-4">
             <span className="leading-relaxed">{error}</span>
             {isCartError && (
@@ -1056,23 +1201,19 @@ export function CheckoutClient() {
                       </div>
                     )}
 
-                    <div className="sm:col-span-2 pt-3 border-t border-deep-brown/10 flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={previewing}
-                        className="rounded-xl bg-primary-orange px-6 py-2.5 text-xs font-bold text-white hover:bg-terracotta transition-colors disabled:opacity-50"
-                      >
-                        {previewing ? "Previewing Address..." : "Verify & Preview Address"}
-                      </button>
+                    <div className="sm:col-span-2 border-t border-deep-brown/10 pt-3" aria-live="polite">
+                      <p className="text-xs font-semibold text-deep-brown/70">
+                        {previewing ? "Checking delivery availability..." : "Delivery availability checks automatically as your address becomes complete."}
+                      </p>
                     </div>
                   </form>
                 </div>
               )}
 
-              {/* Items Availability & Revalidation Section */}
+              {/* Items Availability */}
               <div className="rounded-2xl border border-deep-brown/15 bg-white p-4 shadow-xs sm:p-6">
                 <h2 className="border-b border-deep-brown/10 pb-4 mb-4 font-baloo text-base font-bold leading-tight text-deep-brown sm:text-lg">
-                  Items Revalidation & Availability
+                  Your Items
                 </h2>
 
                 {previewResult && !previewResult.readiness.cartReady && (
@@ -1154,38 +1295,43 @@ export function CheckoutClient() {
 
             {/* Right Column: Order Summary & Readiness & Place Order CTA */}
             <div className="min-w-0 space-y-5 sm:space-y-6 lg:col-span-5">
-              {/* Readiness Summary Card */}
+              {/* Delivery status */}
               <div className="rounded-2xl border border-deep-brown/15 bg-white p-4 shadow-xs sm:p-6">
                 <h2 className="border-b border-deep-brown/10 pb-4 mb-4 font-baloo text-base font-bold leading-tight text-deep-brown sm:text-lg">
-                  Checkout Readiness Status
+                  Delivery
                 </h2>
+                <p className={`text-sm font-bold ${previewServiceable ? "text-deep-brown" : "text-terracotta"}`} role="status" aria-live="polite">
+                  {deliveryMessage}
+                </p>
+                {paymentMethod === "cod" && serviceabilityKnown && !previewServiceable && (
+                  <p className="mt-2 text-xs font-medium text-deep-brown/75">
+                    Pay Online may be available. Select it above to check.
+                  </p>
+                )}
+              </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-3 text-xs font-semibold">
-                    <span className="min-w-0 text-deep-brown/70">Shipping Address:</span>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 font-bold uppercase ${
-                        previewResult?.readiness.addressReady && activePreviewPayload
-                          ? "bg-mint-sage text-deep-brown"
-                          : "bg-terracotta/20 text-terracotta"
-                      }`}
-                    >
-                      {previewResult?.readiness.addressReady && activePreviewPayload ? "Ready" : "Action Required"}
+              {/* Payment method is selected before Order creation. */}
+              <div className="rounded-2xl border border-deep-brown/15 bg-white p-4 shadow-xs sm:p-6">
+                <h2 className="border-b border-deep-brown/10 pb-4 mb-4 font-baloo text-base font-bold leading-tight text-deep-brown sm:text-lg">
+                  Payment Method
+                </h2>
+                <div className="space-y-3" role="radiogroup" aria-label="Payment method">
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${paymentMethod === "payu" ? "border-primary-orange bg-peach-hero/20 ring-1 ring-primary-orange" : "border-deep-brown/15 hover:border-deep-brown/30"}`}>
+                    <input type="radio" name="checkout-payment-method" value="payu" checked={paymentMethod === "payu"} onChange={() => handlePaymentMethodChange("payu")} className="mt-0.5 h-4 w-4 text-primary-orange focus:ring-primary-orange" />
+                    <span>
+                      <span className="block text-sm font-bold text-deep-brown">Pay Online</span>
+                      <span className="block text-xs font-medium text-deep-brown/65">Secure payment via PayU</span>
                     </span>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-3 text-xs font-semibold">
-                    <span className="min-w-0 text-deep-brown/70">Cart Inventory &amp; Price:</span>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 font-bold uppercase ${
-                        previewResult?.readiness.cartReady
-                          ? "bg-mint-sage text-deep-brown"
-                          : "bg-terracotta/20 text-terracotta"
-                      }`}
-                    >
-                      {previewResult?.readiness.cartReady ? "Verified" : "Attention Required"}
+                  </label>
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${paymentMethod === "cod" ? "border-primary-orange bg-peach-hero/20 ring-1 ring-primary-orange" : "border-deep-brown/15 hover:border-deep-brown/30"}`}>
+                    <input type="radio" name="checkout-payment-method" value="cod" checked={paymentMethod === "cod"} onChange={() => handlePaymentMethodChange("cod")} className="mt-0.5 h-4 w-4 text-primary-orange focus:ring-primary-orange" />
+                    <span>
+                      <span className="block text-sm font-bold text-deep-brown">Cash on Delivery</span>
+                      <span className={`block text-xs font-medium ${paymentMethod === "cod" && serviceabilityKnown && !previewServiceable ? "text-terracotta" : "text-deep-brown/65"}`}>
+                        {paymentMethod === "cod" && serviceabilityKnown && !previewServiceable ? "Not available for this delivery address" : "Pay when your order arrives"}
+                      </span>
                     </span>
-                  </div>
+                  </label>
                 </div>
               </div>
 
@@ -1240,12 +1386,12 @@ export function CheckoutClient() {
                           : "bg-primary-orange hover:bg-terracotta cursor-pointer"
                       }`}
                     >
-                      {submittingOrder ? "Placing Order..." : "Place Order"}
+                      {submittingOrder ? "Creating Order..." : primaryCtaLabel}
                     </button>
                   )}
 
                   <p className="text-[11px] text-center text-text-primary/60">
-                    Placing order creates a pending order. Payment setup is the next step.
+                     {paymentMethod === "payu" ? "You’ll continue to secure PayU payment after your order is created." : "No online payment is needed."}
                   </p>
                 </div>
               </div>
@@ -1259,6 +1405,7 @@ export function CheckoutClient() {
           total={payableTotalDisplay}
           disabled={placeOrderDisabled}
           submitting={submittingOrder}
+          label={primaryCtaLabel}
           onPlaceOrder={handlePlaceOrder}
         />
       )}

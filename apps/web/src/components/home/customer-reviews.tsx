@@ -6,7 +6,7 @@ export function CustomerReviewsSkeleton() {
       <div className="site-container">
         <div className="h-28 max-w-xl animate-pulse rounded-2xl bg-surface-secondary/40" />
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((item) => <div key={item} className="h-72 animate-pulse rounded-2xl bg-white" />)}
+          {[1, 2, 3].map((item) => <div key={item} className="h-[22rem] animate-pulse rounded-2xl bg-white" />)}
         </div>
       </div>
     </section>

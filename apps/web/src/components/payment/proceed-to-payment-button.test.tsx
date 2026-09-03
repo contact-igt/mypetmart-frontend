@@ -8,6 +8,10 @@ import { AppAuthError } from "@/lib/auth/auth-errors";
 import { readGuestPaymentToken } from "@/app/order/payment/guest-payment-token";
 import type { PaymentInitiationResultJSON } from "@/types/payment";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
+
 function mockResult(overrides: Partial<PaymentInitiationResultJSON["fields"]> = {}): PaymentInitiationResultJSON {
   return {
     provider: "payu",
@@ -123,7 +127,7 @@ describe("ProceedToPaymentButton", () => {
     render(<ProceedToPaymentButton input={{ orderId: 42 }} />);
     fireEvent.click(screen.getByRole("button", { name: "Proceed to Payment" }));
 
-    expect(screen.getByRole("button", { name: "Starting payment..." })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Starting secure payment..." })).toBeDisabled();
 
     resolvePromise(mockResult());
     await waitFor(() => expect(submitSpy).toHaveBeenCalled());

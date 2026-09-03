@@ -4,7 +4,17 @@ import type { Address, CreateAddressInput } from "./address";
 export interface CheckoutReadiness {
   cartReady: boolean;
   addressReady: boolean;
+  shippingReady?: boolean;
+  paymentReady?: boolean;
   orderReady: boolean;
+  serviceable?: boolean;
+}
+
+export type CheckoutPaymentMethod = "payu" | "cod";
+
+export interface CheckoutServiceability {
+  paymentMode: "prepaid" | "cod";
+  serviceable: boolean;
 }
 
 export interface CheckoutTotals {
@@ -17,6 +27,8 @@ export interface CheckoutPreviewPayload {
   savedAddressId?: number;
   shippingAddress?: CreateAddressInput;
   contactEmail?: string;
+  billingSameAsShipping?: boolean;
+  paymentMethod?: CheckoutPaymentMethod;
 }
 
 export interface CheckoutPreviewResult {
@@ -28,4 +40,6 @@ export interface CheckoutPreviewResult {
     items: CartItem[];
   };
   totals: CheckoutTotals;
+  paymentMethod?: CheckoutPaymentMethod | null;
+  serviceability?: CheckoutServiceability | null;
 }

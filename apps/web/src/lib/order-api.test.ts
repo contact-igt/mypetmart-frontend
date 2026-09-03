@@ -231,4 +231,38 @@ describe("OrderApi Helper Tests", () => {
 
     await expect(OrderApi.getOrder(999)).rejects.toThrow("Order '999' was not found.");
   });
+
+  it("6. OrderApi.cancelPendingOrder posts to the authenticated cancellation route with an empty body", async () => {
+    const fetchMock = vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, data: { id: 303, status: "cancelled" } }),
+    } as any);
+
+    const result = await OrderApi.cancelPendingOrder(303);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:5000/api/v1/storefront/orders/303/cancel");
+    expect(options?.method).toBe("POST");
+    expect(options?.body).toBeUndefined();
+    expect(options?.credentials).toBe("include");
+    expect(result.status).toBe("cancelled");
+  });
+
+  it("7. OrderApi.cancelPendingGuestOrder posts to the token cancellation route", async () => {
+    const fetchMock = vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, data: { id: 304, status: "cancelled" } }),
+    } as any);
+    const token = "guest/token-304";
+
+    const result = await OrderApi.cancelPendingGuestOrder(token);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:5000/api/v1/storefront/orders/guest/guest%2Ftoken-304/cancel");
+    expect(options?.method).toBe("POST");
+    expect(options?.body).toBeUndefined();
+    expect(result.status).toBe("cancelled");
+  });
 });

@@ -1,1131 +1,218 @@
 // @vitest-environment jsdom
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import "@testing-library/jest-dom/vitest";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CheckoutClient } from "./checkout-client";
 import { AuthTokenStore } from "@/lib/auth/auth-api";
+import { OrderApi } from "@/lib/order-api";
 import * as CustomerAuthContext from "@/context/customer-auth-context";
-
-const mockPush = vi.fn();
-const mockReplace = vi.fn();
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: mockPush,
-    replace: mockReplace,
-  }),
-  usePathname: () => "/checkout",
-}));
 
 process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:5000/api/v1";
 
-const mockCartResponse = {
-  id: 1,
-  status: "active",
-  itemCount: 1,
-  subtotal: "499.00",
-  items: [
-    {
-      cartItemId: 50,
-      productId: 20,
-      variantId: null,
-      productName: "Premium Dog Food",
-      productSlug: "premium-dog-food",
-      productType: "simple",
-      sku: "DOG-FOOD-01",
-      variantName: null,
-      image: null,
-      price: "499.00",
-      compareAtPrice: null,
-      quantity: 1,
-      subtotal: "499.00",
-      available: true,
-      availabilityReason: null,
-      availableQuantity: 50,
-    },
-  ],
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush, replace: vi.fn() }),
+  usePathname: () => "/checkout",
+}));
+
+const cart = {
+  id: 1, status: "active", itemCount: 1, subtotal: "499.00",
+  items: [{ cartItemId: 50, productId: 20, variantId: null, productName: "Premium Dog Food", productSlug: "premium-dog-food", productType: "simple", sku: "DOG-FOOD-01", variantName: null, image: null, price: "499.00", compareAtPrice: null, quantity: 1, subtotal: "499.00", available: true, availabilityReason: null, availableQuantity: 50 }],
 };
 
-const mockPreviewResponse = {
-  readiness: { cartReady: true, addressReady: true, orderReady: false },
-  shippingAddress: {
-    id: 99,
-    recipientName: "Jordan Rivera",
-    city: "Mumbai",
-  },
-  billingAddress: null,
-  billingSameAsShipping: true,
-  cart: {
-    items: [
-      {
-        cartItemId: 50,
-        productId: 20,
-        variantId: null,
-        productName: "Premium Dog Food",
-        price: "499.00",
-        quantity: 1,
-        available: true,
-        availabilityReason: null,
-        availableQuantity: 50,
-      },
-    ],
-  },
-  totals: {
-    merchandiseSubtotal: "499.00",
-    shippingAmount: null,
-    payableTotal: "499.00",
-  },
+const order = {
+  id: 777, orderNumber: "ORD-987654", status: "pending", paymentStatus: "pending", fulfilmentStatus: "unfulfilled", subtotal: "499.00", shippingFee: "0.00", total: "499.00", guestAccessToken: "f".repeat(64), contactEmail: "guest@example.com",
+  shippingAddress: { recipientName: "Guest User", phone: "+91 98765 00000", line1: "123 Street", line2: null, city: "Mumbai", state: "Maharashtra", postalCode: "400001", country: "IN", latitude: null, longitude: null },
+  items: [{ id: 1, orderId: 777, productId: 20, variantId: null, productName: "Premium Dog Food", productSku: "DOG-FOOD-01", variantName: null, variantSku: null, productImage: null, quantity: 1, unitPrice: "499.00", lineTotal: "499.00" }],
+  payments: [], refundSummary: null, cancelledAt: null, placedAt: "2026-08-13T00:00:00Z", createdAt: "2026-08-13T00:00:00Z", updatedAt: "2026-08-13T00:00:00Z",
 };
 
-const mockCreatedOrderResponse = {
-  id: 777,
-  orderNumber: "ORD-987654",
-  status: "pending",
-  paymentStatus: "pending",
-  fulfilmentStatus: "unfulfilled",
-  subtotal: "499.00",
-  shippingFee: "0.00",
-  total: "499.00",
-  guestAccessToken: "f".repeat(64),
-  shippingAddress: {
-    recipientName: "Jordan Rivera",
-    phone: "+91 98765 43210",
-    line1: "221B Baker Street",
-    line2: null,
-    city: "Mumbai",
-    state: "Maharashtra",
-    postalCode: "400001",
-    country: "IN",
-    latitude: 19.076,
-    longitude: 72.8777,
-  },
-  items: [
-    {
-      id: 1,
-      orderId: 777,
-      productId: 20,
-      variantId: null,
-      productName: "Premium Dog Food",
-      productSku: "DOG-FOOD-01",
-      variantSku: null,
-      unitPrice: "499.00",
-      quantity: 1,
-      lineTotal: "499.00",
-      imageUrl: null,
-      imageAlt: null,
-    },
-  ],
-  createdAt: "2026-08-13T00:00:00Z",
-  updatedAt: "2026-08-13T00:00:00Z",
-};
+function preview(paymentMethod: "payu" | "cod", serviceable = true) {
+  return {
+    readiness: { cartReady: true, addressReady: true, shippingReady: serviceable, paymentReady: serviceable, orderReady: serviceable, serviceable },
+    shippingAddress: { id: 99, recipientName: "Guest User", phone: "+91 98765 00000", line1: "123 Street", line2: null, city: "Mumbai", state: "Maharashtra", postalCode: "400001", country: "IN", latitude: null, longitude: null },
+    billingAddress: null, billingSameAsShipping: true, cart: { items: cart.items },
+    totals: { merchandiseSubtotal: "499.00", shippingAmount: "0.00", payableTotal: "499.00" }, paymentMethod,
+    serviceability: { paymentMode: paymentMethod === "cod" ? "cod" : "prepaid", serviceable },
+  };
+}
 
-describe("Checkout Order Handoff Tests", () => {
+function auth(status: "unauthenticated" | "authenticated" = "unauthenticated") {
+  return { status, customer: status === "authenticated" ? { id: 10, name: "Customer User" } : null, accessToken: status === "authenticated" ? "customer-jwt" : null, signup: vi.fn(), signin: vi.fn(), verifyEmail: vi.fn(), resendVerification: vi.fn(), forgotPassword: vi.fn(), verifyResetOTP: vi.fn(), resetPassword: vi.fn(), logout: vi.fn(), refreshSession: vi.fn(), loadCurrentCustomer: vi.fn() } as ReturnType<typeof CustomerAuthContext.useCustomerAuth>;
+}
+
+function fillGuestAddress() {
+  fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
+  fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
+  fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
+  fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
+  fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "Maharashtra" } });
+  fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
+  fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
+}
+
+function setupFetch(options: { codServiceable?: boolean; initiateFails?: boolean; pendingError?: boolean } = {}) {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes("/storefront/addresses")) return { ok: true, json: async () => ({ success: true, data: [{ id: 12, userId: 10, label: "Home", recipientName: "Saved User", phone: "+91 98765 00000", line1: "12 Saved Street", line2: null, city: "Mumbai", state: "Maharashtra", postalCode: "400001", country: "IN", isDefault: true, latitude: null, longitude: null }] }) } as Response;
+    if (url.includes("/storefront/cart")) return { ok: true, json: async () => ({ success: true, data: cart }) } as Response;
+    if (url.includes("/storefront/checkout/preview")) {
+      const body = JSON.parse(String(init?.body ?? "{}"));
+      const method = body.paymentMethod === "cod" ? "cod" : "payu";
+      return { ok: true, json: async () => ({ success: true, data: preview(method, method === "cod" ? options.codServiceable !== false : true) }) } as Response;
+    }
+    if (url.endsWith("/storefront/orders")) {
+      if (options.pendingError) return { ok: false, status: 409, json: async () => ({ success: false, error: { message: "An order is already pending.", code: "ORDER_ALREADY_PENDING", details: { orderId: 777, orderNumber: order.orderNumber } } }) } as Response;
+      return { ok: true, json: async () => ({ success: true, data: order }) } as Response;
+    }
+    if (url.includes("/storefront/payments/initiate")) {
+      if (options.initiateFails) return { ok: false, status: 503, json: async () => ({ success: false, error: { message: "Payment unavailable", code: "PAYMENT_UNAVAILABLE" } }) } as Response;
+      return { ok: true, json: async () => ({ success: true, data: { provider: "payu", gatewayUrl: "https://payu.example/checkout", fields: { key: "k", txnid: "t", amount: "499.00", productinfo: "Cart", firstname: "Guest", email: "guest@example.com", phone: "9876500000", surl: "http://localhost/success", furl: "http://localhost/failure", udf1: "", hash: "h" } } }) } as Response;
+    }
+    if (url.includes("/storefront/payments/cod")) return { ok: true, json: async () => ({ success: true, data: { provider: "cod", paymentId: 4, orderId: 777, orderStatus: "confirmed", paymentStatus: "pending", amount: "499.00", currency: "INR" } }) } as Response;
+    throw new Error(`Unexpected request: ${url}`);
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+describe("Stage 2 consolidated checkout", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
+    vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue(auth());
     AuthTokenStore.setAccessToken(null);
     mockPush.mockReset();
-    mockReplace.mockReset();
+    vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => undefined);
+    window.sessionStorage.clear();
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
+  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+  it("automatically previews a valid inline address without a Verify button", async () => {
+    const fetchMock = setupFetch(); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address"); fillGuestAddress();
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("checkout/preview"))).toHaveLength(1), { timeout: 2000 });
+    expect(screen.queryByRole("button", { name: /Verify & Preview/i })).not.toBeInTheDocument();
+    expect(screen.getByText("✓ Delivery available")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Place Order & Pay/i })).not.toBeDisabled();
+    const body = JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url).includes("checkout/preview"))?.[1]?.body));
+    expect(body.paymentMethod).toBe("payu");
   });
 
-  // -------------------------------------------------------------------
-  // GUEST FLOW TESTS (1-5)
-  // -------------------------------------------------------------------
-  describe("Guest Order Flow", () => {
-    beforeEach(() => {
-      vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue({
-        status: "unauthenticated",
-        customer: null,
-        accessToken: null,
-        signup: vi.fn(),
-        signin: vi.fn(),
-        verifyEmail: vi.fn(),
-        resendVerification: vi.fn(),
-        forgotPassword: vi.fn(),
-        verifyResetOTP: vi.fn(),
-        resetPassword: vi.fn(),
-        logout: vi.fn(),
-        refreshSession: vi.fn(),
-        loadCurrentCustomer: vi.fn(),
-      });
-    });
-
-    it("1. Guest successful Preview enables Place Order button", async () => {
-      vi.mocked(fetch)
-        // GET /cart
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        // POST /checkout/preview
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        const placeOrderBtn = screen.getByRole("button", { name: /Place Order/i });
-        expect(placeOrderBtn).not.toBeDisabled();
-      });
-    });
-
-    it("1b. Guest Contact Email field is required, type=email, autocomplete=email", async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ success: true, data: mockCartResponse }),
-      } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      // Required via label asterisk + JS validation (validateAddressForm), consistent
-      // with every other field in this form and CLAUDE.md's inline-error convention —
-      // no native HTML `required` attribute is used anywhere on this form.
-      const emailInput = screen.getByLabelText(/Contact Email \*/i) as HTMLInputElement;
-      expect(emailInput).toHaveAttribute("type", "email");
-      expect(emailInput).toHaveAttribute("autocomplete", "email");
-    });
-
-    it("1c. Guest missing email blocks Preview submission with inline error", async () => {
-      const fetchMock = vi.mocked(fetch);
-      fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      // Contact Email intentionally left blank
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText("Email is required")).toBeInTheDocument();
-      });
-
-      // No POST /checkout/preview call should have been made beyond the initial GET /cart
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    });
-
-    it("1d. Guest invalid email blocks Preview submission with inline error", async () => {
-      const fetchMock = vi.mocked(fetch);
-      fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "not-an-email" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText("Valid email is required")).toBeInTheDocument();
-      });
-
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-    });
-
-    it("2 & 3 & 5 & 6. Guest Place Order sends shippingAddress + contactEmail to Preview and Order Create", async () => {
-      const fetchMock = vi.mocked(fetch);
-      fetchMock
-        // GET /cart
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        // POST /checkout/preview
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        // POST /orders
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCreatedOrderResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      // 5. Valid email sent to Checkout Preview
-      const previewCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/checkout/preview"));
-      expect(previewCall).toBeDefined();
-      const previewPayload = JSON.parse(previewCall![1]?.body as string);
-      expect(previewPayload.contactEmail).toBe("guest@example.com");
-
-      fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
-
-      await waitFor(() => {
-        const orderCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/storefront/orders"));
-        expect(orderCall).toBeDefined();
-        const payload = JSON.parse(orderCall![1]?.body as string);
-
-        // Verify shippingAddress payload format (manual address without coordinates)
-        expect(payload.shippingAddress).toBeDefined();
-        expect(payload.savedAddressId).toBeUndefined();
-        // 6. Valid email sent to Order Create
-        expect(payload.contactEmail).toBe("guest@example.com");
-        expect(payload.placeId).toBeUndefined();
-        expect(payload.formattedAddress).toBeUndefined();
-        expect("latitude" in payload.shippingAddress).toBe(false);
-        expect("longitude" in payload.shippingAddress).toBe(false);
-        expect(payload.shippingAddress.recipientName).toBe("Guest User");
-      });
-    });
-
-    it("4. Guest Order success shows pending Order state and note order number warning", async () => {
-      vi.mocked(fetch)
-        // GET /cart
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        // POST /checkout/preview
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        // POST /orders
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCreatedOrderResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Jordan Rivera" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 43210" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "221B Baker Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "Maharashtra" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText(/Order #ORD-987654/i)).toBeInTheDocument();
-        expect(screen.getByText(/Please note your order number/i)).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Proceed to Payment/i })).toBeInTheDocument();
-      });
-
-      const viewOrderLink = screen.getByRole("link", { name: /View Order/i });
-      expect(viewOrderLink).toHaveAttribute("href", `/order/guest/${"f".repeat(64)}`);
-    });
-
-    it("4b. Guest Order success without a guestAccessToken shows no View Order link", async () => {
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ success: true, data: { ...mockCreatedOrderResponse, guestAccessToken: undefined } }),
-        } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Jordan Rivera" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 43210" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "221B Baker Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "Maharashtra" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText(/Order #ORD-987654/i)).toBeInTheDocument();
-      });
-      expect(screen.queryByRole("link", { name: /View Order/i })).not.toBeInTheDocument();
-    });
-
-    it("5. Guest rapid double-click issues only one POST request", async () => {
-      const fetchMock = vi.mocked(fetch);
-      fetchMock
-        // GET /cart
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        // POST /checkout/preview
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        // POST /orders (delayed response)
-        .mockImplementationOnce(() => new Promise((resolve) => setTimeout(() => resolve({
-          ok: true,
-          json: async () => ({ success: true, data: mockCreatedOrderResponse })
-        } as any), 100)));
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      const btn = screen.getByRole("button", { name: /Place Order/i });
-      // Rapid double click
-      fireEvent.click(btn);
-      fireEvent.click(btn);
-
-      await waitFor(() => {
-        const orderCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("/storefront/orders"));
-        expect(orderCalls).toHaveLength(1);
-      });
-    });
+  it("automatically previews the authenticated customer's selected saved address", async () => {
+    vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue(auth("authenticated"));
+    AuthTokenStore.setAccessToken("customer-jwt");
+    const fetchMock = setupFetch(); render(<CheckoutClient />);
+    await waitFor(() => expect(screen.getByText("Saved User")).toBeInTheDocument());
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("checkout/preview"))).toHaveLength(1));
+    const body = JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url).includes("checkout/preview"))?.[1]?.body));
+    expect(body.savedAddressId).toBe(12);
+    expect(body.paymentMethod).toBe("payu");
+    expect(screen.queryByRole("button", { name: /Verify & Preview/i })).not.toBeInTheDocument();
   });
 
-  // -------------------------------------------------------------------
-  // CUSTOMER SAVED ADDRESS FLOW TESTS (6-7)
-  // -------------------------------------------------------------------
-  describe("Customer Saved Address Flow", () => {
-    beforeEach(() => {
-      AuthTokenStore.setAccessToken("customer-jwt");
-      vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue({
-        status: "authenticated",
-        customer: { id: 10, name: "Customer User" } as any,
-        accessToken: "customer-jwt",
-        signup: vi.fn(),
-        signin: vi.fn(),
-        verifyEmail: vi.fn(),
-        resendVerification: vi.fn(),
-        forgotPassword: vi.fn(),
-        verifyResetOTP: vi.fn(),
-        resetPassword: vi.fn(),
-        logout: vi.fn(),
-        refreshSession: vi.fn(),
-        loadCurrentCustomer: vi.fn(),
-      });
-    });
-
-    it("2. Authenticated customer does not see the guest Contact Email field", async () => {
-      vi.mocked(fetch)
-        // 1. GET /cart
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        // 2. GET /addresses
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            success: true,
-            data: [
-              {
-                id: 99,
-                userId: 10,
-                label: "Home",
-                recipientName: "Jordan Rivera",
-                phone: "+91 98765 43210",
-                line1: "221B Baker Street",
-                line2: null,
-                city: "Mumbai",
-                state: "Maharashtra",
-                postalCode: "400001",
-                country: "IN",
-                isDefault: true,
-              },
-            ],
-          }),
-        } as any)
-        // 3. POST /checkout/preview
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Checkout Readiness Status")).toBeInTheDocument();
-      });
-
-      expect(screen.queryByLabelText(/Contact Email \*/i)).not.toBeInTheDocument();
-    });
-
-    it("6 & 7. Customer saved Address sends savedAddressId only (no shippingAddress)", async () => {
-      const fetchMock = vi.mocked(fetch);
-      fetchMock
-        // 1. GET /cart
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        // 2. GET /addresses
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            success: true,
-            data: [
-              {
-                id: 99,
-                userId: 10,
-                label: "Home",
-                recipientName: "Jordan Rivera",
-                phone: "+91 98765 43210",
-                line1: "221B Baker Street",
-                line2: null,
-                city: "Mumbai",
-                state: "Maharashtra",
-                postalCode: "400001",
-                country: "IN",
-                isDefault: true,
-              },
-            ],
-          }),
-        } as any)
-        // 3. POST /checkout/preview
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        // 4. POST /orders
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCreatedOrderResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Checkout Readiness Status")).toBeInTheDocument();
-      });
-
-      const placeOrderBtn = screen.getByRole("button", { name: /Place Order/i });
-      expect(placeOrderBtn).not.toBeDisabled();
-
-      fireEvent.click(placeOrderBtn);
-
-      await waitFor(() => {
-        const orderCall = fetchMock.mock.calls.find((call) => String(call[0]).includes("/storefront/orders"));
-        expect(orderCall).toBeDefined();
-        const payload = JSON.parse(orderCall![1]?.body as string);
-
-        expect(payload).toEqual({ savedAddressId: 99 });
-        expect(payload.shippingAddress).toBeUndefined();
-      });
-    });
+  it("re-previews when payment method changes and blocks unavailable COD", async () => {
+    const fetchMock = setupFetch({ codServiceable: false }); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address"); fillGuestAddress();
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("checkout/preview"))).toHaveLength(1), { timeout: 2000 });
+    fireEvent.click(screen.getByRole("radio", { name: /Cash on Delivery/i }));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("checkout/preview"))).toHaveLength(2), { timeout: 2000 });
+    expect(screen.getByText(/Cash on Delivery is not available/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Place Order$/i })).toBeDisabled();
+    const bodies = fetchMock.mock.calls.filter(([url]) => String(url).includes("checkout/preview")).map(([, init]) => JSON.parse(String(init?.body)));
+    expect(bodies.at(-1).paymentMethod).toBe("cod");
   });
 
-  // -------------------------------------------------------------------
-  // CUSTOMER SAVE-NEW ADDRESS FLOW TESTS (8-13)
-  // -------------------------------------------------------------------
-  describe("Customer Save-New Address Sequence", () => {
-    beforeEach(() => {
-      AuthTokenStore.setAccessToken("customer-jwt");
-      vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue({
-        status: "authenticated",
-        customer: { id: 10, name: "Customer User" } as any,
-        accessToken: "customer-jwt",
-        signup: vi.fn(),
-        signin: vi.fn(),
-        verifyEmail: vi.fn(),
-        resendVerification: vi.fn(),
-        forgotPassword: vi.fn(),
-        verifyResetOTP: vi.fn(),
-        resetPassword: vi.fn(),
-        logout: vi.fn(),
-        refreshSession: vi.fn(),
-        loadCurrentCustomer: vi.fn(),
-      });
-    });
-
-    it("10-13. Save-New Address calls AddressApi.create once -> preview uses savedAddressId -> Place Order uses same savedAddressId", async () => {
-      const fetchMock = vi.mocked(fetch);
-      fetchMock
-        // 1. GET /cart
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        // 2. GET /addresses (empty)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: [] }) } as any)
-        // 3. POST /addresses (create)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            success: true,
-            data: { id: 205, recipientName: "New Saved User", city: "Mumbai" },
-          }),
-        } as any)
-        // 4. POST /checkout/preview (with savedAddressId: 205)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        // 5. GET /addresses (re-fetch)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            success: true,
-            data: [{ id: 205, recipientName: "New Saved User", city: "Mumbai" }],
-          }),
-        } as any)
-        // 6. POST /orders
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCreatedOrderResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("New Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "New Saved User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 99999 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "100 New St" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400002" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
-
-      await waitFor(() => {
-        // Address creation call happened exactly once (call #3)
-        const addressCreateCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes("/storefront/addresses") && c[1]?.method === "POST");
-        expect(addressCreateCalls).toHaveLength(1);
-
-        // Order creation call (call #6) used savedAddressId: 205
-        const orderCall = fetchMock.mock.calls.find((c) => String(c[0]).includes("/storefront/orders"));
-        expect(orderCall).toBeDefined();
-        const orderPayload = JSON.parse(orderCall![1]?.body as string);
-        expect(orderPayload).toEqual({ savedAddressId: 205 });
-      });
-    });
+  it("creates one PayU Order with paymentMethod and starts hosted payment automatically", async () => {
+    const fetchMock = setupFetch(); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address"); fillGuestAddress();
+    await waitFor(() => expect(screen.getByRole("button", { name: /Place Order & Pay/i })).not.toBeDisabled(), { timeout: 2000 });
+    fireEvent.click(screen.getByRole("button", { name: /Place Order & Pay/i }));
+    await waitFor(() => expect(screen.getByText(/Order #ORD-987654/i)).toBeInTheDocument());
+    const orderCalls = fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/storefront/orders"));
+    expect(orderCalls).toHaveLength(1); expect(JSON.parse(String(orderCalls[0][1]?.body)).paymentMethod).toBe("payu");
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("payments/initiate"))).toHaveLength(1));
+    expect(JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url).includes("payments/initiate"))?.[1]?.body)).guestAccessToken).toBe(order.guestAccessToken);
+    expect(window.sessionStorage.getItem("mypetmart_pending_guest_payment_token")).toBe(order.guestAccessToken);
   });
 
-  // -------------------------------------------------------------------
-  // STALE PREVIEW TESTS (14-15)
-  // -------------------------------------------------------------------
-  describe("Stale Preview Protection", () => {
-    beforeEach(() => {
-      vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue({
-        status: "unauthenticated",
-        customer: null,
-        accessToken: null,
-        signup: vi.fn(),
-        signin: vi.fn(),
-        verifyEmail: vi.fn(),
-        resendVerification: vi.fn(),
-        forgotPassword: vi.fn(),
-        verifyResetOTP: vi.fn(),
-        resetPassword: vi.fn(),
-        logout: vi.fn(),
-        refreshSession: vi.fn(),
-        loadCurrentCustomer: vi.fn(),
-      });
-    });
-
-    it("14 & 15. Changing address form field invalidates preview and disables Place Order button", async () => {
-      vi.mocked(fetch)
-        // GET /cart
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        // POST /checkout/preview
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      // Modify form after preview
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "999 Modified Street" } });
-
-      // Place Order button becomes disabled immediately
-      expect(screen.getByRole("button", { name: /Place Order/i })).toBeDisabled();
-    });
+  it("creates and confirms a COD Order from the same CTA", async () => {
+    const fetchMock = setupFetch(); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address"); fillGuestAddress();
+    await waitFor(() => expect(screen.getByRole("button", { name: /Place Order & Pay/i })).not.toBeDisabled(), { timeout: 2000 });
+    fireEvent.click(screen.getByRole("radio", { name: /Cash on Delivery/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Place Order$/i })).not.toBeDisabled(), { timeout: 2000 });
+    fireEvent.click(screen.getByRole("button", { name: /^Place Order$/i }));
+    await waitFor(() => expect(screen.getByText("Order confirmed")).toBeInTheDocument());
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/storefront/orders"))).toHaveLength(1);
+    expect(JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url).endsWith("/storefront/orders"))?.[1]?.body)).paymentMethod).toBe("cod");
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("payments/cod"))).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /Confirm Cash on Delivery Order/i })).not.toBeInTheDocument();
   });
 
-  // -------------------------------------------------------------------
-  // BACKEND ERROR HANDLING TESTS (16-22)
-  // -------------------------------------------------------------------
-  describe("Backend Error Mapping", () => {
-    beforeEach(() => {
-      vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue({
-        status: "unauthenticated",
-        customer: null,
-        accessToken: null,
-        signup: vi.fn(),
-        signin: vi.fn(),
-        verifyEmail: vi.fn(),
-        resendVerification: vi.fn(),
-        forgotPassword: vi.fn(),
-        verifyResetOTP: vi.fn(),
-        resetPassword: vi.fn(),
-        logout: vi.fn(),
-        refreshSession: vi.fn(),
-        loadCurrentCustomer: vi.fn(),
-      });
-    });
-
-    it("16-20. Maps cart & address errors into clear messages with Review Cart action", async () => {
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        // 422 ORDER_INSUFFICIENT_STOCK
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 422,
-          json: async () => ({ success: false, error: { code: "ORDER_INSUFFICIENT_STOCK", message: "Insufficient stock" } }),
-        } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText("Some items no longer have enough stock. Review your cart.")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: /Review Cart →/i })).toBeInTheDocument();
-      });
-    });
-
-    it("21. Handles 409 ORDER_ALREADY_PENDING without auto retry", async () => {
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        // 409 ORDER_ALREADY_PENDING
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 409,
-          json: async () => ({ success: false, error: { code: "ORDER_ALREADY_PENDING", message: "Already pending" } }),
-        } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText("You already have a pending order.")).toBeInTheDocument();
-      });
-    });
-
-    it("22. Network uncertainty displays cautious message without automatic retry", async () => {
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        // Network failure
-        .mockRejectedValueOnce(new TypeError("Failed to fetch"));
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText(/Order Status Unknown/i)).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Place Order/i })).toBeDisabled();
-      });
-    });
+  it("preserves the created Order and offers Retry Payment when PayU initiation fails", async () => {
+    const fetchMock = setupFetch({ initiateFails: true }); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address"); fillGuestAddress();
+    await waitFor(() => expect(screen.getByRole("button", { name: /Place Order & Pay/i })).not.toBeDisabled(), { timeout: 2000 });
+    fireEvent.click(screen.getByRole("button", { name: /Place Order & Pay/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Retry Payment/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(/payment could not be started/i).length).toBeGreaterThan(0));
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/storefront/orders"))).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: /Retry Payment/i }));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("payments/initiate"))).toHaveLength(2));
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/storefront/orders"))).toHaveLength(1);
   });
 
-  // -------------------------------------------------------------------
-  // CART PRESERVATION & PAYMENT BOUNDARY TESTS (23-25)
-  // -------------------------------------------------------------------
-  describe("Cart & Payment Boundaries", () => {
-    beforeEach(() => {
-      vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue({
-        status: "unauthenticated",
-        customer: null,
-        accessToken: null,
-        signup: vi.fn(),
-        signin: vi.fn(),
-        verifyEmail: vi.fn(),
-        resendVerification: vi.fn(),
-        forgotPassword: vi.fn(),
-        verifyResetOTP: vi.fn(),
-        resetPassword: vi.fn(),
-        logout: vi.fn(),
-        refreshSession: vi.fn(),
-        loadCurrentCustomer: vi.fn(),
-      });
-    });
-
-    it("23-25. Order creation leaves Cart intact and does NOT invoke payment APIs", async () => {
-      const fetchMock = vi.mocked(fetch);
-      fetchMock
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCreatedOrderResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Jordan Rivera" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 43210" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "221B Baker Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "Maharashtra" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText(/Order #ORD-987654/i)).toBeInTheDocument();
-      });
-
-      // Confirm DELETE /cart or clear cart was NOT called
-      const cartDeleteCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("/storefront/cart") && call[1]?.method === "DELETE");
-      expect(cartDeleteCalls).toHaveLength(0);
-
-      // Confirm no payment route was called
-      const paymentCalls = fetchMock.mock.calls.filter((call) => String(call[0]).includes("/payment") || String(call[0]).includes("/payu"));
-      expect(paymentCalls).toHaveLength(0);
-    });
-
-    it("26. ORDER_ALREADY_PENDING error shows View Pending Order link when details.orderId is provided, or View My Orders link otherwise", async () => {
-      const fetchMock = vi.mocked(fetch);
-      fetchMock
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 409,
-          json: async () => ({
-            success: false,
-            error: {
-              code: "ORDER_ALREADY_PENDING",
-              message: "Order 'ORD-000555' is already pending payment.",
-              details: { orderId: 555, orderNumber: "ORD-000555" },
-            },
-          }),
-        } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument();
-      });
-
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Jordan Rivera" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 43210" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "221B Baker Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "Maharashtra" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText("You already have a pending order.")).toBeInTheDocument();
-        const link = screen.getByText(/View Pending Order/i).closest("a");
-        expect(link).toHaveAttribute("href", "/account/orders/555");
-      });
-    });
-
-    it("27. Successful customer order creation shows View Order CTA link", async () => {
-      vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue({
-        status: "authenticated",
-        customer: { id: 1, name: "Authenticated Customer", email: "auth@example.com", referenceCode: "CUS-001" } as any,
-        accessToken: "test-token",
-        signin: vi.fn(),
-        signup: vi.fn(),
-        verifyEmail: vi.fn(),
-        resendVerification: vi.fn(),
-        forgotPassword: vi.fn(),
-        verifyResetOTP: vi.fn(),
-        resetPassword: vi.fn(),
-        logout: vi.fn(),
-        refreshSession: vi.fn(),
-        loadCurrentCustomer: vi.fn(),
-      });
-
-      const fetchMock = vi.mocked(fetch);
-      fetchMock
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            success: true,
-            data: [
-              {
-                id: 10,
-                recipientName: "Auth Customer",
-                phone: "+91 98765 43210",
-                line1: "100 Tech Park",
-                city: "Bangalore",
-                state: "KA",
-                postalCode: "560001",
-                country: "IN",
-                isDefault: true,
-              },
-            ],
-          }),
-        } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCreatedOrderResponse }) } as any);
-
-      render(<CheckoutClient />);
-
-      await waitFor(() => {
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled();
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: /Place Order/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText(/Order #ORD-987654/i)).toBeInTheDocument();
-        const viewOrderLink = screen.getByText("View Order").closest("a");
-        expect(viewOrderLink).toHaveAttribute("href", "/account/orders/777");
-      });
-    });
+  it("does not create a second Order on a rapid double click", async () => {
+    const fetchMock = setupFetch(); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address"); fillGuestAddress();
+    await waitFor(() => expect(screen.getByRole("button", { name: /Place Order & Pay/i })).not.toBeDisabled(), { timeout: 2000 });
+    const button = screen.getByRole("button", { name: /Place Order & Pay/i }); fireEvent.click(button); fireEvent.click(button);
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/storefront/orders"))).toHaveLength(1));
   });
 
-  describe("Mobile sticky Place Order bar", () => {
-    beforeEach(() => {
-      vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue({
-        status: "unauthenticated",
-        customer: null,
-        accessToken: null,
-        signup: vi.fn(),
-        signin: vi.fn(),
-        verifyEmail: vi.fn(),
-        resendVerification: vi.fn(),
-        forgotPassword: vi.fn(),
-        verifyResetOTP: vi.fn(),
-        resetPassword: vi.fn(),
-        logout: vi.fn(),
-        refreshSession: vi.fn(),
-        loadCurrentCustomer: vi.fn(),
-      });
-      stubMatchMedia((query) => query.includes("max-width: 1023px"));
+  it("does not let an older preview response overwrite the latest address", async () => {
+    const resolvers: Array<() => void> = [];
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/storefront/cart")) return Promise.resolve({ ok: true, json: async () => ({ success: true, data: cart }) } as Response);
+      if (url.includes("/storefront/checkout/preview")) {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        const serviceable = body.shippingAddress?.postalCode === "600034";
+        return new Promise<Response>((resolve) => {
+          resolvers.push(() => resolve({ ok: true, json: async () => ({ success: true, data: preview(body.paymentMethod, serviceable) }) } as Response));
+        });
+      }
+      throw new Error(`Unexpected request: ${url}`);
     });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CheckoutClient />); await screen.findByText("Guest Shipping Address"); fillGuestAddress();
+    await waitFor(() => expect(resolvers).toHaveLength(1), { timeout: 2000 });
+    fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "600034" } });
+    await waitFor(() => expect(resolvers).toHaveLength(2), { timeout: 3000 });
+    resolvers[1]();
+    await waitFor(() => expect(screen.getByText("✓ Delivery available")).toBeInTheDocument());
+    resolvers[0]();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.getByText("✓ Delivery available")).toBeInTheDocument();
+  });
+  it("turns ORDER_ALREADY_PENDING into a recoverable card and re-previews after cancellation without creating a new Order", async () => {
+    vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue(auth("authenticated"));
+    AuthTokenStore.setAccessToken("customer-jwt");
+    const fetchMock = setupFetch({ pendingError: true });
+    const cancelSpy = vi.spyOn(OrderApi, "cancelPendingOrder").mockResolvedValue({ ...order, status: "cancelled", cancelledAt: "2026-08-14T11:00:00Z" } as never);
 
-    function stubMatchMedia(resolve: (query: string) => boolean) {
-      vi.stubGlobal(
-        "matchMedia",
-        (query: string) =>
-          ({
-            matches: resolve(query),
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: () => false,
-          }) as unknown as MediaQueryList,
-      );
-    }
+    render(<CheckoutClient />);
+    await waitFor(() => expect(screen.getByText("Saved User")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Place Order & Pay/i })).not.toBeDisabled());
+    fireEvent.click(screen.getByRole("button", { name: /Place Order & Pay/i }));
 
-    async function fillGuestAddressAndPreview() {
-      await waitFor(() => expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument());
-      fireEvent.change(screen.getByLabelText(/Recipient Full Name/i), { target: { value: "Guest User" } });
-      fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
-      fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "123 Street" } });
-      fireEvent.change(screen.getByLabelText(/^City \*/i), { target: { value: "Mumbai" } });
-      fireEvent.change(screen.getByLabelText(/^State \*/i), { target: { value: "MH" } });
-      fireEvent.change(screen.getByLabelText(/Postal Code/i), { target: { value: "400001" } });
-      fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
-      fireEvent.click(screen.getByRole("button", { name: /Verify & Preview Address/i }));
-    }
-
-    it("A. shows the sticky bar as the only Place Order control on compact viewports", async () => {
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any);
-
-      render(<CheckoutClient />);
-      await fillGuestAddressAndPreview();
-
-      await waitFor(() =>
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled(),
-      );
-
-      const bar = screen.getByTestId("checkout-sticky-cta");
-      expect(within(bar).getByRole("button", { name: /Place Order/i })).toBeInTheDocument();
-      expect(screen.getAllByRole("button", { name: /Place Order/i })).toHaveLength(1);
-      expect(within(bar).getByText("₹499.00")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("You have an unfinished order")).toBeInTheDocument();
+      expect(screen.getByText("Order #ORD-987654 still has a pending payment.")).toBeInTheDocument();
     });
+    expect(screen.getByRole("link", { name: "Complete Payment" })).toHaveAttribute("href", "/account/orders/777");
 
-    it("B. sticky Place Order is disabled until the address preview is valid", async () => {
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel Order & Continue" }));
+    expect(screen.getByRole("heading", { name: "Cancel this unfinished order?" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("dialog").querySelector("button[data-cancel-dialog-autofocus]") as HTMLButtonElement);
 
-      render(<CheckoutClient />);
-      await waitFor(() => expect(screen.getByText("Guest Shipping Address")).toBeInTheDocument());
-
-      expect(
-        within(screen.getByTestId("checkout-sticky-cta")).getByRole("button", { name: /Place Order/i }),
-      ).toBeDisabled();
-
-      await fillGuestAddressAndPreview();
-      await waitFor(() =>
-        expect(
-          within(screen.getByTestId("checkout-sticky-cta")).getByRole("button", { name: /Place Order/i }),
-        ).not.toBeDisabled(),
-      );
-    });
-
-    it("C. sticky Place Order runs the same existing order-creation flow", async () => {
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCreatedOrderResponse }) } as any);
-
-      render(<CheckoutClient />);
-      await fillGuestAddressAndPreview();
-
-      const stickyButton = () =>
-        within(screen.getByTestId("checkout-sticky-cta")).getByRole("button", { name: /Place Order/i });
-      await waitFor(() => expect(stickyButton()).not.toBeDisabled());
-      fireEvent.click(stickyButton());
-
-      await waitFor(() => expect(screen.getByText(/Order #ORD-987654/i)).toBeInTheDocument());
-      const orderCreateCall = vi
-        .mocked(fetch)
-        .mock.calls.find((c) => c[0].toString().includes("/storefront/orders") && c[1]?.method === "POST");
-      expect(orderCreateCall).toBeDefined();
-    });
-
-    it("D. keeps the in-card button and renders no sticky bar on desktop widths", async () => {
-      stubMatchMedia(() => false);
-      vi.mocked(fetch)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockCartResponse }) } as any)
-        .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, data: mockPreviewResponse }) } as any);
-
-      render(<CheckoutClient />);
-      await fillGuestAddressAndPreview();
-      await waitFor(() =>
-        expect(screen.getByRole("button", { name: /Place Order/i })).not.toBeDisabled(),
-      );
-
-      expect(screen.queryByTestId("checkout-sticky-cta")).not.toBeInTheDocument();
-      expect(screen.getAllByRole("button", { name: /Place Order/i })).toHaveLength(1);
-    });
+    await waitFor(() => expect(cancelSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("checkout/preview"))).toHaveLength(2));
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/storefront/orders"))).toHaveLength(1);
+    expect(screen.getByRole("button", { name: /Place Order & Pay/i })).not.toBeDisabled();
   });
 });
