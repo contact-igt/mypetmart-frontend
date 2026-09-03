@@ -157,6 +157,26 @@ function jsonResponse(body: unknown, ok = true, status = 200) {
   return { ok, status, json: async () => body } as any;
 }
 
+function makeProductVideos(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    id: index + 1,
+    mediaAssetId: index + 501,
+    mediaRole: "product_video" as const,
+    title: index === 0 ? "Product demo" : null,
+    caption: index === 0 ? "See it in action" : null,
+    displayOrder: index,
+    active: true,
+    media: {
+      id: index + 501,
+      publicUrl: `https://r2.example.com/demo-${index + 1}.mp4`,
+      mimeType: "video/mp4",
+      mediaType: "video" as const,
+      title: null,
+      originalName: `demo-${index + 1}.mp4`,
+    },
+  }));
+}
+
 function setupMockFetch(customHandler?: (url: string, init?: RequestInit) => Promise<any> | undefined) {
   const fetchMock = vi.fn(async (url, init) => {
     const urlStr = String(url);
@@ -726,6 +746,45 @@ describe("ProductDetail Storefront Component", () => {
     expect(video).toHaveAttribute("playsinline");
     expect(video).toHaveAttribute("preload", "metadata");
     expect(video).not.toHaveAttribute("autoplay");
+  });
+
+  it("keeps Product Video cards testimonial-sized for one, two, three, and four items", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    for (const count of [1, 2, 3, 4]) {
+      const view = renderProductDetail({ ...mockSimpleProduct, productVideos: makeProductVideos(count) });
+      const section = view.container.querySelector("#product-media-heading")!.closest("section")!;
+      const grid = section.querySelector('[class~="justify-center"]')!;
+      const cards = section.querySelectorAll("figure");
+
+      expect(grid).toHaveClass("flex", "flex-wrap", "justify-center");
+      expect(cards).toHaveLength(count);
+      cards.forEach((card) => {
+        expect(card).toHaveClass("max-w-[22rem]", "lg:w-80", "xl:w-[21rem]");
+        expect(card.querySelector("video")).toHaveClass("aspect-[9/12]", "object-cover");
+      });
+
+      view.unmount();
+    }
+  });
+
+  it("keeps Product Media image cards fixed, padded, and contained", () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const view = renderProductDetail({ ...mockSimpleProduct, slug: "dog-anti-slip-pads" });
+    const section = view.container.querySelector("#product-media-heading")!.closest("section")!;
+    const cards = section.querySelectorAll("figure");
+
+    expect(cards).toHaveLength(2);
+    cards.forEach((card) => {
+      expect(card).toHaveClass("aspect-square", "max-w-[22rem]", "lg:w-80", "xl:w-[21rem]");
+      expect(card.querySelector("img")).toHaveClass("object-contain");
+      expect(card.querySelector('[class~="inset-5"]')).toBeInTheDocument();
+    });
   });
 
   it("19. Shows the Key Features section in order when the Product has Features", async () => {

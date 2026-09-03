@@ -88,7 +88,7 @@ export function FeaturedProductCard({ product, index = 0 }: { product: ProductLi
 
           {discount !== null && (
             <span className="absolute left-4 top-4 rounded-full bg-terracotta px-3 py-1.5 text-xs font-bold text-white shadow-sm">
-              -{discount}%
+              {discount}% OFF
             </span>
           )}
           <button
@@ -115,16 +115,19 @@ export function FeaturedProductCard({ product, index = 0 }: { product: ProductLi
           </p>
           <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <span className="text-[1.45rem] font-bold leading-none text-text-primary">
-              {product.hasVariants ? "From " : ""}₹{formatPrice(product.price)}
+              {product.hasVariants ? "Starts at " : ""}₹{formatPrice(product.price)}
             </span>
             {product.compareAtPrice && discount !== null && (
               <span className="text-base text-text-primary/50 line-through">₹{formatPrice(product.compareAtPrice)}</span>
             )}
           </div>
+          {product.hasVariants && (
+            <p className="mt-1 text-xs font-medium text-text-primary/45">Multiple variants available</p>
+          )}
           <div className="mt-auto pt-5">
             {product.hasVariants ? (
               <Link href={productHref} className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-deep-brown px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30">
-                Choose Options
+                View Options
               </Link>
             ) : (
               <button

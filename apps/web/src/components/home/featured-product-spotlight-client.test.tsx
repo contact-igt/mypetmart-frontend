@@ -82,7 +82,7 @@ describe("FeaturedProductSpotlightClient", () => {
     expect(screen.getByText("Pan-India delivery")).toBeInTheDocument();
     expect(screen.getByText("COD available")).toBeInTheDocument();
 
-    expect(screen.getByRole("link", { name: "Choose Options" })).toHaveAttribute("href", "/products/pet-grooming-brush");
+    expect(screen.getByRole("link", { name: "View Options" })).toHaveAttribute("href", "/products/pet-grooming-brush");
     expect(screen.queryByRole("button", { name: "Add to Cart" })).not.toBeInTheDocument();
   });
 
@@ -120,7 +120,8 @@ describe("FeaturedProductSpotlightClient", () => {
   it("routes variant products to details for option selection", () => {
     render(<FeaturedProductSpotlightClient product={{ ...product, hasVariants: true }} />);
 
-    expect(screen.getByRole("link", { name: "Choose Options" })).toHaveAttribute("href", "/products/pet-grooming-brush");
+    expect(screen.getByRole("link", { name: "View Options" })).toHaveAttribute("href", "/products/pet-grooming-brush");
+    expect(screen.getByText("Multiple variants available")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add to Cart" })).not.toBeInTheDocument();
   });
 });

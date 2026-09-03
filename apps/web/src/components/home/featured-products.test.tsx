@@ -164,7 +164,7 @@ describe("Home Best Sellers", () => {
     expect(screen.getAllByRole("link", { name: "Comfort Dog Collar" })[0]).toHaveAttribute("href", "/products/comfort-dog-collar");
     expect(screen.getByText("Dog Essentials")).toHaveClass("uppercase");
     expect(screen.getByText(/Soft everyday collar/i)).toHaveClass("line-clamp-2");
-    expect(screen.getByText("-17%")).toBeInTheDocument();
+    expect(screen.getByText("17% OFF")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add to wishlist" }));
     expect(mockPush).toHaveBeenCalledWith("/signin");
 
@@ -178,9 +178,10 @@ describe("Home Best Sellers", () => {
 
     await renderFeaturedProducts();
 
-    expect(screen.getByText("From ₹499")).toBeInTheDocument();
+    expect(screen.getByText("Starts at ₹499")).toBeInTheDocument();
+    expect(screen.getByText("Multiple variants available")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Premium Dog Food - Image coming soon" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Choose Options" })).toHaveAttribute("href", "/products/premium-dog-food");
+    expect(screen.getByRole("link", { name: "View Options" })).toHaveAttribute("href", "/products/premium-dog-food");
   });
 
   it("shows an error state with a Retry action when the featured-products fetch fails", async () => {
