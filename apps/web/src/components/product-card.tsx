@@ -30,6 +30,7 @@ function formatPrice(value: string | number) {
 interface NormalizedProduct {
   id: number | null;
   name: string;
+  description: string | null;
   brand: string | null;
   slug: string;
   price: string | number;
@@ -41,6 +42,8 @@ interface NormalizedProduct {
   categorySlug: string;
   imageUrl: string | null;
   imageAlt: string | null;
+  averageRating: number;
+  reviewCount: number;
 }
 
 function normalizeProduct(product: ProductListItem | MockProduct): NormalizedProduct {
@@ -48,6 +51,7 @@ function normalizeProduct(product: ProductListItem | MockProduct): NormalizedPro
     return {
       id: product.id,
       name: product.name,
+      description: product.description ?? null,
       brand: product.brand,
       slug: product.slug,
       price: product.price,
@@ -59,12 +63,15 @@ function normalizeProduct(product: ProductListItem | MockProduct): NormalizedPro
       categorySlug: product.category.slug,
       imageUrl: product.primaryImage?.url ?? null,
       imageAlt: product.primaryImage?.alt ?? null,
+      averageRating: product.averageRating,
+      reviewCount: product.reviewCount,
     };
   }
 
   return {
     id: null,
     name: product.name,
+    description: null,
     brand: null,
     slug: product.slug,
     price: product.price,
@@ -76,6 +83,9 @@ function normalizeProduct(product: ProductListItem | MockProduct): NormalizedPro
     categorySlug: product.category.toLowerCase().replace(/\s+/g, "-"),
     imageUrl: null,
     imageAlt: product.imageLabel,
+    // Mock fixture data never carries a real rating — see data/products.ts.
+    averageRating: 0,
+    reviewCount: 0,
   };
 }
 
@@ -189,9 +199,19 @@ export function ProductCard({ product }: { product: ProductListItem | MockProduc
           </Link>
         </h3>
 
+        <p className="mt-2 line-clamp-2 min-h-[2.55rem] text-sm font-medium leading-[1.45] text-text-primary/65">
+          {normalized.description || ""}
+        </p>
+
         <div className="mt-1.5 min-h-5 sm:mt-2">
           {productId !== null && (
-            <ProductRatingBadge productId={productId} href={`${productHref}#product-reviews`} compact />
+            <ProductRatingBadge
+              productId={productId}
+              href={`${productHref}#product-reviews`}
+              compact
+              showZero
+              summary={{ averageRating: normalized.averageRating, reviewCount: normalized.reviewCount }}
+            />
           )}
         </div>
 

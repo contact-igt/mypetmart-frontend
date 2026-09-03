@@ -21,7 +21,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("./product-rating-badge", () => ({
-  ProductRatingBadge: () => null,
+  ProductRatingBadge: ({ summary }: { summary?: { averageRating: number; reviewCount: number } }) =>
+    summary ? <span data-testid="rating-summary">{`${summary.averageRating}|${summary.reviewCount}`}</span> : null,
 }));
 
 process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:5000/api/v1";
@@ -40,6 +41,8 @@ const product: ProductListItem = {
   inStock: true,
   category: { id: 1, name: "Dog Essentials", slug: "dog-essentials", petType: "dog" },
   primaryImage: null,
+  averageRating: 0,
+  reviewCount: 0,
 };
 
 function renderCard() {
@@ -250,5 +253,71 @@ describe("ProductCard brand label", () => {
     expect(screen.getByText("Dog Essentials")).toBeInTheDocument();
     expect(screen.getByText(/in stock/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add to Cart" })).toBeEnabled();
+  });
+});
+
+describe("ProductCard rating aggregate wiring", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+    AuthTokenStore.setAccessToken(null);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("14. passes the Product List DTO's averageRating/reviewCount straight through to the rating badge", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
+    );
+
+    render(
+      <CustomerAuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <ProductCard product={{ ...product, averageRating: 4.5, reviewCount: 10 }} />
+          </WishlistProvider>
+        </CartProvider>
+      </CustomerAuthProvider>
+    );
+
+    expect(await screen.findByTestId("rating-summary")).toHaveTextContent("4.5|10");
+  });
+
+  it("19. Choose Options / Add to Cart CTA logic is unaffected by the rating row", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
+    );
+
+    render(
+      <CustomerAuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <ProductCard product={{ ...product, hasVariants: true, averageRating: 0, reviewCount: 0 }} />
+          </WishlistProvider>
+        </CartProvider>
+      </CustomerAuthProvider>
+    );
+
+    expect(await screen.findByRole("link", { name: "Choose Options" })).toBeInTheDocument();
+  });
+
+  it("20. wishlist heart behavior is unaffected by the rating row", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
+    );
+
+    render(
+      <CustomerAuthProvider>
+        <CartProvider>
+          <WishlistProvider>
+            <ProductCard product={{ ...product, averageRating: 4.5, reviewCount: 10 }} />
+          </WishlistProvider>
+        </CartProvider>
+      </CustomerAuthProvider>
+    );
+
+    expect(await screen.findByRole("button", { name: /add to wishlist/i })).toHaveAttribute("aria-pressed", "false");
   });
 });

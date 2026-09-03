@@ -17,11 +17,11 @@ describe("ShopByNeedSection", () => {
     expect(screen.getByRole("link", { name: /Cat Essentials/i })).toHaveAttribute("href", "/shop?petType=cat");
   });
 
-  it("uses existing image fallbacks for cards without a local visual", () => {
+  it("renders the available visual for every need card", () => {
     render(<ShopByNeedSection />);
 
-    expect(screen.getByRole("img", { name: "Paw Care - Image coming soon" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Everyday Essentials - Image coming soon" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Cat Essentials - Image coming soon" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Dog in a yellow sweater" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Puppies and kitten peeking over a table" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Orange and white cat outdoors" })).toBeInTheDocument();
   });
 });

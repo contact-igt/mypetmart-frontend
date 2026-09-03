@@ -41,6 +41,10 @@ vi.mock("@/context/customer-auth-context", () => ({
   }),
 }));
 
+vi.mock("@/components/product-rating-badge", () => ({
+  ProductRatingBadge: () => <span>4.2 (18 reviews)</span>,
+}));
+
 process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:5000/api/v1";
 
 function jsonResponse(body: unknown, ok = true, status = 200) {
@@ -72,6 +76,8 @@ const simpleItem: ProductListItem = {
     sortOrder: 0,
     isPrimary: true,
   },
+  averageRating: 4.2,
+  reviewCount: 18,
 };
 
 const variantItem: ProductListItem = {
@@ -101,8 +107,8 @@ describe("Home Best Sellers", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses the real featured-products query with enough products for carousel discovery", async () => {
-    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 8, totalPages: 1 };
+  it("uses the real newest-products query and receives the backend featured flag for selection", async () => {
+    const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 12, totalPages: 1 };
     const fetchMock = vi.fn(async () => jsonResponse({ success: true, data: list }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -111,8 +117,24 @@ describe("Home Best Sellers", () => {
     const calledUrl = String((fetchMock.mock.calls[0] as unknown[])[0]);
     expect(calledUrl).toContain("/storefront/products");
     expect(calledUrl).toContain("sort=newest");
-    expect(calledUrl).toContain("featured=true");
-    expect(calledUrl).toContain("pageSize=8");
+    expect(calledUrl).toContain("pageSize=12");
+    expect(calledUrl).not.toContain("featured=true");
+  });
+
+  it("renders three real products and prefers featured items without dropping active non-featured items", async () => {
+    const items = [
+      { ...simpleItem, id: 701, name: "Newest non-featured", slug: "newest-non-featured", featured: false },
+      { ...simpleItem, id: 702, name: "Featured product", slug: "featured-product", featured: true },
+      { ...simpleItem, id: 703, name: "Another newest product", slug: "another-newest-product", featured: false },
+    ];
+    const list: PaginatedProductList = { items, total: 3, page: 1, pageSize: 12, totalPages: 1 };
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
+
+    await renderFeaturedProducts();
+
+    expect(screen.getAllByRole("article")).toHaveLength(3);
+    expect(screen.getByRole("heading", { name: "Featured product" })).toBeInTheDocument();
+    expect(screen.getAllByText("4.2 (18 reviews)")).toHaveLength(3);
   });
 
   it("renders real product cards in the carousel with desktop controls", async () => {
@@ -188,12 +210,14 @@ describe("Home Best Sellers", () => {
   });
 
   it("hides the section for a genuinely empty (not failed) product result", async () => {
-    const list: PaginatedProductList = { items: [], total: 0, page: 1, pageSize: 8, totalPages: 0 };
+    const list: PaginatedProductList = { items: [], total: 0, page: 1, pageSize: 12, totalPages: 0 };
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ success: true, data: list })));
 
     const emptyView = await renderFeaturedProducts();
 
-    expect(emptyView.container).toBeEmptyDOMElement();
+    expect(emptyView.container).not.toBeEmptyDOMElement();
+    expect(screen.getByText("New products are coming soon.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Browse the shop" })).toHaveAttribute("href", "/shop");
   });
 
   it("renders the supplied section heading and all-products link", async () => {

@@ -65,14 +65,16 @@ export function FeaturedProductSpotlightClient({ product }: { product: ProductDe
             aria-label={product.name}
           >
             {image ? (
-              <Image
-                src={image.url}
-                alt={image.alt || product.name}
-                fill
-                priority
-                sizes="(min-width: 1280px) 530px, (min-width: 1024px) 50vw, 100vw"
-                className="object-cover transition-transform duration-200 ease-out hover:scale-[1.015]"
-              />
+              <span className="absolute inset-8 sm:inset-12 lg:inset-16">
+                <Image
+                  src={image.url}
+                  alt={image.alt || product.name}
+                  fill
+                  priority
+                  sizes="(min-width: 1280px) 520px, (min-width: 1024px) 42vw, 78vw"
+                  className="object-contain"
+                />
+              </span>
             ) : (
               <ProductImagePlaceholder label={product.name} tone={tone} className="absolute inset-0 h-full w-full rounded-none" iconSize={70} />
             )}

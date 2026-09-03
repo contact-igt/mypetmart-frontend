@@ -3,8 +3,8 @@
 import { useRef } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Slider, { type Settings } from "react-slick";
+import { ProductCard } from "@/components/product-card";
 import type { ProductListItem } from "@/types/storefront";
-import { FeaturedProductCard } from "./featured-product-card";
 
 const SLIDER_SETTINGS: Settings = {
   arrows: false,
@@ -59,9 +59,9 @@ export function BestSellersCarousel({ products }: { products: ProductListItem[] 
         aria-label="Best sellers products"
       >
         <Slider ref={sliderRef} {...SLIDER_SETTINGS}>
-          {products.map((product, index) => (
+          {products.map((product) => (
             <div key={product.id} className="h-full px-2 py-1">
-              <FeaturedProductCard product={product} index={index} />
+              <ProductCard product={product} />
             </div>
           ))}
         </Slider>

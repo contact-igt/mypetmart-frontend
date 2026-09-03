@@ -15,6 +15,8 @@ export interface WishlistProductSummary {
   available: boolean;
   category: ProductCategoryRef;
   primaryImage: ProductImage | null;
+  averageRating: number;
+  reviewCount: number;
 }
 
 export interface WishlistItem {
