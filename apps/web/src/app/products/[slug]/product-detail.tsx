@@ -64,6 +64,9 @@ const PRODUCT_MEDIA: Record<string, ProductMedia[]> = {
   "dog-anti-slip-paw-pads": PAW_PAD_MEDIA,
 };
 
+const PDP_MEDIA_GRID_CLASS = "mx-auto flex w-full max-w-[68rem] flex-wrap justify-center gap-5";
+const PDP_MEDIA_CARD_CLASS = "w-full max-w-[22rem] shrink-0 sm:w-[calc(50%-0.625rem)] sm:max-w-[22rem] lg:w-80 lg:max-w-none xl:w-[21rem]";
+
 function PdpContentBlocks({ product, blocks }: { product: ProductDetail; blocks: ProductDetail["contentBlocks"] }) {
   if (blocks.length === 0) return null;
 
@@ -173,17 +176,6 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
   const legacyProductMedia = PRODUCT_MEDIA[product.slug] ?? [];
   const hasDynamicProductVideos = dynamicProductVideos.length > 0;
   const showLegacyProductMedia = !hasDynamicProductVideos && legacyProductMedia.length > 0;
-
-  // A grid built for many videos leaves a mostly-empty row when a Product only
-  // has one (or two) assigned — cap the column count to the actual item count
-  // so the "See it in action" section never looks stranded.
-  const productMediaCount = hasDynamicProductVideos ? dynamicProductVideos.length : legacyProductMedia.length;
-  const productMediaGridClass =
-    productMediaCount === 2
-      ? "grid-cols-1 sm:grid-cols-2"
-      : productMediaCount === 3
-        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-        : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
 
   // Enhanced Product Content — the Storefront detail endpoint already returns
   // active blocks only (see product.service.ts's `where: { active: true }`
@@ -430,78 +422,76 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
 
       {(hasDynamicProductVideos || showLegacyProductMedia) && (
         <section className="mt-20 sm:mt-24" aria-labelledby="product-media-heading">
-          <div className={productMediaCount === 1 ? "grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-14" : "contents"}>
-            <div className={productMediaCount === 1 ? "max-w-md" : "mb-7 max-w-2xl"}>
-              <span className="pill-label border border-deep-brown/10 bg-white text-text-primary">See it in action</span>
-              <h2
-                id="product-media-heading"
-                className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
-                style={{ fontFamily: "var(--font-display-italic)" }}
-              >
-                Made for real pet moments.
-              </h2>
-            </div>
+          <div className="mb-7 max-w-2xl">
+            <span className="pill-label border border-deep-brown/10 bg-white text-text-primary">See it in action</span>
+            <h2
+              id="product-media-heading"
+              className="mt-4 text-3xl font-medium text-text-primary sm:text-4xl"
+              style={{ fontFamily: "var(--font-display-italic)" }}
+            >
+              Made for real pet moments.
+            </h2>
+          </div>
 
-            {hasDynamicProductVideos ? (
-              <div className={productMediaCount === 1 ? undefined : `grid gap-5 ${productMediaGridClass}`}>
-                {dynamicProductVideos.map((assignment) => (
-                  <figure
-                    key={assignment.id}
-                    className={`overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm ${productMediaCount === 1 ? "mx-auto w-full max-w-xl" : ""}`}
+          {hasDynamicProductVideos ? (
+            <div className={PDP_MEDIA_GRID_CLASS}>
+              {dynamicProductVideos.map((assignment) => (
+                <figure
+                  key={assignment.id}
+                  className={`${PDP_MEDIA_CARD_CLASS} overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm`}
+                >
+                  <video
+                    src={assignment.media.publicUrl}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    aria-label={assignment.title || "Product video"}
+                    className="aspect-[9/12] w-full bg-deep-brown object-cover"
                   >
-                    <video
-                      src={assignment.media.publicUrl}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      aria-label={assignment.title || "Product video"}
-                      className="aspect-video w-full bg-deep-brown object-contain"
-                    >
-                      Your browser does not support video playback.
-                    </video>
-                    {(assignment.title || assignment.caption) && (
-                      <figcaption className="p-3 sm:p-4">
-                        {assignment.title && <p className="text-sm font-semibold text-text-primary">{assignment.title}</p>}
-                        {assignment.caption && <p className="mt-1 text-xs text-text-muted">{assignment.caption}</p>}
-                      </figcaption>
-                    )}
+                    Your browser does not support video playback.
+                  </video>
+                  <figcaption className="min-h-[4.25rem] p-3 sm:p-4">
+                    {assignment.title && <p className="line-clamp-2 text-sm font-semibold text-text-primary">{assignment.title}</p>}
+                    {assignment.caption && <p className="mt-1 line-clamp-2 text-xs text-text-muted">{assignment.caption}</p>}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <div className={PDP_MEDIA_GRID_CLASS}>
+              {legacyProductMedia.map((media) =>
+                media.type === "video" ? (
+                  <figure
+                    key={media.src}
+                    className={`${PDP_MEDIA_CARD_CLASS} aspect-[9/12]`}
+                  >
+                    <PlayableVideoCard
+                      src={media.src}
+                      label={media.alt}
+                      aspect="h-full"
+                      className="h-full"
+                      product={videoCardProduct}
+                    />
                   </figure>
-                ))}
-              </div>
-            ) : (
-              <div className={productMediaCount === 1 ? undefined : `grid gap-5 ${productMediaGridClass}`}>
-                {legacyProductMedia.map((media) =>
-                  media.type === "video" ? (
-                    <figure
-                      key={media.src}
-                      className={`aspect-[9/16] ${productMediaCount === 1 ? "mx-auto w-full max-w-xs" : ""}`}
-                    >
-                      <PlayableVideoCard
-                        src={media.src}
-                        label={media.alt}
-                        aspect="h-full"
-                        className="h-full"
-                        product={videoCardProduct}
-                      />
-                    </figure>
-                  ) : (
-                    <figure
-                      key={media.src}
-                      className={`relative aspect-square overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm ${productMediaCount === 1 ? "mx-auto w-full max-w-xl" : ""}`}
-                    >
+                ) : (
+                  <figure
+                    key={media.src}
+                    className={`${PDP_MEDIA_CARD_CLASS} relative aspect-square overflow-hidden rounded-[22px] border border-border-subtle bg-white shadow-sm`}
+                  >
+                    <div className="absolute inset-5 sm:inset-6">
                       <Image
                         src={media.src}
                         alt={media.alt}
                         fill
-                        sizes="(min-width: 1280px) 25vw, (min-width: 640px) 50vw, 100vw"
-                        className="object-cover"
+                        sizes="(min-width: 1280px) 336px, (min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw"
+                        className="object-contain"
                       />
-                    </figure>
-                  ),
-                )}
-              </div>
-            )}
-          </div>
+                    </div>
+                  </figure>
+                ),
+              )}
+            </div>
+          )}
         </section>
       )}
 

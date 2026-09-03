@@ -163,7 +163,7 @@ export function ProductCard({ product }: { product: ProductListItem | MockProduc
 
         {discount !== null && (
           <span className="absolute left-3 top-3 rounded-full bg-terracotta px-2.5 py-1 text-[11px] font-bold text-white shadow-sm sm:left-4 sm:top-4 sm:px-3 sm:py-1.5 sm:text-xs">
-            -{discount}%
+            {discount}% OFF
           </span>
         )}
         <button
@@ -185,11 +185,13 @@ export function ProductCard({ product }: { product: ProductListItem | MockProduc
         <p className="min-h-4 text-[10px] font-bold uppercase tracking-[0.1em] text-terracotta sm:text-[11px]">
           {normalized.categoryName}
         </p>
-        {normalized.brand && (
-          <p className="mt-1 truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-text-primary/50 sm:text-[11px]">
-            {normalized.brand}
-          </p>
-        )}
+        <div className="mt-1 min-h-4">
+          {normalized.brand && (
+            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-text-primary/50 sm:text-[11px]">
+              {normalized.brand}
+            </p>
+          )}
+        </div>
         <h3 className="mt-1.5 min-h-[2.8rem] sm:mt-2 sm:min-h-[3.1rem]">
           <Link
             href={productHref}
@@ -217,13 +219,17 @@ export function ProductCard({ product }: { product: ProductListItem | MockProduc
 
         <div className="mt-2 flex min-h-8 flex-wrap items-baseline gap-x-1.5 gap-y-1 sm:mt-3 sm:gap-x-2">
           <span className="text-[1.2rem] font-bold leading-none text-text-primary sm:text-[1.45rem]">
-            {normalized.hasVariants ? "From ₹" : "₹"}{formatPrice(normalized.price)}
+            {normalized.hasVariants ? "Starts at ₹" : "₹"}{formatPrice(normalized.price)}
           </span>
           {normalized.compareAtPrice != null && discount !== null && (
             <span className="text-xs text-text-primary/50 line-through sm:text-base">
               ₹{formatPrice(normalized.compareAtPrice)}
             </span>
           )}
+        </div>
+
+        <div className="mt-1 min-h-4 text-[11px] font-medium text-text-primary/45 sm:text-xs">
+          {normalized.hasVariants && <p>Multiple variants available</p>}
         </div>
 
         <div className="mt-2 min-h-5 text-xs font-semibold sm:mt-3 sm:text-sm">
@@ -263,7 +269,7 @@ export function ProductCard({ product }: { product: ProductListItem | MockProduc
               href={productHref}
               className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary-orange px-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 sm:h-12 sm:px-4 sm:text-sm"
             >
-              Choose Options
+              View Options
             </Link>
           ) : (
             <button

@@ -217,6 +217,18 @@ describe("ProductCard brand label", () => {
     expect(screen.queryByText("Royal Canin")).not.toBeInTheDocument();
   });
 
+  it("reserves the optional brand and variant rows for consistent card height", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
+    );
+
+    const { container } = renderCardWith({ brand: null, hasVariants: false });
+    await screen.findByRole("heading", { name: "Comfort Dog Collar" });
+
+    const reservedRows = container.querySelectorAll('[class~="mt-1"][class~="min-h-4"]');
+    expect(reservedRows).toHaveLength(2);
+  });
+
   it("renders a contained product image in the responsive square frame", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
@@ -249,7 +261,7 @@ describe("ProductCard brand label", () => {
     renderCardWith({ compareAtPrice: "999.00", inStock: true });
 
     expect(await screen.findByRole("heading", { name: "Comfort Dog Collar" })).toBeInTheDocument();
-    expect(screen.getByText("-50%")).toBeInTheDocument();
+    expect(screen.getByText("50% OFF")).toBeInTheDocument();
     expect(screen.getByText("Dog Essentials")).toBeInTheDocument();
     expect(screen.getByText(/in stock/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add to Cart" })).toBeEnabled();
@@ -285,7 +297,7 @@ describe("ProductCard rating aggregate wiring", () => {
     expect(await screen.findByTestId("rating-summary")).toHaveTextContent("4.5|10");
   });
 
-  it("19. Choose Options / Add to Cart CTA logic is unaffected by the rating row", async () => {
+  it("19. View Options / Add to Cart CTA logic is unaffected by the rating row", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false)
     );
@@ -300,7 +312,7 @@ describe("ProductCard rating aggregate wiring", () => {
       </CustomerAuthProvider>
     );
 
-    expect(await screen.findByRole("link", { name: "Choose Options" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "View Options" })).toBeInTheDocument();
   });
 
   it("20. wishlist heart behavior is unaffected by the rating row", async () => {

@@ -91,12 +91,17 @@ export function FeaturedProductSpotlightClient({ product }: { product: ProductDe
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-              <span className="text-[2.15rem] font-extrabold leading-none text-text-primary">₹{formatPrice(product.price)}</span>
+              <span className="text-[2.15rem] font-extrabold leading-none text-text-primary">
+                {product.hasVariants ? "Starts at " : ""}₹{formatPrice(product.price)}
+              </span>
               {product.compareAtPrice && discount !== null && (
                 <span className="text-lg font-semibold text-text-primary/45 line-through">₹{formatPrice(product.compareAtPrice)}</span>
               )}
               {discount !== null && <span className="rounded-lg bg-terracotta px-3 py-1.5 text-sm font-bold text-white">{discount}% OFF</span>}
             </div>
+            {product.hasVariants && (
+              <p className="mt-2 text-sm font-medium text-text-primary/45">Multiple variants available</p>
+            )}
 
             {product.description && <p className="mt-5 line-clamp-3 max-w-[28rem] text-lg font-medium leading-[1.55] text-text-primary/75">{product.description}</p>}
 
@@ -114,7 +119,7 @@ export function FeaturedProductSpotlightClient({ product }: { product: ProductDe
             <div className="mt-8 flex flex-wrap gap-3 sm:items-center">
               {product.hasVariants ? (
                 <Link href={productHref} className="inline-flex h-[70px] min-w-[13rem] items-center justify-center rounded-xl bg-deep-brown px-8 text-base font-bold text-white transition-colors duration-150 hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30">
-                  Choose Options
+                  View Options
                 </Link>
               ) : (
                 <>
@@ -143,7 +148,7 @@ export function FeaturedProductSpotlightClient({ product }: { product: ProductDe
                     href={productHref}
                     className="inline-flex h-[70px] w-[148px] items-center justify-center rounded-xl bg-deep-brown px-6 text-center text-base font-bold leading-tight text-white transition-colors duration-150 hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
                   >
-                    Choose Options
+                    View Options
                   </Link>
                   <button
                     type="button"
