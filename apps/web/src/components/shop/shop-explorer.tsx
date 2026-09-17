@@ -9,6 +9,7 @@ import type { Category, ProductListItem, ProductSort } from "@/types/storefront"
 import { ShopHero } from "./shop-hero";
 
 const SORT_LABELS: Record<ProductSort, string> = {
+  recommended: "Sort · Recommended",
   newest: "Sort · Newest",
   price_asc: "Sort · Price: Low to High",
   price_desc: "Sort · Price: High to Low",
@@ -71,7 +72,7 @@ function ShopExplorerContent() {
   // Extract URL parameters
   const activePet = (searchParams.get("petType") as "dog" | "cat" | "all") || "all";
   const activeCategory = searchParams.get("category") || "";
-  const activeSort = (searchParams.get("sort") as ProductSort) || "newest";
+  const activeSort = (searchParams.get("sort") as ProductSort) || "recommended";
   const activePage = parseInt(searchParams.get("page") || "1", 10);
   const activeSearch = searchParams.get("search") || "";
 

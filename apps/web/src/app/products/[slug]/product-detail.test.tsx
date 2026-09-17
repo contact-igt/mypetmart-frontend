@@ -528,6 +528,40 @@ describe("ProductDetail Storefront Component", () => {
     expect(categoryLink).toHaveAttribute("href", "/shop?category=dog-essentials");
   });
 
+  it.each([false, true])("Buy it now opens checkout with an existing cart item: %s", async (alreadyAdded) => {
+    const cart = { id: 42, status: "active", itemCount: 1, subtotal: "499.00", items: [{ productId: 101, variantId: null, quantity: 1, available: true }] };
+    const fetchMock = setupMockFetch(async (url, init) => {
+      if (url.includes("/auth/refresh") || url.includes("/auth/me")) {
+        return jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401);
+      }
+      if (url.includes("/storefront/cart") && init?.method === "GET" && alreadyAdded) {
+        return jsonResponse({ success: true, data: cart });
+      }
+      if (url.includes("/storefront/cart/items") && init?.method === "POST") {
+        return jsonResponse({ success: true, data: cart });
+      }
+    });
+    renderProductDetail(mockSimpleProduct);
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => String(url).includes("/storefront/cart") && init?.method === "GET")).toBe(true));
+    fireEvent.click(inPanel().getByRole("button", { name: "Buy it now" }));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/checkout"));
+    const adds = fetchMock.mock.calls.filter(([url, init]) => String(url).includes("/storefront/cart/items") && init?.method === "POST");
+    expect(adds).toHaveLength(alreadyAdded ? 0 : 1);
+    if (!alreadyAdded) expect(JSON.parse(adds[0][1].body as string)).toMatchObject({ productId: 101, quantity: 1 });
+  });
+
+  it("Buy it now stays on the product page when adding fails", async () => {
+    setupMockFetch(async (url, init) => {
+      if (url.includes("/storefront/cart/items") && init?.method === "POST") {
+        return jsonResponse({ success: false, error: { code: "CART_PRODUCT_NOT_AVAILABLE", message: "Unavailable" } }, false, 422);
+      }
+    });
+    renderProductDetail(mockSimpleProduct);
+    fireEvent.click(inPanel().getByRole("button", { name: "Buy it now" }));
+    await waitFor(() => expect(screen.getByText("Product currently unavailable.")).toBeInTheDocument());
+    expect(mockPush).not.toHaveBeenCalledWith("/checkout");
+  });
+
   it("16. Add-to-Cart shows success message", async () => {
     setupMockFetch(async (url, init) => {
       if (url.includes("/auth/refresh") || url.includes("/auth/me")) {

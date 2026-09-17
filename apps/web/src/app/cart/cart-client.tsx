@@ -441,7 +441,7 @@ export function CartClient() {
               className={`motion-press h-11 inline-flex items-center justify-center rounded-xl bg-primary-orange hover:bg-terracotta text-white font-semibold text-sm tracking-wide transition-all cursor-pointer select-none ${isCheckoutDisabled ? "opacity-40 pointer-events-none" : "opacity-100"
                 }`}
             >
-              Proceed to Checkout
+              Buy it now
             </Link>
 
             <button

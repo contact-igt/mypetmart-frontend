@@ -155,7 +155,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
   const router = useRouter();
   const { status } = useCustomerAuth();
   const { isWishlisted, isPending, add, remove } = useWishlist();
-  const { add: addToCart } = useCart();
+  const { cart, add: addToCart } = useCart();
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -298,8 +298,17 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
     setCartError(null);
   };
 
-  const handleAddToCart = async () => {
-    if (product.hasVariants && !selectedVariant) return;
+  const handleAddToCart = async (checkout = false) => {
+    if (cartStatus === "adding" || isOutOfStock || (product.hasVariants && !selectedVariant)) return;
+
+    if (checkout && cart.items.some((item) =>
+      item.productId === product.id &&
+      (item.variantId ?? null) === (selectedVariant?.id ?? null) &&
+      item.quantity >= 1 && item.available
+    )) {
+      router.push("/checkout");
+      return;
+    }
 
     setCartStatus("adding");
     setCartError(null);
@@ -311,6 +320,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
         product.hasVariants ? selectedVariant?.id : undefined
       );
       setCartStatus("success");
+      if (checkout) router.push("/checkout");
     } catch (error) {
       setCartStatus("error");
       if (error instanceof AppAuthError) {
@@ -381,7 +391,8 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
               hasDiscount={hasDiscount}
               cartStatus={cartStatus}
               cartError={cartError}
-              onAddToCart={handleAddToCart}
+              onAddToCart={() => handleAddToCart()}
+              onBuyNow={() => handleAddToCart(true)}
               wishlisted={wishlisted}
               wishlistPending={wishlistPending}
               onWishlistClick={handleWishlistClick}
@@ -531,7 +542,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
         currentComparePrice={currentComparePrice}
         hasDiscount={hasDiscount}
         cartStatus={cartStatus}
-        onAddToCart={handleAddToCart}
+        onAddToCart={() => handleAddToCart()}
       />
     </div>
   );

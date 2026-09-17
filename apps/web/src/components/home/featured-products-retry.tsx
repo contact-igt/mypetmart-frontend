@@ -22,11 +22,9 @@ export function FeaturedProductsRetry() {
       const { items } = await getStorefrontProducts({
         page: 1,
         pageSize: HOME_FEATURED_FETCH_POOL_SIZE,
-        sort: "newest",
+        sort: "recommended",
       });
-      const featured = items.filter((item) => item.featured);
-      const rest = items.filter((item) => !item.featured);
-      setPhase({ status: "loaded", products: [...featured, ...rest].slice(0, HOME_FEATURED_PRODUCT_COUNT) });
+      setPhase({ status: "loaded", products: items.slice(0, HOME_FEATURED_PRODUCT_COUNT) });
     } catch (error) {
       console.error("Homepage featured products retry failed", error);
       setPhase({ status: "error" });
