@@ -9,17 +9,16 @@ async function getProductDetailFromList(query: Parameters<typeof getStorefrontPr
   return product ? getStorefrontProductBySlug(product.slug) : null;
 }
 
-async function getFeaturedGroomingProduct(): Promise<ProductDetail | null> {
-  const featuredGrooming = await getProductDetailFromList({
+async function getFeaturedProduct(): Promise<ProductDetail | null> {
+  const featuredProduct = await getProductDetailFromList({
     page: 1,
     pageSize: 1,
-    category: "grooming",
     featured: true,
     sort: "newest",
   });
-  if (featuredGrooming) return featuredGrooming;
+  if (featuredProduct) return featuredProduct;
 
-  // Featured is an admin-managed flag. If no grooming product is selected,
+  // Featured is an admin-managed flag. If no featured product is selected,
   // use the newest active grooming product, then the newest active product.
   return getProductDetailFromList({ page: 1, pageSize: 1, category: "grooming", sort: "newest" })
     .then((groomingProduct) => groomingProduct ?? getProductDetailFromList({ page: 1, pageSize: 1, sort: "newest" }));
@@ -58,7 +57,7 @@ export async function FeaturedProductSpotlight() {
   let failed = false;
 
   try {
-    product = await getFeaturedGroomingProduct();
+    product = await getFeaturedProduct();
   } catch (error) {
     failed = true;
     console.error("Homepage featured product request failed", error);
