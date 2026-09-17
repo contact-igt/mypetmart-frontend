@@ -35,7 +35,7 @@ describe("FeaturedProductSpotlight", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses a real newest active product when no featured grooming product is configured", async () => {
+  it("uses a real newest active product when no featured product is configured", async () => {
     getStorefrontProducts
       .mockResolvedValueOnce({ items: [] })
       .mockResolvedValueOnce({ items: [listItem] });
@@ -46,7 +46,6 @@ describe("FeaturedProductSpotlight", () => {
     expect(getStorefrontProducts).toHaveBeenNthCalledWith(1, {
       page: 1,
       pageSize: 1,
-      category: "grooming",
       featured: true,
       sort: "newest",
     });
@@ -57,6 +56,15 @@ describe("FeaturedProductSpotlight", () => {
       sort: "newest",
     });
     expect(getStorefrontProductBySlug).toHaveBeenCalledWith("real-grooming-product");
+  });
+
+  it("uses the selected featured product regardless of its category", async () => {
+    getStorefrontProducts.mockResolvedValueOnce({ items: [{ slug: "pet-grooming-brush", featured: true, category: { slug: "pet-combos-brushes" } }] });
+    getStorefrontProductBySlug.mockResolvedValueOnce({ name: "Pet Grooming Brush" });
+    render(await FeaturedProductSpotlight());
+    expect(screen.getByText("Pet Grooming Brush")).toBeInTheDocument();
+    expect(getStorefrontProducts).toHaveBeenCalledExactlyOnceWith({ page: 1, pageSize: 1, featured: true, sort: "newest" });
+    expect(getStorefrontProductBySlug).toHaveBeenCalledWith("pet-grooming-brush");
   });
 
   it("falls back to the newest active catalog product when grooming is empty", async () => {
