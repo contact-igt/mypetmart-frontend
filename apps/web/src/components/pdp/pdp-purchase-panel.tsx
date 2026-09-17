@@ -28,6 +28,7 @@ export function PdpPurchasePanel({
   cartStatus,
   cartError,
   onAddToCart,
+  onBuyNow,
   wishlisted,
   wishlistPending,
   onWishlistClick,
@@ -46,6 +47,7 @@ export function PdpPurchasePanel({
   cartStatus: "idle" | "adding" | "success" | "error";
   cartError: string | null;
   onAddToCart: () => void;
+  onBuyNow: () => void;
   wishlisted: boolean;
   wishlistPending: boolean;
   onWishlistClick: (e: MouseEvent) => void;
@@ -209,6 +211,17 @@ export function PdpPurchasePanel({
             {cartStatus === "adding" ? "Adding..." : "Add to Cart"}
           </button>
         </div>
+      )}
+
+      {!(product.hasVariants && product.variants.length === 0) && (
+        <button
+          type="button"
+          onClick={onBuyNow}
+          disabled={isOutOfStock || (product.hasVariants && !selectedVariant) || cartStatus === "adding"}
+          className="mt-3 inline-flex h-16 w-full cursor-pointer items-center justify-center rounded-lg bg-deep-brown px-5 text-base font-semibold text-white transition-colors hover:bg-deep-brown/90 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
+        >
+          Buy it now
+        </button>
       )}
 
       {cartStatus === "success" && (

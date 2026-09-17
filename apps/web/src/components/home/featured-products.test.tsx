@@ -107,7 +107,7 @@ describe("Home Best Sellers", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses the real newest-products query and receives the backend featured flag for selection", async () => {
+  it("requests the saved website order", async () => {
     const list: PaginatedProductList = { items: [simpleItem], total: 1, page: 1, pageSize: 12, totalPages: 1 };
     const fetchMock = vi.fn(async () => jsonResponse({ success: true, data: list }));
     vi.stubGlobal("fetch", fetchMock);
@@ -116,12 +116,12 @@ describe("Home Best Sellers", () => {
 
     const calledUrl = String((fetchMock.mock.calls[0] as unknown[])[0]);
     expect(calledUrl).toContain("/storefront/products");
-    expect(calledUrl).toContain("sort=newest");
+    expect(calledUrl).toContain("sort=recommended");
     expect(calledUrl).toContain("pageSize=12");
     expect(calledUrl).not.toContain("featured=true");
   });
 
-  it("renders three real products and prefers featured items without dropping active non-featured items", async () => {
+  it("preserves the backend order even when a later product is featured", async () => {
     const items = [
       { ...simpleItem, id: 701, name: "Newest non-featured", slug: "newest-non-featured", featured: false },
       { ...simpleItem, id: 702, name: "Featured product", slug: "featured-product", featured: true },
@@ -133,6 +133,8 @@ describe("Home Best Sellers", () => {
     await renderFeaturedProducts();
 
     expect(screen.getAllByRole("article")).toHaveLength(3);
+    expect(screen.getAllByRole("article")[0]).toHaveTextContent("Newest non-featured");
+    expect(screen.getAllByRole("article")[1]).toHaveTextContent("Featured product");
     expect(screen.getByRole("heading", { name: "Featured product" })).toBeInTheDocument();
     expect(screen.getAllByText("4.2 (18 reviews)")).toHaveLength(3);
   });

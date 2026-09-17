@@ -950,7 +950,7 @@ describe("Cart UI Components", () => {
     );
 
     await waitFor(() => {
-      const checkoutLink = screen.getByRole("link", { name: /Proceed to Checkout/i });
+      const checkoutLink = screen.getByRole("link", { name: /Buy it now/i });
       expect(checkoutLink).not.toHaveAttribute("aria-disabled", "true");
     });
 
@@ -962,7 +962,7 @@ describe("Cart UI Components", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("link", { name: /Proceed to Checkout/i })).toHaveAttribute("aria-disabled", "true");
+      expect(screen.getByRole("link", { name: /Buy it now/i })).toHaveAttribute("aria-disabled", "true");
     });
   });
 

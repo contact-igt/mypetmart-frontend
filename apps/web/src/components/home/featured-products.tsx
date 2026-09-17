@@ -7,14 +7,10 @@ async function getHomeFeaturedProducts(): Promise<ProductListItem[]> {
   const { items } = await getStorefrontProducts({
     page: 1,
     pageSize: HOME_FEATURED_FETCH_POOL_SIZE,
-    sort: "newest",
+    sort: "recommended",
   });
 
-  // Prefer the real admin-managed featured flag, then fill remaining slots
-  // with the newest active storefront products.
-  const featured = items.filter((item) => item.featured);
-  const rest = items.filter((item) => !item.featured);
-  return [...featured, ...rest].slice(0, HOME_FEATURED_PRODUCT_COUNT);
+  return items.slice(0, HOME_FEATURED_PRODUCT_COUNT);
 }
 
 export function FeaturedProductsSkeleton() {

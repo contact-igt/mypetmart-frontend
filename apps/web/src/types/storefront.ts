@@ -55,7 +55,7 @@ export interface PaginatedProductList {
   totalPages: number;
 }
 
-export type ProductSort = "newest" | "price_asc" | "price_desc" | "name";
+export type ProductSort = "recommended" | "newest" | "price_asc" | "price_desc" | "name";
 
 export interface ProductListQuery {
   page?: number;
