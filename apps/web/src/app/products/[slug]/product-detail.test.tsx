@@ -1752,6 +1752,21 @@ describe("ProductDetail Storefront Component", () => {
       expect(inStickyBar().getByRole("button", { name: /Add to Cart/i })).toHaveAccessibleName(/₹2,499/);
     });
 
+    it("66d. sticky Add to Cart price updates when quantity is changed", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+      );
+
+      renderProductDetail(mockSimpleProduct); // price "499.00", compareAtPrice "599.00"
+
+      const increaseBtn = inStickyBar().getByRole("button", { name: "Increase quantity" });
+      fireEvent.click(increaseBtn); // qty 2: 499 * 2 = 998, 599 * 2 = 1,198
+
+      expect(inStickyBar().getByRole("button", { name: /Add to Cart/i })).toHaveAccessibleName(/₹998/);
+      expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("₹998")).toBeInTheDocument();
+      expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("₹1,198")).toBeInTheDocument();
+    });
+
     it("67. sticky bar does not bypass variant selection validation", async () => {
       const fetchMock = setupMockFetch(async (url) => {
         if (url.includes("/auth/refresh") || url.includes("/auth/me")) {

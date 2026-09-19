@@ -47,7 +47,7 @@ export function PdpInfoTabs({ product, selectedVariant }: { product: ProductDeta
         <div
           role="tablist"
           aria-label="Product details"
-          className="scrollbar-none flex gap-2 overflow-x-auto border-b border-deep-brown/10 bg-surface-secondary/20 p-3 lg:flex-col lg:border-b-0 lg:border-r lg:p-5"
+          className="flex gap-2 border-b border-deep-brown/10 bg-surface-secondary/20 p-3 lg:flex-col lg:border-b-0 lg:border-r lg:p-5"
         >
           {availableTabs.map((tab) => {
             const isActive = tab.key === activeTab;
@@ -60,7 +60,7 @@ export function PdpInfoTabs({ product, selectedVariant }: { product: ProductDeta
                 aria-controls={`pdp-tabpanel-${tab.key}`}
                 id={`pdp-tab-${tab.key}`}
                 onClick={() => setActiveTab(tab.key)}
-                className={`group inline-flex min-h-12 shrink-0 cursor-pointer items-center justify-between gap-5 rounded-xl px-4 py-3 text-left text-sm font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 ${
+                className={`group flex flex-1 min-h-12 cursor-pointer items-center justify-center gap-3 rounded-xl px-4 py-3 text-center text-sm font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 lg:justify-between lg:text-left ${
                   isActive
                     ? "bg-deep-brown text-white shadow-sm"
                     : "text-text-primary/65 hover:bg-white hover:text-text-primary"

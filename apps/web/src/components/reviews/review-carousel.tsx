@@ -22,7 +22,7 @@ export function ReviewCarousel({ reviews, eyebrow = "Customer reviews", title = 
     waitForAnimate: false,
     responsive: [
       { breakpoint: 1024, settings: { slidesToShow: singleCard ? 1 : 2 } },
-      { breakpoint: 640, settings: singleCard ? { slidesToShow: 1, centerMode: false, centerPadding: "0" } : { slidesToShow: 1, centerMode: true, centerPadding: "8%" } },
+      { breakpoint: 640, settings: singleCard ? { slidesToShow: 1, centerMode: false, centerPadding: "0" } : { slidesToShow: 1, centerMode: true, centerPadding: "5%" } },
     ],
   };
 
@@ -37,12 +37,14 @@ export function ReviewCarousel({ reviews, eyebrow = "Customer reviews", title = 
           </div>
           {canNavigate && <div className="flex shrink-0 gap-2"><button type="button" aria-label="Previous review" onClick={() => sliderRef.current?.slickPrev()} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-deep-brown bg-white text-deep-brown transition-colors hover:bg-deep-brown hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-orange"><ArrowLeft size={18} aria-hidden="true" /></button><button type="button" aria-label="Next review" onClick={() => sliderRef.current?.slickNext()} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-deep-brown bg-white text-deep-brown transition-colors hover:bg-deep-brown hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-orange"><ArrowRight size={18} aria-hidden="true" /></button></div>}
         </div>}
-        {loading ? <div className="min-h-[18rem] animate-pulse rounded-2xl border border-deep-brown/10 bg-white" aria-label="Loading reviews" /> : reviews.length === 0 ? <p className="mt-8 rounded-2xl border border-deep-brown/10 bg-white px-5 py-6 text-sm text-text-primary/65">No approved reviews yet.</p> : <div className={`relative testimonial-slider ${compact ? "" : "mt-8 sm:mt-10"}`}>
-          {showArrows && canNavigate && <div className="absolute right-4 top-4 z-10 flex gap-2">
+        {loading ? <div className="min-h-[18rem] animate-pulse rounded-2xl border border-deep-brown/10 bg-white" aria-label="Loading reviews" /> : reviews.length === 0 ? <p className="mt-8 rounded-2xl border border-deep-brown/10 bg-white px-5 py-6 text-sm text-text-primary/65">No approved reviews yet.</p> : <div className={`relative testimonial-slider review-carousel ${singleCard ? "review-carousel-single" : ""} ${compact ? "" : "mt-8 sm:mt-10"}`}>
+          {/* Arrows sit in their own row above the card on phones — floating over it they
+              covered the stars/title of a narrow card — and float top-right from sm up. */}
+          {showArrows && canNavigate && <div className="mb-3 flex justify-end gap-2 px-2 sm:absolute sm:right-4 sm:top-4 sm:z-10 sm:mb-0 sm:px-0">
             <button type="button" aria-label="Previous review" onClick={() => sliderRef.current?.slickPrev()} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-deep-brown bg-white/95 text-deep-brown shadow-sm transition-colors hover:bg-deep-brown hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-orange"><ArrowLeft size={18} aria-hidden="true" /></button>
             <button type="button" aria-label="Next review" onClick={() => sliderRef.current?.slickNext()} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-deep-brown bg-white/95 text-deep-brown shadow-sm transition-colors hover:bg-deep-brown hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-orange"><ArrowRight size={18} aria-hidden="true" /></button>
           </div>}
-          <Slider ref={sliderRef} {...settings}>{reviews.map((review) => <div key={review.id} className={`h-full ${singleCard ? "px-0" : "px-2"} pb-5`}><ReviewCard review={review} /></div>)}</Slider>
+          <Slider ref={sliderRef} {...settings}>{reviews.map((review) => <div key={review.id} className={`h-full ${singleCard ? "px-0" : "px-0 sm:px-2"} pb-5`}><ReviewCard review={review} /></div>)}</Slider>
         </div>}
       </div>
     </section>

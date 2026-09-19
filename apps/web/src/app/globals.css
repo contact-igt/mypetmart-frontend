@@ -399,3 +399,23 @@
     padding-block: 0.25rem 1rem;
   }
 }
+
+/* slick-carousel's stylesheet is imported unlayered (layout.tsx), so it beats
+   every rule inside the @layer above regardless of specificity — the
+   flex-stretch equal-height rules never took effect. Re-asserted here,
+   unlayered, for the review carousel only (cards there size to their content,
+   so slides must stretch to the tallest card to stay level). */
+.review-carousel .slick-track {
+  display: flex;
+  align-items: stretch;
+}
+.review-carousel .slick-slide {
+  height: auto;
+}
+/* Same unlayered-override problem for the slick-list's negative margin: each slide
+   wrapper carries 0.5rem of side padding, which the (never-applied) list margin was
+   meant to cancel. Without it the single product-page review card sits 8px inside
+   the cards above it. */
+.review-carousel-single .slick-list {
+  margin-inline: -0.5rem;
+}

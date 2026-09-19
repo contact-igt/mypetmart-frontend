@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowLeft } from "lucide-react";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useOptionalCart } from "@/context/cart-context";
 import { broadcastCartInvalidated } from "@/lib/cart/cart-sync-channel";
@@ -796,9 +797,10 @@ export function CheckoutClient() {
           </div>
           <Link
             href="/cart"
-            className="inline-flex min-h-8 items-center gap-1 text-xs font-bold text-primary-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-orange/40 focus-visible:ring-offset-2 sm:shrink-0"
+            className="inline-flex min-h-8 items-center gap-1.5 text-xs font-bold text-primary-orange hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-orange/40 focus-visible:ring-offset-2 sm:shrink-0"
           >
-            &larr; Back to Cart
+            <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>Back to Cart</span>
           </Link>
         </div>
 

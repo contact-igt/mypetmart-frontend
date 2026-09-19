@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense, useRef, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { SearchIcon } from "@/components/icons";
 import { getStorefrontCategories, getStorefrontProducts } from "@/lib/storefront-api";
@@ -348,12 +349,12 @@ function ShopExplorerContent() {
           {/* Product Grid Area */}
           <div>
             <div className="mb-6 flex justify-between items-center gap-4">
-              <label className="relative">
+              <label className="relative inline-block">
                 <span className="sr-only">Sort products</span>
                 <select
                   value={activeSort}
                   onChange={(event) => updateQueryParams({ sort: event.target.value, page: "1" })}
-                  className="h-[44px] w-[230px] cursor-pointer rounded-full border border-[#E7CFB9] bg-white px-5 text-sm font-medium text-text-primary outline-none focus:border-deep-brown transition-colors"
+                  className="h-[44px] w-[230px] max-w-full cursor-pointer appearance-none rounded-full border border-[#E7CFB9] bg-white pl-5 pr-11 text-sm font-medium text-text-primary outline-none transition-colors hover:border-deep-brown/40 focus:border-deep-brown focus-visible:ring-2 focus-visible:ring-deep-brown/20"
                 >
                   {(Object.keys(SORT_LABELS) as ProductSort[]).map((value) => (
                     <option key={value} value={value}>
@@ -361,6 +362,12 @@ function ShopExplorerContent() {
                     </option>
                   ))}
                 </select>
+                <ChevronDown
+                  size={18}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-text-primary/70"
+                />
               </label>
               <div className="hidden lg:block text-sm font-medium text-text-primary/75">
                 {totalProducts} {totalProducts === 1 ? "product" : "products"} found

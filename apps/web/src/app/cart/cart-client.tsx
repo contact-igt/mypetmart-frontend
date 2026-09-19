@@ -277,23 +277,12 @@ export function CartClient() {
                 {/* Content info */}
                 <div className="flex-1 flex flex-col justify-between min-w-0">
                   <div>
-                    <div className="flex justify-between items-start gap-4">
-                      <Link
-                        href={`/products/${item.productSlug}`}
-                        className="text-base font-semibold text-text-primary hover:text-primary-orange transition-colors min-w-0 truncate block"
-                      >
-                        {item.productName}
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(item.cartItemId)}
-                        disabled={isRemoving || isUpdating || isClearing}
-                        aria-label={`Remove ${item.productName}`}
-                        className="-mr-1 -mt-1 inline-flex min-h-9 shrink-0 items-center px-1 text-xs font-bold text-terracotta/70 transition-all hover:text-terracotta hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/40 disabled:opacity-50"
-                      >
-                        Remove
-                      </button>
-                    </div>
+                    <Link
+                      href={`/products/${item.productSlug}`}
+                      className="text-base font-semibold text-text-primary hover:text-primary-orange transition-colors min-w-0 truncate block"
+                    >
+                      {item.productName}
+                    </Link>
 
                     {item.variantName && (
                       <span className="block text-xs font-semibold text-text-muted mt-0.5">
@@ -306,16 +295,32 @@ export function CartClient() {
                     </span>
                   </div>
 
-                  {/* Pricing info */}
-                  <div className="mt-3 flex items-baseline gap-2">
-                    <span className="text-sm font-bold text-text-primary">
-                      ₹{formatPrice(item.price)}
-                    </span>
-                    {hasDiscount && item.compareAtPrice && (
-                      <span className="text-xs text-text-muted line-through">
-                        ₹{formatPrice(item.compareAtPrice)}
+                  {/* Pricing info & Remove action */}
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-sm font-bold text-text-primary">
+                        ₹{formatPrice(item.price)}
                       </span>
-                    )}
+                      {hasDiscount && item.compareAtPrice && (
+                        <span className="text-xs text-text-muted line-through">
+                          ₹{formatPrice(item.compareAtPrice)}
+                        </span>
+                      )}
+                    </div>
+
+                    <span className="text-deep-brown/20 text-xs select-none" aria-hidden="true">
+                      •
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(item.cartItemId)}
+                      disabled={isRemoving || isUpdating || isClearing}
+                      aria-label={`Remove ${item.productName}`}
+                      className="inline-flex min-h-7 items-center text-xs font-bold text-terracotta transition-colors hover:text-terracotta/80 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/40 disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
                   </div>
 
                   {/* Availability warnings */}

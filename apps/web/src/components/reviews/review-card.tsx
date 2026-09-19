@@ -32,15 +32,15 @@ export function ReviewCard({ review }: { review: StorefrontReviewFeedItem }) {
   }, [review.review]);
 
   return (
-    <article className="flex h-[21rem] flex-col overflow-hidden rounded-2xl border border-deep-brown/10 bg-white p-5 shadow-[0_8px_24px_rgba(74,37,17,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(74,37,17,0.1)] sm:h-[22rem] sm:p-6">
+    <article className="flex h-full min-h-[21rem] flex-col overflow-hidden rounded-2xl border border-deep-brown/10 bg-white p-5 shadow-[0_8px_24px_rgba(74,37,17,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(74,37,17,0.1)] sm:min-h-[22rem] sm:p-6">
       <StaticStars rating={review.rating} size={16} />
       {/* Title slot is always reserved (min-height) so cards with and without a
           title keep the body / footer at the same vertical position. */}
-      <h3 className="mt-4 line-clamp-2 min-h-[1.5rem] text-lg font-semibold leading-tight text-text-primary">{review.title}</h3>
-      <p ref={bodyRef} className="mt-2 line-clamp-4 whitespace-pre-line text-sm leading-relaxed text-text-primary/72">{review.review}</p>
+      <h3 className="mt-4 line-clamp-2 min-h-[1.5rem] shrink-0 text-lg font-semibold leading-tight text-text-primary">{review.title}</h3>
+      <p ref={bodyRef} className="mt-2 line-clamp-4 shrink-0 whitespace-pre-line text-sm leading-relaxed text-text-primary/72">{review.review}</p>
       {/* Read-more slot is reserved whether or not the body actually overflows,
           so the footer never shifts between a clamped and an unclamped card. */}
-      <div className="mt-1.5 h-4 shrink-0">
+      <div className="mb-3 mt-2 flex h-4 shrink-0 items-center">
         {bodyTruncated && (
           <button
             ref={readMoreRef}
