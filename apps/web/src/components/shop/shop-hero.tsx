@@ -41,10 +41,10 @@ export function ShopHero({ totalProducts }: ShopHeroProps) {
           />
           <div className="absolute bottom-6 left-6 rounded-[25px] bg-cream-bg px-6 py-5 shadow-[0_10px_22px_rgba(60,35,20,0.08)] xl:-left-[95px] xl:bottom-[30px] xl:w-[256px]">
             <span className="text-[12px] uppercase tracking-[0.18em] text-text-primary/80">Showing</span>
-            <p className="mt-1 text-[2rem] leading-none tracking-[-0.03em] text-text-primary" style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}>
+            <p className="mt-2 text-[2rem] leading-none tracking-[-0.03em] text-text-primary" style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}>
               {totalProducts} {totalProducts === 1 ? "product" : "products"}
             </p>
-            <p className="mt-1 text-sm text-text-primary/80">Handpicked, honestly reviewed.</p>
+            <p className="mt-3 text-sm text-text-primary/80">Handpicked, honestly reviewed.</p>
           </div>
         </div>
       </div>

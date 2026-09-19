@@ -65,10 +65,25 @@ export function PdpStickyCta({
           ? "Added to Cart"
           : "Add to Cart";
 
+  const numericPrice = typeof currentPrice === "number" ? currentPrice : parseFloat(currentPrice);
+  const numericComparePrice =
+    currentComparePrice != null
+      ? typeof currentComparePrice === "number"
+        ? currentComparePrice
+        : parseFloat(currentComparePrice)
+      : null;
+
+  const effectiveQty = needsVariant ? 1 : Math.max(1, quantity);
+  const totalPrice = Number.isNaN(numericPrice) ? currentPrice : numericPrice * effectiveQty;
+  const totalComparePrice =
+    numericComparePrice != null && !Number.isNaN(numericComparePrice)
+      ? numericComparePrice * effectiveQty
+      : null;
+
   // "From ₹…" until a variant is chosen — mirrors the desktop panel's
   // starting-price treatment. Never a hardcoded amount.
   const pricePrefix = needsVariant ? "From " : "";
-  const priceText = `₹${formatPrice(currentPrice)}`;
+  const priceText = `₹${formatPrice(totalPrice)}`;
 
   return (
     <div
@@ -117,9 +132,9 @@ export function PdpStickyCta({
               {pricePrefix}
               {priceText}
             </span>
-            {hasDiscount && currentComparePrice != null && (
+            {hasDiscount && totalComparePrice != null && (
               <span className="text-[11px] font-medium text-white/60 line-through">
-                ₹{formatPrice(currentComparePrice)}
+                ₹{formatPrice(totalComparePrice)}
               </span>
             )}
           </span>

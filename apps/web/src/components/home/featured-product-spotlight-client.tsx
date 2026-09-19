@@ -118,7 +118,7 @@ export function FeaturedProductSpotlightClient({ product }: { product: ProductDe
 
             <div className="mt-8 flex flex-wrap gap-3 sm:items-center">
               {product.hasVariants ? (
-                <Link href={productHref} className="inline-flex h-[70px] min-w-[13rem] items-center justify-center rounded-xl bg-deep-brown px-8 text-base font-bold text-white transition-colors duration-150 hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30">
+                <Link href={productHref} className="inline-flex h-[70px] w-full items-center justify-center rounded-xl bg-deep-brown px-8 sm:w-auto sm:min-w-[13rem] text-base font-bold text-white transition-colors duration-150 hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30">
                   View Options
                 </Link>
               ) : (
@@ -144,21 +144,16 @@ export function FeaturedProductSpotlightClient({ product }: { product: ProductDe
                       <Plus size={18} aria-hidden="true" />
                     </button>
                   </div>
-                  <Link
-                    href={productHref}
-                    className="inline-flex h-[70px] w-[148px] items-center justify-center rounded-xl bg-deep-brown px-6 text-center text-base font-bold leading-tight text-white transition-colors duration-150 hover:bg-terracotta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
-                  >
-                    View Options
-                  </Link>
                   <button
                     type="button"
                     disabled={unavailable || action !== "idle"}
                     onClick={() => void buyNow()}
-                    className="inline-flex h-[58px] min-w-[116px] items-center justify-center rounded-xl bg-[#B86937] px-6 text-base font-bold text-white transition-colors duration-150 hover:bg-terracotta disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
+                    className="inline-flex h-[58px] w-full items-center justify-center rounded-xl bg-[#B86937] px-6 sm:w-auto sm:min-w-[116px] text-base font-bold text-white transition-colors duration-150 hover:bg-terracotta disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
                   >
                     {action === "buying" ? "Opening Cart..." : "Buy Now"}
                   </button>
                 </>
+
               )}
             </div>
 

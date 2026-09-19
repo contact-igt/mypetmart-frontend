@@ -32,10 +32,10 @@ export function HeroSection() {
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/shop" className="button-primary motion-press h-14 min-w-[13.5rem] px-6 text-base">
+            <Link href="/shop" className="button-primary motion-press h-14 w-full min-w-[13.5rem] px-6 text-base sm:w-auto">
               Shop Best Sellers <ArrowRightIcon width={17} height={17} />
             </Link>
-            <Link href="/shop" className="button-secondary motion-press h-14 min-w-[14rem] px-6 text-base">
+            <Link href="/shop" className="button-secondary motion-press h-14 w-full min-w-[14rem] px-6 text-base sm:w-auto">
               Explore All Products
             </Link>
           </div>

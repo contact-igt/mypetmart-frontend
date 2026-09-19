@@ -20,7 +20,7 @@ export function TestimonialCarousel({ testimonials, eyebrow = "Real pet parents"
     waitForAnimate: false,
     responsive: [
       { breakpoint: 1024, settings: { slidesToShow: 2 } },
-      { breakpoint: 640, settings: { slidesToShow: 1, centerMode: true, centerPadding: "8%" } },
+      { breakpoint: 640, settings: { slidesToShow: 1, centerMode: true, centerPadding: "5%" } },
     ],
   };
 
@@ -42,7 +42,7 @@ export function TestimonialCarousel({ testimonials, eyebrow = "Real pet parents"
           <p className="mt-8 rounded-2xl border border-deep-brown/10 bg-white/70 px-5 py-6 text-sm text-text-primary/65">No customer stories are available yet.</p>
         ) : (
           <div className="testimonial-slider mt-8 sm:mt-10">
-            <Slider ref={sliderRef} {...settings}>{testimonials.map((testimonial) => <div key={testimonial.id} className="h-full px-2 pb-5"><TestimonialCard testimonial={testimonial} /></div>)}</Slider>
+            <Slider ref={sliderRef} {...settings}>{testimonials.map((testimonial) => <div key={testimonial.id} className="h-full px-0 pb-5 sm:px-2"><TestimonialCard testimonial={testimonial} /></div>)}</Slider>
           </div>
         )}
       </div>

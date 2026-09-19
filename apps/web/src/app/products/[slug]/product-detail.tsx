@@ -364,7 +364,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
 
       {/* Marketplace-style product overview: image browsing and a focused purchase area. */}
       <section className="overflow-hidden rounded-2xl border border-deep-brown/15 bg-white shadow-[0_8px_24px_rgba(62,35,25,0.06)]">
-        <div className="grid items-stretch lg:grid-cols-[minmax(0,1.1fr)_minmax(390px,0.9fr)]">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-stretch lg:grid-cols-[minmax(0,1.1fr)_minmax(390px,0.9fr)]">
           <div className="bg-[#FFF9F1] p-3 sm:p-5 lg:p-6 xl:p-8">
             <PdpGallery
               images={product.images ?? []}
