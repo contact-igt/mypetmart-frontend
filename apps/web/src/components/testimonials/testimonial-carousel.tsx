@@ -33,7 +33,7 @@ export function TestimonialCarousel({ testimonials, eyebrow = "Real pet parents"
             <h2 id="testimonial-carousel-heading" className="mt-4 text-[2.6rem] leading-[0.98] tracking-[-0.03em] text-text-primary sm:text-[3.5rem]" style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}>{title}</h2>
             <p className="body-copy mt-4 max-w-xl text-base text-text-primary/75 sm:text-lg">{description}</p>
           </div>
-          {canNavigate && <div className="flex shrink-0 gap-2">
+          {canNavigate && <div className="flex shrink-0 items-center justify-end gap-2 self-end sm:self-auto">
             <button type="button" aria-label="Previous testimonial" onClick={() => sliderRef.current?.slickPrev()} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-deep-brown bg-white text-deep-brown transition-colors hover:bg-deep-brown hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-orange"><ArrowLeft size={18} aria-hidden="true" /></button>
             <button type="button" aria-label="Next testimonial" onClick={() => sliderRef.current?.slickNext()} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-deep-brown bg-white text-deep-brown transition-colors hover:bg-deep-brown hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-orange"><ArrowRight size={18} aria-hidden="true" /></button>
           </div>}

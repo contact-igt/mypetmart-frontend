@@ -85,7 +85,7 @@ export function SiteFooter() {
         </div>
 
         <div className="border-t border-white/35">
-          <div className="site-container flex flex-col gap-3 py-5 text-sm leading-tight text-white/60 sm:flex-row sm:items-center sm:justify-between sm:text-base">
+          <div className="site-container site-footer-bottom flex flex-col gap-3 py-5 text-sm leading-tight text-white/60 sm:flex-row sm:items-center sm:justify-between sm:text-base">
             <p>© {new Date().getFullYear()} My Pet Mart. Made with love for pet parents.</p>
             <p>UPI · Visa · Mastercard · Cash on Delivery</p>
           </div>
