@@ -1,8 +1,8 @@
 "use client";
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronDown, ShoppingCart } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { ArrowLeft, ChevronDown, ShoppingCart } from "lucide-react";
 import { SiteLogo } from "@/components/site-logo";
 import { PrimaryNav } from "@/components/primary-nav";
 import { MobileNavPanel } from "@/components/mobile-nav-panel";
@@ -27,6 +27,13 @@ import { useCart } from "@/context/cart-context";
 
 export function SiteHeader() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isShopPage = pathname === "/shop";
+  const isProductPage = Boolean(pathname?.startsWith("/products/"));
+  const showMobileBack = isShopPage || isProductPage;
+  const mobileBackHref = isShopPage ? "/" : "/shop";
+  const mobileBackLabel = isShopPage ? "Back to Home" : "Back to Shop";
+
   const accountMenuRef = useRef<HTMLDetailsElement>(null);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavPanelRef = useRef<HTMLDivElement>(null);
@@ -109,23 +116,39 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-t-[3px] border-deep-brown bg-cream-bg">
       <div className="site-container grid h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-2 lg:flex lg:justify-between lg:gap-8">
-        {/* Mobile: menu button on the left. Toggles the same mobile nav panel
-            the previous layout used — no second navigation system. */}
-        <button
-          type="button"
-          ref={mobileMenuButtonRef}
-          onClick={() => setMobileNavOpen((value) => !value)}
-          aria-expanded={mobileNavOpen}
-          aria-controls="mobile-nav-panel"
-          aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
-          className="-ml-1 inline-flex h-11 w-11 items-center justify-center justify-self-start rounded-full text-text-primary transition-colors duration-150 ease-out hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30 lg:hidden"
-        >
-          {mobileNavOpen ? (
-            <CloseIcon width={22} height={22} />
-          ) : (
-            <MenuIcon width={22} height={22} />
+        {/* Mobile: back button (if on shop or product page) + menu button on the left */}
+        <div className="flex items-center gap-1 justify-self-start lg:hidden">
+          {showMobileBack && (
+            <Link
+              href={mobileBackHref}
+              onClick={(e) => {
+                if (isProductPage && typeof window !== "undefined" && window.history.length > 1) {
+                  e.preventDefault();
+                  router.back();
+                }
+              }}
+              aria-label={mobileBackLabel}
+              className="-ml-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-text-primary transition-colors duration-150 ease-out hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
+            >
+              <ArrowLeft size={20} strokeWidth={2} aria-hidden="true" />
+            </Link>
           )}
-        </button>
+          <button
+            type="button"
+            ref={mobileMenuButtonRef}
+            onClick={() => setMobileNavOpen((value) => !value)}
+            aria-expanded={mobileNavOpen}
+            aria-controls="mobile-nav-panel"
+            aria-label={mobileNavOpen ? "Close menu" : "Open menu"}
+            className={`${showMobileBack ? "" : "-ml-1"} inline-flex h-11 w-11 items-center justify-center rounded-full text-text-primary transition-colors duration-150 ease-out hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30`}
+          >
+            {mobileNavOpen ? (
+              <CloseIcon width={22} height={22} />
+            ) : (
+              <MenuIcon width={22} height={22} />
+            )}
+          </button>
+        </div>
 
         <SiteLogo className="shrink-0 justify-self-center [&>img]:!h-8 [&>img]:!max-w-[160px] sm:[&>img]:!h-9 sm:[&>img]:!max-w-[180px]" />
 

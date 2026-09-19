@@ -419,3 +419,10 @@
 .review-carousel-single .slick-list {
   margin-inline: -0.5rem;
 }
+
+/* Ensure footer copyright and payment reservation lines clear mobile sticky CTAs (PDP & Checkout) */
+@media (max-width: 767px) {
+  .site-footer-bottom {
+    padding-bottom: max(7.25rem, calc(6.25rem + env(safe-area-inset-bottom, 0px))) !important;
+  }
+}
