@@ -290,15 +290,21 @@ export function GuestOrderClient({ token }: { token: string }) {
             </h3>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between text-text-primary/80">
-                <span>Subtotal</span>
+                <span>Original merchandise subtotal</span>
                 <span className="font-semibold text-deep-brown">₹{order.subtotal}</span>
               </div>
+              {order.coupon && (
+                <div className="flex justify-between text-text-primary/80">
+                  <span>Coupon ({order.coupon.code})</span>
+                  <span className="font-semibold text-deep-brown">-₹{order.coupon.discountAmount}</span>
+                </div>
+              )}
               <div className="flex justify-between text-text-primary/80">
-                <span>Shipping Fee</span>
+                <span>Shipping amount</span>
                 <span className="font-semibold text-deep-brown">₹{order.shippingFee}</span>
               </div>
               <div className="flex justify-between border-t border-deep-brown/10 pt-3 text-sm font-bold text-deep-brown">
-                <span>Total</span>
+                <span>Final paid total</span>
                 <span className="font-baloo text-lg font-extrabold text-primary-orange">₹{order.total}</span>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Bagel_Fat_One, Baloo_2, Fraunces, Inter } from "next/font/google";
+import { AnnouncementBar } from "@/components/announcement-bar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { ScrollProgressBar } from "@/components/scroll-progress-bar";
@@ -61,6 +62,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <Providers>
           <ScrollProgressBar />
+          <AnnouncementBar />
           <Suspense fallback={null}>
             <SiteHeader />
           </Suspense>

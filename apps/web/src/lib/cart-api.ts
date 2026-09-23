@@ -51,6 +51,21 @@ export const CartApi = {
     });
   },
 
+  /** Applies a code to the current guest or customer cart. */
+  async applyCoupon(code: string): Promise<Cart> {
+    return fetchWithAuth<Cart>("/storefront/cart/coupon", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+  },
+
+  /** Removes the current cart coupon without changing its line items. */
+  async removeCoupon(): Promise<Cart> {
+    return fetchWithAuth<Cart>("/storefront/cart/coupon", {
+      method: "DELETE",
+    });
+  },
+
   /**
    * Merges the guest cart (linked to cookie) into the authenticated customer cart.
    */

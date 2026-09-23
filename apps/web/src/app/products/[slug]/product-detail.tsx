@@ -157,7 +157,10 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
   const { isWishlisted, isPending, add, remove } = useWishlist();
   const { cart, add: addToCart } = useCart();
 
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
+  // Defaults to the first listed option (matches the order Select option
+  // renders) so a Variant Product never lands on an ambiguous "choose an
+  // option" state when it has one obvious first choice.
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(product.variants[0] ?? null);
   const [quantity, setQuantity] = useState(1);
 
   // Cart interaction states

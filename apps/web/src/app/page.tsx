@@ -8,11 +8,14 @@ import { FeaturedProductSpotlight, FeaturedProductSpotlightSkeleton } from "@/co
 import { WhyMyPetMart } from "@/components/home/why-mypetmart";
 import { CustomerFeedback, CustomerFeedbackSkeleton } from "@/components/home/customer-feedback";
 import { CustomerReviews, CustomerReviewsSkeleton } from "@/components/home/customer-reviews";
+import { WelcomePopup } from "@/components/home/welcome-popup";
 
 export default function Home() {
   return (
     <main className="flex-1">
       <HeroSection />
+      <WelcomePopup />
+      <WhyMyPetMart />
       <Suspense fallback={<CategoryGridSkeleton />}>
         <CategoryGrid />
       </Suspense>
@@ -24,7 +27,6 @@ export default function Home() {
       <Suspense fallback={<FeaturedProductSpotlightSkeleton />}>
         <FeaturedProductSpotlight />
       </Suspense>
-      <WhyMyPetMart />
       <Suspense fallback={<CustomerFeedbackSkeleton />}>
         <CustomerFeedback />
       </Suspense>

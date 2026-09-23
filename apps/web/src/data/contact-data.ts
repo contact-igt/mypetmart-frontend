@@ -10,6 +10,7 @@ export const CONTACT_INFO = {
   address: "12A, JR Enclave, MGR Nagar, Ayyapakkam, Chennai – 600077, Tamil Nadu, India",
   instagramHandle: "@my.petmart",
   instagramUrl: "https://www.instagram.com/my.petmart",
+  youtubeHandle: "@MypetMart-MPM",
   youtubeUrl: "https://www.youtube.com/@MypetMart-MPM",
 };
 

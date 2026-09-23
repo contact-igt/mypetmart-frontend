@@ -243,6 +243,15 @@ export interface Cart {
   itemCount: number;
   subtotal: string;
   items: CartItem[];
+  coupon?: CartCoupon | null;
+}
+
+export interface CartCoupon {
+  code: string;
+  eligible: boolean;
+  discountAmount: string;
+  eligibleMerchandiseSubtotal: string;
+  message: string | null;
 }
 
 export interface AddCartItemInput {
@@ -288,6 +297,38 @@ export interface StoreProfile {
   supportEmail: string;
   supportPhone: string;
   address: string;
+}
+
+// GET /storefront/announcement-bar — active, in-schedule items only, already
+// ordered by displayOrder (mypetmart-backend/src/models/AnnouncementBarModels).
+export interface AnnouncementBarItem {
+  id: number;
+  message: string;
+  linkUrl: string | null;
+  linkLabel: string | null;
+}
+
+export type WelcomePopupTemplate = "template_1" | "template_2";
+export type WelcomePopupCtaMode = "email_signup" | "navigation";
+
+export interface StorefrontWelcomePopup {
+  id: number;
+  template: WelcomePopupTemplate;
+  heading: string;
+  description: string | null;
+  offerLabel: string | null;
+  couponCode?: string | null;
+  ctaMode?: WelcomePopupCtaMode | null;
+  ctaLabel: string;
+  ctaUrl: string | null;
+  displayDelayMs?: number | null;
+  dismissalCooldownDays?: number | null;
+  consentText: string | null;
+  dismissLabel: string | null;
+  desktopImageUrl: string | null;
+  desktopImageAlt: string | null;
+  mobileImageUrl: string | null;
+  mobileImageAlt: string | null;
 }
 
 

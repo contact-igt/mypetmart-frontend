@@ -23,6 +23,7 @@ import { storeGuestPaymentToken } from "@/app/order/payment/guest-payment-token"
 import { readGuestPaymentToken } from "@/app/order/payment/guest-payment-token";
 import { TrustBadges } from "@/components/checkout/trust-badges";
 import { CheckoutStickyCta } from "@/components/checkout/checkout-sticky-cta";
+import { CouponField } from "@/components/checkout/coupon-field";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { CancelPendingOrderButton, getPendingOrderCancellationMessage } from "@/components/order/cancel-pending-order-button";
 
@@ -98,6 +99,8 @@ export function CheckoutClient() {
   const [pendingOrderNumber, setPendingOrderNumber] = useState<string | null>(null);
   const [pendingGuestToken, setPendingGuestToken] = useState<string | null>(null);
   const [pendingCancellationError, setPendingCancellationError] = useState<string | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponBusy, setCouponBusy] = useState(false);
 
   // Order Submission & Distinct Network Uncertainty State
   const [submittingOrder, setSubmittingOrder] = useState(false);
@@ -752,11 +755,10 @@ export function CheckoutClient() {
     cartContextUnsynced;
 
   // The payable amount shown in the Order Summary card — mirrored, not recomputed.
-  const payableTotalDisplay =
-    previewResult?.totals.payableTotal ||
-    previewResult?.totals.merchandiseSubtotal ||
-    cart?.subtotal ||
-    "0.00";
+  const payableTotalDisplay = previewResult?.totals.payableTotal;
+  const displayedCoupon = previewResult?.coupon
+    ? { ...previewResult.coupon, discountAmount: previewResult.totals.discountAmount ?? "0.00", eligibleMerchandiseSubtotal: "0.00" }
+    : cart?.coupon;
 
   const showStickyPlaceOrder = isCompactCheckout && !isCartEmpty;
 
@@ -767,7 +769,43 @@ export function CheckoutClient() {
     invalidatePreview();
   };
 
-  const primaryCtaLabel = paymentMethod === "payu" ? `Place Order & Pay ₹${payableTotalDisplay}` : "Place Order";
+  const handleApplyCoupon = async (code: string) => {
+    setCouponBusy(true);
+    setCouponError(null);
+    try {
+      const updatedCart = await CartApi.applyCoupon(code);
+      setCart(updatedCart);
+      cartContextRef.current?.applyServerCart(updatedCart);
+      broadcastCartInvalidated("cart-mutation");
+      invalidatePreview();
+      const payload = getCurrentPreviewPayload();
+      if (payload) await runPreview(payload);
+    } catch (err: unknown) {
+      setCouponError(err instanceof AppAuthError ? err.message : "We couldn't apply that coupon. Please try again.");
+    } finally {
+      setCouponBusy(false);
+    }
+  };
+
+  const handleRemoveCoupon = async () => {
+    setCouponBusy(true);
+    setCouponError(null);
+    try {
+      const updatedCart = await CartApi.removeCoupon();
+      setCart(updatedCart);
+      cartContextRef.current?.applyServerCart(updatedCart);
+      broadcastCartInvalidated("cart-mutation");
+      invalidatePreview();
+      const payload = getCurrentPreviewPayload();
+      if (payload) await runPreview(payload);
+    } catch (err: unknown) {
+      setCouponError(err instanceof AppAuthError ? err.message : "We couldn't remove that coupon. Please try again.");
+    } finally {
+      setCouponBusy(false);
+    }
+  };
+
+  const primaryCtaLabel = paymentMethod === "payu" && payableTotalDisplay ? `Place Order & Pay ₹${payableTotalDisplay}` : "Place Order";
   const deliveryMessage = previewing
     ? "Checking delivery availability..."
     : !previewResult || !activePreviewPayload
@@ -1351,8 +1389,22 @@ export function CheckoutClient() {
                     </span>
                   </div>
 
+                  <CouponField
+                    coupon={displayedCoupon}
+                    busy={couponBusy}
+                    disabled={previewing || submittingOrder || cartContextUnsynced}
+                    error={couponError}
+                    onApply={handleApplyCoupon}
+                    onRemove={handleRemoveCoupon}
+                  />
+
+                  <div className="flex items-baseline justify-between gap-3 text-text-primary">
+                    <span className="min-w-0">Coupon discount</span>
+                    <span className="font-semibold text-deep-brown">-{previewResult?.totals.discountAmount ? `₹${previewResult.totals.discountAmount}` : "₹0.00"}</span>
+                  </div>
+
                   <div className="flex items-baseline justify-between gap-3 text-xs text-text-primary">
-                    <span className="min-w-0">Estimated Shipping</span>
+                    <span className="min-w-0">Shipping</span>
                     <span className="min-w-0 max-w-[58%] break-words text-right font-medium text-deep-brown/70 sm:max-w-none">
                       {previewing
                         ? "Calculating delivery charges..."
@@ -1365,9 +1417,9 @@ export function CheckoutClient() {
                   </div>
 
                   <div className="flex items-baseline justify-between gap-3 border-t border-deep-brown/10 pt-3 text-base font-bold text-deep-brown">
-                    <span>Payable Total</span>
+                    <span>Final payable total</span>
                     <span className="text-primary-orange font-extrabold">
-                      ₹{payableTotalDisplay}
+                      {payableTotalDisplay ? `₹${payableTotalDisplay}` : "To be calculated"}
                     </span>
                   </div>
                 </div>
@@ -1404,7 +1456,7 @@ export function CheckoutClient() {
 
       {showStickyPlaceOrder && (
         <CheckoutStickyCta
-          total={payableTotalDisplay}
+          total={payableTotalDisplay ?? null}
           disabled={placeOrderDisabled}
           submitting={submittingOrder}
           label={primaryCtaLabel}

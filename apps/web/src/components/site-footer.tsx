@@ -1,6 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import { InstagramIcon, YouTubeIcon } from "@/components/icons";
 import { NewsletterCard } from "@/components/newsletter-card";
+import { CONTACT_INFO } from "@/data/contact-data";
+
+const SOCIAL_LINKS = [
+  { label: "Instagram", href: CONTACT_INFO.instagramUrl, icon: InstagramIcon },
+  { label: "YouTube", href: CONTACT_INFO.youtubeUrl, icon: YouTubeIcon },
+] as const;
 
 const SHOP_LINKS = [
   { label: "Grooming", href: "/shop?category=grooming" },
@@ -9,11 +16,22 @@ const SHOP_LINKS = [
   { label: "Best Sellers", href: "/shop?sort=newest" },
 ] as const;
 
+// Contact information / Shipping policy / Refund policy / Privacy policy /
+// Terms of service live in the bottom legal bar (LEGAL_LINKS) — kept out of
+// here so they aren't duplicated in both places.
 const HELP_LINKS = [
   { label: "Contact us", href: "/contact" },
   { label: "Shop all products", href: "/shop" },
   { label: "Returns", href: "/account/returns" },
   { label: "Track order", href: "/account/orders" },
+] as const;
+
+const LEGAL_LINKS = [
+  { label: "Privacy policy", href: "/privacy-policy" },
+  { label: "Refund policy", href: "/refund-policy" },
+  { label: "Terms of service", href: "/terms-of-service" },
+  { label: "Shipping policy", href: "/shipping-policy" },
+  { label: "Contact information", href: "/contact-information" },
 ] as const;
 
 export function SiteFooter() {
@@ -35,6 +53,21 @@ export function SiteFooter() {
               <p className="mt-5 text-base leading-[1.75] text-white/80">
                 Thoughtfully selected pet-care essentials that make grooming, walking and everyday life easier for pet parents across India.
               </p>
+              <ul aria-label="My Pet Mart on social media" className="mt-5 flex items-center gap-3">
+                {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (
+                  <li key={label}>
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`My Pet Mart on ${label}`}
+                      className="flex h-11 w-11 items-center justify-center rounded-full border border-white/35 text-white/85 transition-colors hover:border-white hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                    >
+                      <Icon width={20} height={20} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <nav aria-label="Shop footer links">
@@ -87,7 +120,21 @@ export function SiteFooter() {
         <div className="border-t border-white/35">
           <div className="site-container site-footer-bottom flex flex-col gap-3 py-5 text-sm leading-tight text-white/60 sm:flex-row sm:items-center sm:justify-between sm:text-base">
             <p>© {new Date().getFullYear()} My Pet Mart. Made with love for pet parents.</p>
-            <p>UPI · Visa · Mastercard · Cash on Delivery</p>
+            <nav aria-label="Legal footer links">
+              <ul className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                {LEGAL_LINKS.map((link, index) => (
+                  <li key={link.href} className="flex items-center gap-1.5">
+                    {index > 0 && <span aria-hidden="true">·</span>}
+                    <Link
+                      href={link.href}
+                      className="rounded-lg px-1 py-1 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
           </div>
         </div>
       </div>

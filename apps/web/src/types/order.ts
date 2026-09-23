@@ -13,6 +13,7 @@ export interface OrderItemJSON {
   quantity: number;
   unitPrice: string;
   lineTotal: string;
+  discountAllocated?: string;
   orderId?: number;
   imageUrl?: string | null;
   imageAlt?: string | null;
@@ -95,6 +96,12 @@ export interface CustomerOrderRefundSummaryJSON {
   status: "processing" | "succeeded" | "failed";
 }
 
+export interface OrderCouponJSON {
+  code: string;
+  eligibleMerchandiseSubtotal: string;
+  discountAmount: string;
+}
+
 export interface OrderDetailJSON extends OrderListItemJSON {
   contactEmail: string;
   shippingAddress: OrderShippingAddressJSON;
@@ -105,6 +112,8 @@ export interface OrderDetailJSON extends OrderListItemJSON {
   shipment?: ShipmentJSON | null;
   payments: CustomerOrderPaymentJSON[];
   refundSummary: CustomerOrderRefundSummaryJSON | null;
+  totalBeforeDiscount?: string;
+  coupon?: OrderCouponJSON | null;
 }
 
 // Order Creation's response: identical to OrderDetailJSON for a customer;

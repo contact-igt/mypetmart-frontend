@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from "./config";
-import type { Category, PaginatedProductList, ProductListQuery, ProductDetail, StoreProfile, StorefrontTestimonial, StorefrontTestimonialsResult } from "@/types/storefront";
+import type { AnnouncementBarItem, Category, PaginatedProductList, ProductListQuery, ProductDetail, StoreProfile, StorefrontTestimonial, StorefrontTestimonialsResult, StorefrontWelcomePopup } from "@/types/storefront";
 import type { StorefrontReviewFeedResult } from "@/types/review";
 
 interface ApiResponse<T> {
@@ -89,5 +89,13 @@ export async function getStorefrontReviews(query?: { page?: number; pageSize?: n
 
 export async function getStorefrontStoreProfile(): Promise<StoreProfile> {
   return storefrontFetch<StoreProfile>("/storefront/store-profile");
+}
+
+export async function getStorefrontAnnouncementBarItems(): Promise<AnnouncementBarItem[]> {
+  return storefrontFetch<AnnouncementBarItem[]>("/storefront/announcement-bar");
+}
+
+export async function getStorefrontWelcomePopup(): Promise<StorefrontWelcomePopup | null> {
+  return storefrontFetch<StorefrontWelcomePopup | null>("/storefront/welcome-popup");
 }
 

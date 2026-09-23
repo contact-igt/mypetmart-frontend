@@ -105,7 +105,8 @@ describe("checkout — cart-empty reconciliation", () => {
 
     // Force the pre-order re-preview by changing the address after the first preview.
     fireEvent.change(screen.getByLabelText(/Address Line 1/i), { target: { value: "456 New Street" } });
-    fireEvent.click(screen.getByRole("button", { name: /Place Order & Pay/i }));
+    // The stale preview is discarded, so the CTA no longer promises a total.
+    fireEvent.click(screen.getByRole("button", { name: /^Place Order/i }));
 
     await waitFor(() => expect(screen.getByText(/Your cart is empty\. Add an item before checking out\./i)).toBeInTheDocument());
     expect(screen.queryByText(/delivery availability/i)).not.toBeInTheDocument();
