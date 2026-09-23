@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { ArrowLeft, ChevronDown, ShoppingCart } from "lucide-react";
 import { SiteLogo } from "@/components/site-logo";
@@ -25,6 +25,8 @@ import Link from "next/link";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useCart } from "@/context/cart-context";
 
+const subscribeNoop = () => () => {};
+
 export function SiteHeader() {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,7 +41,7 @@ export function SiteHeader() {
   const mobileNavPanelRef = useRef<HTMLDivElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+  const hydrated = useSyncExternalStore(subscribeNoop, () => true, () => false);
   const { status, customer, logout } = useCustomerAuth();
 
   // The server always renders with auth status "loading". SiteHeader sits inside
@@ -47,7 +49,6 @@ export function SiteHeader() {
   // already resolved the status — which would make the first client render differ
   // from the server HTML and trip a hydration mismatch. Gate every auth-dependent
   // branch on `hydrated` so server and first client render are always identical.
-  useEffect(() => setHydrated(true), []);
   const isAuthenticated = hydrated && status === "authenticated";
 
   const wishlistHref = isAuthenticated ? "/wishlist" : "/signin";

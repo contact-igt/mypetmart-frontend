@@ -17,7 +17,7 @@ export function CheckoutStickyCta({
   label,
   onPlaceOrder,
 }: {
-  total: string;
+  total: string | null;
   disabled: boolean;
   submitting: boolean;
   label: string;
@@ -35,7 +35,7 @@ export function CheckoutStickyCta({
             Total
           </span>
           <span className="block text-base font-extrabold leading-none text-primary-orange">
-            &#8377;{total}
+            {total ? `₹${total}` : "To be calculated"}
           </span>
         </div>
         <button

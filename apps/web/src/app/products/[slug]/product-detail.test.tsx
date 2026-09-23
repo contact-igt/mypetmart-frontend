@@ -271,7 +271,7 @@ describe("ProductDetail Storefront Component", () => {
     expect(screen.getByLabelText("Product tags")).toHaveTextContent("#collar");
   });
 
-  it("2. Variant Product renders 'From ₹price' and requires selection before Add to Cart", async () => {
+  it("2. Variant Product defaults to the first listed option, priced and ready to Add to Cart", async () => {
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
     );
@@ -279,11 +279,14 @@ describe("ProductDetail Storefront Component", () => {
     renderProductDetail(mockVariantProduct);
 
     expect(screen.getByRole("heading", { name: "Premium Dog Food" })).toBeInTheDocument();
-    expect(inPanel().getByText("From ₹899")).toBeInTheDocument();
-    expect(screen.getByText("Choose an option below to view availability.")).toBeInTheDocument();
+    // The first option (3kg Pack) is pre-selected, so the exact price shows
+    // — never the ambiguous "From ₹price" or a "choose an option" prompt.
+    expect(inPanel().getByText("₹899")).toBeInTheDocument();
+    expect(screen.queryByText("Choose an option below to view availability.")).not.toBeInTheDocument();
+    expect(inPanel().getByRole("button", { name: "3kg Pack" })).toHaveAttribute("aria-pressed", "true");
 
     const addToCartButton = inPanel().getByRole("button", { name: /Add to Cart/i });
-    expect(addToCartButton).toBeDisabled();
+    expect(addToCartButton).not.toBeDisabled();
   });
 
   it("3. Variant selection changes price display", async () => {
@@ -1735,20 +1738,21 @@ describe("ProductDetail Storefront Component", () => {
       expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("₹599")).toBeInTheDocument(); // struck-through compare price
     });
 
-    it("66c. sticky price follows the selected variant and starts with a 'From' hint", async () => {
+    it("66c. sticky price follows the selected variant, starting from the first pre-selected option", async () => {
       vi.mocked(fetch).mockResolvedValue(
         jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
       );
 
       renderProductDetail(mockVariantProduct); // 3kg Pack "899.00", 10kg Pack "2499.00"
 
-      // Before a variant is chosen the bar shows the starting price.
-      expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("From ₹899")).toBeInTheDocument();
+      // The first option (3kg Pack) is pre-selected, so the bar starts on
+      // its exact price — never the ambiguous "From" hint.
+      expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("₹899")).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole("button", { name: "10kg Pack" }));
 
       expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("₹2,499")).toBeInTheDocument();
-      expect(within(screen.getByTestId("pdp-sticky-cta")).queryByText("From ₹899")).not.toBeInTheDocument();
+      expect(within(screen.getByTestId("pdp-sticky-cta")).queryByText("₹899")).not.toBeInTheDocument();
       expect(inStickyBar().getByRole("button", { name: /Add to Cart/i })).toHaveAccessibleName(/₹2,499/);
     });
 
@@ -1767,8 +1771,8 @@ describe("ProductDetail Storefront Component", () => {
       expect(within(screen.getByTestId("pdp-sticky-cta")).getByText("₹1,198")).toBeInTheDocument();
     });
 
-    it("67. sticky bar does not bypass variant selection validation", async () => {
-      const fetchMock = setupMockFetch(async (url) => {
+    it("67. sticky bar reflects the pre-selected first option and stays usable when switching variants", async () => {
+      setupMockFetch(async (url) => {
         if (url.includes("/auth/refresh") || url.includes("/auth/me")) {
           return jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401);
         }
@@ -1777,15 +1781,13 @@ describe("ProductDetail Storefront Component", () => {
 
       renderProductDetail(mockVariantProduct);
 
-      const stickyButton = inStickyBar().getByRole("button", { name: /Select an option/i });
-      expect(stickyButton).toBeDisabled();
-      fireEvent.click(stickyButton);
-      expect(
-        fetchMock.mock.calls.some((call) => call[0].toString().includes("/storefront/cart/items"))
-      ).toBe(false);
-
-      fireEvent.click(screen.getByRole("button", { name: "3kg Pack" }));
+      // The first option is pre-selected, so the sticky bar is already
+      // usable — no "Select an option" placeholder state.
       expect(inStickyBar().getByRole("button", { name: /Add to Cart/i })).toBeEnabled();
+      expect(screen.queryByRole("button", { name: /Select an option/i })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "10kg Pack" }));
+      expect(inStickyBar().getByRole("button", { name: /Add to Cart/i })).toHaveAccessibleName(/₹2,499/);
     });
 
     it("68. no sticky bar when a variant product has no purchasable options", async () => {

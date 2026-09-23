@@ -47,6 +47,7 @@ interface CartContextType {
   updatingItemIds: Set<number>;
   removingItemIds: Set<number>;
   isClearing: boolean;
+  isUpdatingCoupon: boolean;
   /** Force an authoritative re-fetch. Resolves `true` when the cart is now authoritative. */
   refresh: () => Promise<boolean>;
   /** Revalidate, but skip if the cart was just refreshed (used by mount/focus/visibility). */
@@ -55,6 +56,8 @@ interface CartContextType {
   update: (cartItemId: number, quantity: number) => Promise<Cart>;
   remove: (cartItemId: number) => Promise<Cart>;
   clear: () => Promise<Cart>;
+  applyCoupon: (code: string) => Promise<Cart>;
+  removeCoupon: () => Promise<Cart>;
   /**
    * Apply a cart the caller already fetched authoritatively (e.g. the checkout
    * page's own `GET /storefront/cart`) so the header/context stay consistent
@@ -114,9 +117,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   if (status !== statusAtLastReset || accessToken !== tokenAtLastReset) {
     // Any identity change invalidates an in-flight authoritative refresh and the
     // freshness stamp — the next load must actually run against the new identity.
+    // Must happen in this same render, before any effect can start a stale fetch.
+    /* eslint-disable react-hooks/refs */
     refreshGenerationRef.current += 1;
     inFlightRefreshRef.current = null;
     lastSyncedAtRef.current = null;
+    /* eslint-enable react-hooks/refs */
 
     // Logging out (transitioning away from an authenticated session) must never leave the
     // previous customer's Cart contents visible while the guest Cart fetch is still in
@@ -139,6 +145,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [updatingItemIds, setUpdatingItemIds] = useState<Set<number>>(new Set());
   const [removingItemIds, setRemovingItemIds] = useState<Set<number>>(new Set());
   const [isClearing, setIsClearing] = useState(false);
+  const [isUpdatingCoupon, setIsUpdatingCoupon] = useState(false);
 
   const applyServerCart = useCallback((next: Cart) => {
     // Supersede any in-flight authoritative refresh — this value is newer.
@@ -302,6 +309,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Keep `loading` from getting stuck if syncState settled through a path that
   // did not explicitly clear it.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (syncState !== "loading" && loading) setLoading(false);
   }, [syncState, loading]);
 
@@ -387,6 +395,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const applyCoupon = async (code: string): Promise<Cart> => {
+    setError(null);
+    setIsUpdatingCoupon(true);
+    try {
+      const updatedCart = await CartApi.applyCoupon(code);
+      afterMutationSuccess(updatedCart, "cart-mutation");
+      return updatedCart;
+    } finally {
+      setIsUpdatingCoupon(false);
+    }
+  };
+
+  const removeCoupon = async (): Promise<Cart> => {
+    setError(null);
+    setIsUpdatingCoupon(true);
+    try {
+      const updatedCart = await CartApi.removeCoupon();
+      afterMutationSuccess(updatedCart, "cart-mutation");
+      return updatedCart;
+    } finally {
+      setIsUpdatingCoupon(false);
+    }
+  };
+
   const itemCount = cart.itemCount;
 
   return (
@@ -402,12 +434,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         updatingItemIds,
         removingItemIds,
         isClearing,
+        isUpdatingCoupon,
         refresh,
         revalidate,
         add,
         update,
         remove,
         clear,
+        applyCoupon,
+        removeCoupon,
         applyServerCart,
         markAuthoritativelyEmpty,
         setMergeReport,

@@ -19,8 +19,15 @@ export interface CheckoutServiceability {
 
 export interface CheckoutTotals {
   merchandiseSubtotal: string;
+  discountAmount?: string;
   shippingAmount: string | null;
   payableTotal: string | null;
+}
+
+export interface CheckoutCoupon {
+  code: string;
+  eligible: boolean;
+  message: string | null;
 }
 
 export interface CheckoutPreviewPayload {
@@ -40,6 +47,7 @@ export interface CheckoutPreviewResult {
     items: CartItem[];
   };
   totals: CheckoutTotals;
+  coupon?: CheckoutCoupon | null;
   paymentMethod?: CheckoutPaymentMethod | null;
   serviceability?: CheckoutServiceability | null;
 }

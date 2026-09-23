@@ -198,7 +198,15 @@ export function SignupForm() {
             className="mt-1 h-4 w-4 rounded border-deep-brown/30 text-primary-orange focus:ring-primary-orange"
           />
           <label htmlFor="signup-terms" className="text-sm text-text-primary">
-            I accept the MyPetMart terms and privacy policies. (Note: Separate policy pages are coming soon).
+            I accept the MyPetMart{" "}
+            <Link href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary-orange underline underline-offset-2 hover:text-terracotta">
+              terms of service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary-orange underline underline-offset-2 hover:text-terracotta">
+              privacy policy
+            </Link>
+            .
           </label>
         </div>
 

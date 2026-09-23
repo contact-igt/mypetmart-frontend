@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ArrowRightIcon, InstagramIcon, MailIcon, PhoneIcon, PinIcon } from "@/components/icons";
+import { ArrowRightIcon, InstagramIcon, MailIcon, PhoneIcon, PinIcon, YouTubeIcon } from "@/components/icons";
 import { CONTACT_INFO, ENQUIRY_TYPES } from "@/data/contact-data";
 import { ContactApi, type ContactEnquirySubject } from "@/lib/contact-api";
 import { AppAuthError } from "@/lib/auth/auth-errors";
@@ -260,6 +260,19 @@ export function ContactFormSection({ storeProfile }: { storeProfile: StoreProfil
               <p className="mt-1 text-sm text-text-primary">{CONTACT_INFO.instagramHandle} on Instagram</p>
             </div>
             <InstagramIcon width={23} height={23} className="shrink-0 text-text-primary" />
+          </a>
+
+          <a
+            href={CONTACT_INFO.youtubeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-[92px] items-center justify-between rounded-[25px] bg-mint-sage px-6 py-5 transition-opacity hover:opacity-90"
+          >
+            <div>
+              <p className="text-[1.35rem] italic leading-none text-text-primary" style={{ fontFamily: "var(--font-display-italic)" }}>Watch with us</p>
+              <p className="mt-1 text-sm text-text-primary">{CONTACT_INFO.youtubeHandle} on YouTube</p>
+            </div>
+            <YouTubeIcon width={26} height={26} className="shrink-0 text-text-primary" />
           </a>
         </div>
       </div>

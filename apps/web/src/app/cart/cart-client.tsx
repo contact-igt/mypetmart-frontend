@@ -7,10 +7,15 @@ import { useCart } from "@/context/cart-context";
 import { ProductImagePlaceholder } from "@/components/image-placeholder";
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import { TrustBadges } from "@/components/checkout/trust-badges";
+import { CouponField } from "@/components/checkout/coupon-field";
 
 const formatPrice = (priceVal: number | string) => {
   const num = typeof priceVal === "number" ? priceVal : parseFloat(priceVal);
-  return isNaN(num) ? "0" : num.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+  if (isNaN(num)) return "0";
+  // Whole rupees keep the compact look; paise (e.g. a 10% coupon discount of
+  // ₹49.90) must show exactly what the server computed, never a rounded value.
+  const digits = Number.isInteger(num) ? 0 : 2;
+  return num.toLocaleString("en-IN", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 };
 
 export function CartClient() {
@@ -25,6 +30,9 @@ export function CartClient() {
     update,
     remove,
     clear,
+    applyCoupon,
+    removeCoupon,
+    isUpdatingCoupon,
     refresh,
     revalidate,
     setMergeReport,
@@ -33,6 +41,7 @@ export function CartClient() {
   const [lineErrors, setLineErrors] = useState<Record<number, string>>({});
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const [retrying, setRetrying] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   // Reconcile against the authoritative server cart whenever the Cart page is
   // shown — the CartProvider only loads once per auth transition, so a cart
@@ -114,6 +123,24 @@ export function CartClient() {
       await clear();
     } catch {
       alert("Failed to clear cart. Please try again.");
+    }
+  };
+
+  const handleApplyCoupon = async (code: string) => {
+    setCouponError(null);
+    try {
+      await applyCoupon(code);
+    } catch (err: unknown) {
+      setCouponError(err instanceof AppAuthError ? err.message : "We couldn't apply that coupon. Please try again.");
+    }
+  };
+
+  const handleRemoveCoupon = async () => {
+    setCouponError(null);
+    try {
+      await removeCoupon();
+    } catch (err: unknown) {
+      setCouponError(err instanceof AppAuthError ? err.message : "We couldn't remove that coupon. Please try again.");
     }
   };
 
@@ -428,13 +455,28 @@ export function CartClient() {
           </h2>
 
           <div className="flex justify-between items-baseline border-b border-border-subtle pb-4 mb-5">
-            <span className="text-sm font-medium text-text-muted">Subtotal</span>
+            <span className="text-sm font-medium text-text-muted">Merchandise subtotal</span>
             <span
               className="text-xl font-bold text-text-primary"
               style={{ fontFamily: "var(--font-bagel-fat-one)", fontWeight: 400 }}
             >
               ₹{formatPrice(cart.subtotal)}
             </span>
+          </div>
+
+          <CouponField
+            coupon={cart.coupon}
+            busy={isUpdatingCoupon}
+            disabled={isClearing || updatingItemIds.size > 0 || removingItemIds.size > 0}
+            error={couponError}
+            onApply={handleApplyCoupon}
+            onRemove={handleRemoveCoupon}
+          />
+
+          <div className="space-y-3 border-b border-border-subtle py-4 text-sm">
+            <div className="flex justify-between gap-3"><span className="text-text-muted">Coupon discount</span><span className="font-semibold text-deep-brown">-{cart.coupon?.eligible ? `₹${formatPrice(cart.coupon.discountAmount)}` : "₹0"}</span></div>
+            <div className="flex justify-between gap-3"><span className="text-text-muted">Shipping</span><span className="text-right text-xs font-medium text-text-muted">Calculated at checkout</span></div>
+            <div className="flex justify-between gap-3 font-bold text-text-primary"><span>Final payable total</span><span className="text-right text-xs text-text-muted">Calculated at checkout</span></div>
           </div>
 
           <TrustBadges items={["secure", "tracking", "returns"]} layout="stacked" />
