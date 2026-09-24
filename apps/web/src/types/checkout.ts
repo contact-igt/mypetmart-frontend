@@ -24,10 +24,19 @@ export interface CheckoutTotals {
   payableTotal: string | null;
 }
 
+export interface CheckoutAlternativeSaving {
+  eligiblePaymentMethod: "payu" | "cod";
+  discountAmountPaise: number;
+  code: string;
+}
+
 export interface CheckoutCoupon {
   code: string;
   eligible: boolean;
   message: string | null;
+  // Present when the coupon failed only because of the current payment
+  // method. The amount is server-calculated — never client-derived.
+  alternativeSaving?: CheckoutAlternativeSaving;
 }
 
 export interface CheckoutPreviewPayload {
