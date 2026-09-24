@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useOptionalCart } from "@/context/cart-context";
 import { broadcastCartInvalidated } from "@/lib/cart/cart-sync-channel";
@@ -118,8 +118,20 @@ export function CheckoutClient() {
   // success is authoritative and is never rolled back if this fails.
   const reconcileCartAfterCommerce = useCallback(async (source: "cod-confirmed" | "payment-paid") => {
     broadcastCartInvalidated(source);
-    const ok = await cartContextRef.current?.refresh();
-    setCartSyncWarning(ok === false);
+    try {
+      // Checkout also owns a local cart copy for its summary and coupon UI.
+      // Refreshing CartContext alone leaves that copy stale, so a completed
+      // order's coupon could be rendered again while the next cart loads.
+      const freshCart = await CartApi.getCart();
+      setCart(freshCart);
+      cartContextRef.current?.applyServerCart(freshCart);
+      setCartSyncWarning(false);
+    } catch {
+      // Preserve the last known cart on a transport failure; CartContext marks
+      // it stale so checkout remains safely blocked until a retry succeeds.
+      const ok = await cartContextRef.current?.refresh();
+      setCartSyncWarning(ok === false);
+    }
   }, []);
 
   // Pay Online is the existing checkout default. The selected method is sent
@@ -406,6 +418,18 @@ export function CheckoutClient() {
             contactEmail: payload.contactEmail,
             paymentMethod,
           };
+            // If an ineligible coupon is attached to the cart, remove it so order creation succeeds
+      if (previewResult?.coupon && !previewResult.coupon.eligible) {
+        try {
+          const freshCart = await CartApi.removeCoupon();
+          setCart(freshCart);
+          cartContextRef.current?.applyServerCart(freshCart);
+          broadcastCartInvalidated("cart-mutation");
+        } catch {
+          // If removal fails, backend assertCouponApplicable will handle
+        }
+      }
+
       const order = await OrderApi.create(orderInput);
       // Preserve recovery immediately. Payment/COD is a separate operation
       // and must never cause a second Order creation after this point.
@@ -760,6 +784,23 @@ export function CheckoutClient() {
     ? { ...previewResult.coupon, discountAmount: previewResult.totals.discountAmount ?? "0.00", eligibleMerchandiseSubtotal: "0.00" }
     : cart?.coupon;
 
+  // The backend-authoritative alternative saving from the latest preview,
+  // present only when the coupon failed solely because of payment method.
+  // This is NEVER computed client-side — it comes from the server.
+  const alternativeSaving = previewResult?.coupon && !previewResult.coupon.eligible
+    ? previewResult.coupon.alternativeSaving
+    : undefined;
+
+  // Convert paise (integer) to a ₹X.XX display string without floating-point
+  // drift. The backend always returns paise as a plain number.
+  const formatPaise = (paise: number): string => (paise / 100).toFixed(2);
+
+    // True when a coupon is attached but ineligible because of payment method
+  const isCouponPaymentMethodMismatch = Boolean(
+    (alternativeSaving && displayedCoupon && !previewResult?.coupon?.eligible) ||
+    (error && (error.includes("valid only for") || error.includes("Prepaid") || error.includes("Cash on Delivery")))
+  );
+
   const showStickyPlaceOrder = isCompactCheckout && !isCartEmpty;
 
   const handlePaymentMethodChange = (method: CheckoutPaymentMethod) => {
@@ -782,6 +823,24 @@ export function CheckoutClient() {
       if (payload) await runPreview(payload);
     } catch (err: unknown) {
       setCouponError(err instanceof AppAuthError ? err.message : "We couldn't apply that coupon. Please try again.");
+    } finally {
+      setCouponBusy(false);
+    }
+  };
+
+    const handleContinueWithoutCoupon = async () => {
+    setCouponBusy(true);
+    setError(null);
+    try {
+      const updatedCart = await CartApi.removeCoupon();
+      setCart(updatedCart);
+      cartContextRef.current?.applyServerCart(updatedCart);
+      broadcastCartInvalidated("cart-mutation");
+      invalidatePreview();
+      const payload = getCurrentPreviewPayload();
+      if (payload) await runPreview(payload);
+    } catch (err: unknown) {
+      setError(err instanceof AppAuthError ? err.message : "Failed to remove coupon. Please try again.");
     } finally {
       setCouponBusy(false);
     }
@@ -927,29 +986,6 @@ export function CheckoutClient() {
                 />
               ) : null}
             </div>
-          </div>
-        )}
-
-        {/* Standard Error Banner */}
-        {error && !isOrderStatusUnknown && !isPendingOrderError && (
-          <div className="mt-5 flex flex-col items-start gap-3 rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs font-semibold text-terracotta sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-            <span className="leading-relaxed">{error}</span>
-            {isCartError && (
-              <Link
-                href="/cart"
-                className="shrink-0 rounded-lg bg-terracotta px-3 py-1.5 text-xs font-bold text-white hover:opacity-90"
-              >
-                Review Cart &rarr;
-              </Link>
-            )}
-            {isPendingOrderError && (
-              <Link
-                href={pendingOrderRedirectId ? `/account/orders/${pendingOrderRedirectId}` : "/account/orders"}
-                className="shrink-0 rounded-lg bg-terracotta px-3 py-1.5 text-xs font-bold text-white hover:opacity-90"
-              >
-                {pendingOrderRedirectId ? "View Pending Order \u2192" : "View My Orders \u2192"}
-              </Link>
-            )}
           </div>
         )}
 
@@ -1398,6 +1434,29 @@ export function CheckoutClient() {
                     onRemove={handleRemoveCoupon}
                   />
 
+                  {/* Alternative payment method saving banner — only shown when
+                      the applied coupon is blocked solely by payment method.
+                      The ₹X amount comes from the server; the frontend never
+                      computes it. Clicking the CTA switches the payment method
+                      and triggers a new preview automatically. */}
+                  {alternativeSaving && (
+                    <div className="mx-0 rounded-xl border border-primary-orange/25 bg-peach-hero/40 px-3.5 py-3 flex flex-col gap-2 text-xs">
+                      <p className="font-semibold text-deep-brown leading-snug">
+                        {alternativeSaving.eligiblePaymentMethod === "payu"
+                          ? `Save \u20b9${formatPaise(alternativeSaving.discountAmountPaise)} by paying online`
+                          : `Save \u20b9${formatPaise(alternativeSaving.discountAmountPaise)} with Cash on Delivery`}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handlePaymentMethodChange(alternativeSaving.eligiblePaymentMethod)}
+                        disabled={couponBusy || submittingOrder || previewing}
+                        className="self-start rounded-lg bg-primary-orange px-3 py-1.5 text-[11px] font-bold text-white hover:bg-terracotta transition-colors disabled:opacity-50"
+                      >
+                        {alternativeSaving.eligiblePaymentMethod === "payu" ? "Pay Online & Save" : "Pay on Delivery & Save"}
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex items-baseline justify-between gap-3 text-text-primary">
                     <span className="min-w-0">Coupon discount</span>
                     <span className="font-semibold text-deep-brown">-{previewResult?.totals.discountAmount ? `₹${previewResult.totals.discountAmount}` : "₹0.00"}</span>
@@ -1425,6 +1484,84 @@ export function CheckoutClient() {
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-deep-brown/10 space-y-3">
+                  {/* Coupon Payment Method Mismatch or Inline Error Alert */}
+                  {isCouponPaymentMethodMismatch ? (
+                    <div
+                      role="alert"
+                      className="rounded-xl border border-primary-orange/30 bg-peach-hero/50 p-3.5 text-xs text-deep-brown space-y-2.5 shadow-xs"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-primary-orange mt-0.5" aria-hidden="true" />
+                        <div>
+                          <p className="font-bold text-deep-brown text-[12px]">
+                            {paymentMethod === "cod"
+                              ? `Coupon ${displayedCoupon?.code ?? ""} is valid only for Prepaid (Pay Online).`
+                              : `Coupon ${displayedCoupon?.code ?? ""} is valid only for Cash on Delivery.`}
+                          </p>
+                          <p className="mt-0.5 text-deep-brown/80 leading-relaxed text-[11px]">
+                            {paymentMethod === "cod"
+                              ? "Pay online to save on this order, or continue with Cash on Delivery at regular price."
+                              : "Choose Cash on Delivery to save on this order, or continue with online payment."}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 pt-0.5">
+                        {alternativeSaving && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setError(null);
+                              handlePaymentMethodChange(alternativeSaving.eligiblePaymentMethod);
+                            }}
+                            disabled={couponBusy || submittingOrder || previewing}
+                            className="w-full rounded-lg bg-primary-orange px-3.5 py-2 text-xs font-bold text-white hover:bg-terracotta transition-colors shadow-xs disabled:opacity-50 text-center"
+                          >
+                            {alternativeSaving.eligiblePaymentMethod === "payu"
+                              ? `Pay Online & Save ₹${formatPaise(alternativeSaving.discountAmountPaise)}`
+                              : `Pay on Delivery & Save ₹${formatPaise(alternativeSaving.discountAmountPaise)}`}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleContinueWithoutCoupon}
+                          disabled={couponBusy || submittingOrder || previewing}
+                          className="w-full rounded-lg border border-deep-brown/25 bg-white px-3.5 py-2 text-xs font-bold text-deep-brown hover:bg-cream-bg transition-colors disabled:opacity-50 text-center"
+                        >
+                          {paymentMethod === "cod"
+                            ? "Continue with Cash on Delivery"
+                            : "Continue without coupon"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : error && !isOrderStatusUnknown && !isPendingOrderError ? (
+                    <div
+                      role="alert"
+                      className="rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs font-semibold text-terracotta leading-relaxed flex flex-col gap-2"
+                    >
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-terracotta mt-0.5" aria-hidden="true" />
+                        <span className="flex-1">{error}</span>
+                      </div>
+                      {isCartError && (
+                        <Link
+                          href="/cart"
+                          className="self-start rounded-lg bg-terracotta px-2.5 py-1 text-[11px] font-bold text-white hover:opacity-90 transition-opacity"
+                        >
+                          Review Cart &rarr;
+                        </Link>
+                      )}
+                      {isPendingOrderError && (
+                        <Link
+                          href={pendingOrderRedirectId ? `/account/orders/${pendingOrderRedirectId}` : "/account/orders"}
+                          className="self-start rounded-lg bg-terracotta px-2.5 py-1 text-[11px] font-bold text-white hover:opacity-90 transition-opacity"
+                        >
+                          {pendingOrderRedirectId ? "View Pending Order \u2192" : "View My Orders \u2192"}
+                        </Link>
+                      )}
+                    </div>
+                  ) : null}
+
                   {/* Real Place Order Action CTA. On compact viewports this moves
                       into the fixed bottom bar (CheckoutStickyCta) — same
                       handler, same disabled gate — so it is hidden here. */}
@@ -1460,6 +1597,29 @@ export function CheckoutClient() {
           disabled={placeOrderDisabled}
           submitting={submittingOrder}
           label={primaryCtaLabel}
+          error={!isCouponPaymentMethodMismatch && !isOrderStatusUnknown && !isPendingOrderError ? error : null}
+          couponMismatch={
+            isCouponPaymentMethodMismatch
+              ? {
+                  message: paymentMethod === "cod"
+                    ? `Coupon ${displayedCoupon?.code ?? ""} is valid only for Prepaid.`
+                    : `Coupon ${displayedCoupon?.code ?? ""} is valid only for Cash on Delivery.`,
+                  actionLabel: alternativeSaving
+                    ? (alternativeSaving.eligiblePaymentMethod === "payu"
+                        ? `Pay Online & Save ₹${formatPaise(alternativeSaving.discountAmountPaise)}`
+                        : `Pay on Delivery & Save ₹${formatPaise(alternativeSaving.discountAmountPaise)}`)
+                    : undefined,
+                  onAction: alternativeSaving
+                    ? () => {
+                        setError(null);
+                        handlePaymentMethodChange(alternativeSaving.eligiblePaymentMethod);
+                      }
+                    : undefined,
+                  continueLabel: paymentMethod === "cod" ? "Continue with COD" : "Continue without coupon",
+                  onContinue: handleContinueWithoutCoupon,
+                }
+              : null
+          }
           onPlaceOrder={handlePlaceOrder}
         />
       )}
