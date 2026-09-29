@@ -14,6 +14,7 @@ export interface OrderItemJSON {
   unitPrice: string;
   lineTotal: string;
   discountAllocated?: string;
+  onlinePaymentDiscountAllocated?: string;
   orderId?: number;
   imageUrl?: string | null;
   imageAlt?: string | null;
@@ -102,6 +103,12 @@ export interface OrderCouponJSON {
   discountAmount: string;
 }
 
+export interface OrderOnlinePaymentDiscountJSON {
+  discountType: "percentage" | "fixed";
+  discountValue: string;
+  discountAmount: string;
+}
+
 export interface OrderDetailJSON extends OrderListItemJSON {
   contactEmail: string;
   shippingAddress: OrderShippingAddressJSON;
@@ -114,6 +121,7 @@ export interface OrderDetailJSON extends OrderListItemJSON {
   refundSummary: CustomerOrderRefundSummaryJSON | null;
   totalBeforeDiscount?: string;
   coupon?: OrderCouponJSON | null;
+  onlinePaymentDiscount?: OrderOnlinePaymentDiscountJSON | null;
 }
 
 // Order Creation's response: identical to OrderDetailJSON for a customer;

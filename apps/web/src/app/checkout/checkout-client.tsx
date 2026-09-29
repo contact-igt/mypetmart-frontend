@@ -59,6 +59,140 @@ const initialFormData: AddressFormData = {
   contactEmail: "",
 };
 
+// A checkout address is useful only in the current tab and contains personal
+// data, so keep it in sessionStorage rather than the long-lived cart/account
+// stores. This makes a browser refresh harmless without carrying it into a
+// later session or another tab.
+const CHECKOUT_DRAFT_STORAGE_KEY = "mypetmart:checkout-draft:v1";
+
+function readCheckoutDraft(): { formData: AddressFormData; paymentMethod: CheckoutPaymentMethod } | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const draft: unknown = JSON.parse(window.sessionStorage.getItem(CHECKOUT_DRAFT_STORAGE_KEY) ?? "null");
+    if (!draft || typeof draft !== "object") return null;
+
+    const { formData, paymentMethod } = draft as {
+      formData?: Partial<AddressFormData>;
+      paymentMethod?: unknown;
+    };
+    if (!formData || typeof formData !== "object") return null;
+
+    const stringValue = (field: keyof AddressFormData) =>
+      typeof formData[field] === "string" ? formData[field] : initialFormData[field] as string;
+
+    return {
+      formData: {
+        ...initialFormData,
+        label: stringValue("label"),
+        recipientName: stringValue("recipientName"),
+        phone: stringValue("phone"),
+        line1: stringValue("line1"),
+        line2: stringValue("line2"),
+        city: stringValue("city"),
+        state: stringValue("state"),
+        postalCode: stringValue("postalCode"),
+        country: stringValue("country"),
+        contactEmail: stringValue("contactEmail"),
+        saveToAccount: typeof formData.saveToAccount === "boolean" ? formData.saveToAccount : initialFormData.saveToAccount,
+        latitude: typeof formData.latitude === "number" ? formData.latitude : null,
+        longitude: typeof formData.longitude === "number" ? formData.longitude : null,
+      },
+      paymentMethod: paymentMethod === "cod" ? "cod" : "payu",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearCheckoutDraft() {
+  if (typeof window !== "undefined") window.sessionStorage.removeItem(CHECKOUT_DRAFT_STORAGE_KEY);
+}
+
+type RequiredAddressField = "recipientName" | "contactEmail" | "phone" | "line1" | "city" | "state" | "postalCode";
+
+// Visual (top-to-bottom) order of required fields, used to focus the first
+// invalid one when Place Order is clicked with an incomplete address.
+const ADDRESS_FIELD_ORDER: RequiredAddressField[] = ["recipientName", "contactEmail", "phone", "line1", "city", "state", "postalCode"];
+
+const ADDRESS_FIELD_LABELS: Record<RequiredAddressField, string> = {
+  recipientName: "Full name",
+  contactEmail: "Email",
+  phone: "Phone number",
+  line1: "Address line 1",
+  city: "City",
+  state: "State",
+  postalCode: "PIN code",
+};
+
+const ADDRESS_FIELD_IDS: Record<RequiredAddressField, string> = {
+  recipientName: "chk-recipient",
+  contactEmail: "chk-contact-email",
+  phone: "chk-phone",
+  line1: "chk-line1",
+  city: "chk-city",
+  state: "chk-state",
+  postalCode: "chk-postal",
+};
+
+function validateAddressFields(data: AddressFormData, isAuthenticated: boolean): Partial<Record<keyof AddressFormData, string>> {
+  const errors: Partial<Record<keyof AddressFormData, string>> = {};
+
+  if (!data.recipientName.trim()) {
+    errors.recipientName = "Recipient name is required";
+  }
+  if (!data.phone.trim()) {
+    errors.phone = "Phone number is required";
+  } else if (data.phone.replace(/\D/g, "").length < 10) {
+    errors.phone = "Phone number must have at least 10 digits";
+  }
+  if (!data.line1.trim()) {
+    errors.line1 = "Address line 1 is required";
+  }
+  if (!data.city.trim()) {
+    errors.city = "City is required";
+  }
+  if (!data.state.trim()) {
+    errors.state = "State is required";
+  }
+  if (!/^\d{6}$/.test(data.postalCode.trim())) {
+    errors.postalCode = "Enter a valid 6-digit PIN code";
+  }
+  if (!isAuthenticated) {
+    const emailPattern = /^\S+@\S+\.\S+$/;
+    if (!data.contactEmail.trim()) {
+      errors.contactEmail = "Email is required";
+    } else if (!emailPattern.test(data.contactEmail)) {
+      errors.contactEmail = "Valid email is required";
+    }
+  }
+
+  return errors;
+}
+
+function RequiredMark() {
+  return (
+    <span className="text-red-600" aria-hidden="true">
+      *
+    </span>
+  );
+}
+
+function addressInputClass(hasError: boolean): string {
+  return `w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
+    hasError ? "border-red-600 focus:border-red-600" : "border-deep-brown/20 focus:border-primary-orange"
+  }`;
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} className="mt-1 text-xs font-medium text-red-600">
+      {message}
+    </p>
+  );
+}
+
 export function CheckoutClient() {
   const { status, customer } = useCustomerAuth();
   const cartContext = useOptionalCart();
@@ -84,6 +218,7 @@ export function CheckoutClient() {
   // Form State
   const [formData, setFormData] = useState<AddressFormData>(initialFormData);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof AddressFormData, string>>>({});
+  const [checkoutDraftRestored, setCheckoutDraftRestored] = useState(false);
 
   // Active Preview Payload tracking (for input-precise stale preview validation)
   const [activePreviewPayload, setActivePreviewPayload] = useState<CheckoutPreviewPayload | null>(null);
@@ -139,40 +274,30 @@ export function CheckoutClient() {
   const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>("payu");
   const [codConfirmation, setCodConfirmation] = useState<CodConfirmationResultJSON | null>(null);
 
-  const addressValidationErrors = useCallback((): Partial<Record<keyof AddressFormData, string>> => {
-    const errors: Partial<Record<keyof AddressFormData, string>> = {};
+  // Restore only after hydration so the server and first client render agree.
+  useEffect(() => {
+    const draft = readCheckoutDraft();
+    if (draft) {
+      setFormData(draft.formData);
+      setPaymentMethod(draft.paymentMethod);
+    }
+    setCheckoutDraftRestored(true);
+  }, []);
 
-    if (!formData.recipientName.trim()) {
-      errors.recipientName = "Recipient name is required";
-    }
-    if (!formData.phone.trim()) {
-      errors.phone = "Phone number is required";
-    } else if (formData.phone.replace(/\D/g, "").length < 10) {
-      errors.phone = "Phone number must have at least 10 digits";
-    }
-    if (!formData.line1.trim()) {
-      errors.line1 = "Address line 1 is required";
-    }
-    if (!formData.city.trim()) {
-      errors.city = "City is required";
-    }
-    if (!formData.state.trim()) {
-      errors.state = "State is required";
-    }
-    if (!/^\d{6}$/.test(formData.postalCode.trim())) {
-      errors.postalCode = "Enter a valid 6-digit PIN code";
-    }
-    if (!isAuthenticated) {
-      const emailPattern = /^\S+@\S+\.\S+$/;
-      if (!formData.contactEmail.trim()) {
-        errors.contactEmail = "Email is required";
-      } else if (!emailPattern.test(formData.contactEmail)) {
-        errors.contactEmail = "Valid email is required";
-      }
+  useEffect(() => {
+    if (!checkoutDraftRestored) return;
+    if (isAuthenticated) {
+      clearCheckoutDraft();
+      return;
     }
 
-    return errors;
-  }, [formData, isAuthenticated]);
+    window.sessionStorage.setItem(CHECKOUT_DRAFT_STORAGE_KEY, JSON.stringify({ formData, paymentMethod }));
+  }, [checkoutDraftRestored, formData, isAuthenticated, paymentMethod]);
+
+  const addressValidationErrors = useCallback(
+    (data: AddressFormData = formData) => validateAddressFields(data, isAuthenticated),
+    [formData, isAuthenticated]
+  );
 
   const buildInlineAddress = useCallback((): CreateAddressInput => {
     const hasNumericCoords =
@@ -205,6 +330,28 @@ export function CheckoutClient() {
   }, [addressValidationErrors]);
 
   const inlineAddressReady = Object.keys(addressValidationErrors()).length === 0;
+  const inlineCheckout = !isAuthenticated || isAddingNewAddress || savedAddresses.length === 0;
+  // Incomplete inline address: Place Order stays clickable so a click can
+  // reveal every missing field instead of a silently disabled button.
+  const addressIncomplete = inlineCheckout && !inlineAddressReady;
+
+  // Show a field's error once the shopper leaves it.
+  const handleFieldBlur = (field: keyof AddressFormData) => {
+    const message = addressValidationErrors()[field];
+    setFormErrors((prev) => ({ ...prev, [field]: message }));
+  };
+
+  const focusAddressField = (field: RequiredAddressField) => {
+    const element = document.getElementById(ADDRESS_FIELD_IDS[field]);
+    if (!element) return;
+    element.scrollIntoView({ block: "center" });
+    element.focus({ preventScroll: true });
+  };
+
+  const focusFirstInvalidField = (errors: Partial<Record<keyof AddressFormData, string>>) => {
+    const first = ADDRESS_FIELD_ORDER.find((field) => errors[field] && document.getElementById(ADDRESS_FIELD_IDS[field]));
+    if (first) focusAddressField(first);
+  };
 
   const getCurrentPreviewPayload = useCallback((): CheckoutPreviewPayload | null => {
     if (isAuthenticated && savedAddresses.length > 0 && !isAddingNewAddress && selectedAddressId) {
@@ -263,7 +410,12 @@ export function CheckoutClient() {
 
   const handleFormFieldChange = (field: keyof AddressFormData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    const inlineCheckout = !isAuthenticated || isAddingNewAddress || savedAddresses.length === 0;
+    // A field already showing an error is re-checked as the shopper types, so
+    // its message updates or clears immediately. Never adds new errors here.
+    if (formErrors[field]) {
+      const message = addressValidationErrors({ ...formData, [field]: value })[field];
+      setFormErrors((prev) => ({ ...prev, [field]: message }));
+    }
     if (field !== "label" && inlineCheckout) invalidatePreview();
   };
 
@@ -307,6 +459,21 @@ export function CheckoutClient() {
     const timer = window.setTimeout(() => void runPreview(payload), isSaved ? 0 : 400);
     return () => window.clearTimeout(timer);
   }, [getCurrentPreviewPayload, runPreview]);
+
+  // When the server says the selected method isn't allowed for this cart,
+  // switch to the one that is and request a fresh preview. Only a preview
+  // computed FOR the current selection may trigger this, so a stale preview
+  // can never restore a disallowed method, and the new preview (for an
+  // allowed method) cannot re-trigger it.
+  useEffect(() => {
+    const allowed = previewResult?.allowedPaymentMethods;
+    if (!allowed || allowed.length === 0 || previewResult?.paymentMethod !== paymentMethod) return;
+    if (!allowed.includes(paymentMethod)) {
+      setPaymentMethod(allowed[0]!);
+      setPostOrderError(null);
+      invalidatePreview();
+    }
+  }, [previewResult, paymentMethod, invalidatePreview]);
 
   const handleSelectSavedAddress = (addressId: number) => {
     setSelectedAddressId(addressId);
@@ -362,6 +529,12 @@ export function CheckoutClient() {
   // Place Order Action Handshake
   const handlePlaceOrder = async () => {
     if (isSubmittingRef.current || submittingOrder || previewing || isOrderStatusUnknown) return;
+    if (addressIncomplete) {
+      const errors = addressValidationErrors();
+      setFormErrors(errors);
+      focusFirstInvalidField(errors);
+      return;
+    }
     if (!cart || cart.items.length === 0) {
       setError("Your cart is empty. Add an item before placing your order.");
       return;
@@ -434,6 +607,7 @@ export function CheckoutClient() {
       // Preserve recovery immediately. Payment/COD is a separate operation
       // and must never cause a second Order creation after this point.
       if (order.guestAccessToken) storeGuestPaymentToken(order.guestAccessToken);
+      clearCheckoutDraft();
       setCreatedOrder(order);
     } catch (err: unknown) {
       if (err instanceof AppAuthError) {
@@ -767,16 +941,24 @@ export function CheckoutClient() {
   const cartContextUnsynced =
     cartContext?.syncState === "stale" || cartContext?.syncState === "error";
 
+  // Product payment availability — always from the latest server preview
+  // (intersection over the cart's products), never from cached product data.
+  // Before the first preview both options stay available.
+  const allowedPaymentMethods: CheckoutPaymentMethod[] = previewResult?.allowedPaymentMethods ?? ["payu", "cod"];
+  const paymentMethodConflict = previewResult?.paymentMethodConflict ?? null;
+  const productPaymentBlocked = Boolean(paymentMethodConflict) || !allowedPaymentMethods.includes(paymentMethod);
+
   // Single source of truth for the Place Order gate, shared by the in-card
   // button and the mobile sticky bar so they can never drift apart.
   const placeOrderDisabled =
-    !isPreviewValid ||
+    (!isPreviewValid && !addressIncomplete) ||
     !paymentMethod ||
     submittingOrder ||
     previewing ||
     isCartEmpty ||
     isOrderStatusUnknown ||
-    cartContextUnsynced;
+    cartContextUnsynced ||
+    productPaymentBlocked;
 
   // The payable amount shown in the Order Summary card — mirrored, not recomputed.
   const payableTotalDisplay = previewResult?.totals.payableTotal;
@@ -787,9 +969,21 @@ export function CheckoutClient() {
   // The backend-authoritative alternative saving from the latest preview,
   // present only when the coupon failed solely because of payment method.
   // This is NEVER computed client-side — it comes from the server.
-  const alternativeSaving = previewResult?.coupon && !previewResult.coupon.eligible
+  // Never advertise a saving through a method the cart's products cannot use
+  // (the backend already filters this; the check here is belt-and-braces).
+  const alternativeSaving = previewResult?.coupon && !previewResult.coupon.eligible && previewResult.coupon.alternativeSaving &&
+    allowedPaymentMethods.includes(previewResult.coupon.alternativeSaving.eligiblePaymentMethod)
     ? previewResult.coupon.alternativeSaving
     : undefined;
+
+  // Complete totals from the backend take precedence over the legacy
+  // coupon-only hint, because they include both coupon eligibility and the
+  // global Pay Online discount for the destination method.
+  const paymentMethodOffer = paymentMethod === "cod" ? previewResult?.onlinePaymentOffer : previewResult?.cashOnDeliveryOffer;
+  const offerMethod = paymentMethodOffer?.paymentMethod ?? alternativeSaving?.eligiblePaymentMethod;
+  const offerSaving = paymentMethodOffer?.savingAmount ?? (alternativeSaving ? (alternativeSaving.discountAmountPaise / 100).toFixed(2) : null);
+  const offerLabel = offerMethod === "payu" ? "Pay Online" : "Pay on Delivery";
+  const awaitingDiscountPreview = !previewResult && !previewing && !getCurrentPreviewPayload();
 
   // Convert paise (integer) to a ₹X.XX display string without floating-point
   // drift. The backend always returns paise as a plain number.
@@ -863,6 +1057,18 @@ export function CheckoutClient() {
       setCouponBusy(false);
     }
   };
+
+  // Fields currently showing an error, in on-screen order, so the summary
+  // above Place Order names exactly what is left to fix.
+  const invalidAddressFields = addressIncomplete
+    ? ADDRESS_FIELD_ORDER.filter((field) => formErrors[field])
+    : [];
+  const addressFormMessage =
+    invalidAddressFields.length > 0
+      ? `Almost there! Please complete ${invalidAddressFields.length === 1 ? "1 field" : `${invalidAddressFields.length} fields`} to place your order: ${invalidAddressFields
+          .map((field) => ADDRESS_FIELD_LABELS[field])
+          .join(", ")}.`
+      : null;
 
   const primaryCtaLabel = paymentMethod === "payu" && payableTotalDisplay ? `Place Order & Pay ₹${payableTotalDisplay}` : "Place Order";
   const deliveryMessage = previewing
@@ -1111,7 +1317,7 @@ export function CheckoutClient() {
 
                     <div className={isAuthenticated ? "" : "sm:col-span-2"}>
                       <label htmlFor="chk-recipient" className="block text-xs font-bold text-deep-brown uppercase tracking-wider mb-1">
-                        Recipient Full Name *
+                        Recipient Full Name <RequiredMark />
                       </label>
                       <input
                         id="chk-recipient"
@@ -1119,19 +1325,19 @@ export function CheckoutClient() {
                         placeholder="e.g. Jordan Rivera"
                         value={formData.recipientName}
                         onChange={(e) => handleFormFieldChange("recipientName", e.target.value)}
-                        className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
-                          formErrors.recipientName ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
-                        }`}
+                        onBlur={() => handleFieldBlur("recipientName")}
+                        aria-required="true"
+                        aria-invalid={Boolean(formErrors.recipientName)}
+                        aria-describedby={formErrors.recipientName ? "chk-recipient-error" : undefined}
+                        className={addressInputClass(Boolean(formErrors.recipientName))}
                       />
-                      {formErrors.recipientName && (
-                        <p className="mt-1 text-xs text-terracotta">{formErrors.recipientName}</p>
-                      )}
+                      <FieldError id="chk-recipient-error" message={formErrors.recipientName} />
                     </div>
 
                     {!isAuthenticated && (
                       <div className="sm:col-span-2">
                         <label htmlFor="chk-contact-email" className="block text-xs font-bold text-deep-brown uppercase tracking-wider mb-1">
-                          Contact Email *
+                          Contact Email <RequiredMark />
                         </label>
                         <input
                           id="chk-contact-email"
@@ -1140,13 +1346,13 @@ export function CheckoutClient() {
                           placeholder="e.g. guest@example.com"
                           value={formData.contactEmail}
                           onChange={(e) => handleFormFieldChange("contactEmail", e.target.value)}
-                          className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
-                            formErrors.contactEmail ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
-                          }`}
+                          onBlur={() => handleFieldBlur("contactEmail")}
+                          aria-required="true"
+                          aria-invalid={Boolean(formErrors.contactEmail)}
+                          aria-describedby={formErrors.contactEmail ? "chk-contact-email-error" : undefined}
+                          className={addressInputClass(Boolean(formErrors.contactEmail))}
                         />
-                        {formErrors.contactEmail && (
-                          <p className="mt-1 text-xs text-terracotta">{formErrors.contactEmail}</p>
-                        )}
+                        <FieldError id="chk-contact-email-error" message={formErrors.contactEmail} />
                         <p className="mt-1 text-[11px] text-text-primary/60">
                           We&apos;ll use this email to send you updates about your order.
                         </p>
@@ -1155,7 +1361,7 @@ export function CheckoutClient() {
 
                     <div>
                       <label htmlFor="chk-phone" className="block text-xs font-bold text-deep-brown uppercase tracking-wider mb-1">
-                        Phone Number *
+                        Phone Number <RequiredMark />
                       </label>
                       <input
                         id="chk-phone"
@@ -1163,18 +1369,18 @@ export function CheckoutClient() {
                         placeholder="e.g. +91 98765 43210"
                         value={formData.phone}
                         onChange={(e) => handleFormFieldChange("phone", e.target.value)}
-                        className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
-                          formErrors.phone ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
-                        }`}
+                        onBlur={() => handleFieldBlur("phone")}
+                        aria-required="true"
+                        aria-invalid={Boolean(formErrors.phone)}
+                        aria-describedby={formErrors.phone ? "chk-phone-error" : undefined}
+                        className={addressInputClass(Boolean(formErrors.phone))}
                       />
-                      {formErrors.phone && (
-                        <p className="mt-1 text-xs text-terracotta">{formErrors.phone}</p>
-                      )}
+                      <FieldError id="chk-phone-error" message={formErrors.phone} />
                     </div>
 
                     <div>
                       <label htmlFor="chk-line1" className="block text-xs font-bold text-deep-brown uppercase tracking-wider mb-1">
-                        Address Line 1 *
+                        Address Line 1 <RequiredMark />
                       </label>
                       <input
                         id="chk-line1"
@@ -1182,13 +1388,13 @@ export function CheckoutClient() {
                         placeholder="Street, Flat/House No."
                         value={formData.line1}
                         onChange={(e) => handleFormFieldChange("line1", e.target.value)}
-                        className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
-                          formErrors.line1 ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
-                        }`}
+                        onBlur={() => handleFieldBlur("line1")}
+                        aria-required="true"
+                        aria-invalid={Boolean(formErrors.line1)}
+                        aria-describedby={formErrors.line1 ? "chk-line1-error" : undefined}
+                        className={addressInputClass(Boolean(formErrors.line1))}
                       />
-                      {formErrors.line1 && (
-                        <p className="mt-1 text-xs text-terracotta">{formErrors.line1}</p>
-                      )}
+                      <FieldError id="chk-line1-error" message={formErrors.line1} />
                     </div>
 
                     <div>
@@ -1207,7 +1413,7 @@ export function CheckoutClient() {
 
                     <div>
                       <label htmlFor="chk-city" className="block text-xs font-bold text-deep-brown uppercase tracking-wider mb-1">
-                        City *
+                        City <RequiredMark />
                       </label>
                       <input
                         id="chk-city"
@@ -1215,18 +1421,18 @@ export function CheckoutClient() {
                         placeholder="e.g. Mumbai"
                         value={formData.city}
                         onChange={(e) => handleFormFieldChange("city", e.target.value)}
-                        className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
-                          formErrors.city ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
-                        }`}
+                        onBlur={() => handleFieldBlur("city")}
+                        aria-required="true"
+                        aria-invalid={Boolean(formErrors.city)}
+                        aria-describedby={formErrors.city ? "chk-city-error" : undefined}
+                        className={addressInputClass(Boolean(formErrors.city))}
                       />
-                      {formErrors.city && (
-                        <p className="mt-1 text-xs text-terracotta">{formErrors.city}</p>
-                      )}
+                      <FieldError id="chk-city-error" message={formErrors.city} />
                     </div>
 
                     <div>
                       <label htmlFor="chk-state" className="block text-xs font-bold text-deep-brown uppercase tracking-wider mb-1">
-                        State *
+                        State <RequiredMark />
                       </label>
                       <input
                         id="chk-state"
@@ -1234,32 +1440,34 @@ export function CheckoutClient() {
                         placeholder="e.g. Maharashtra"
                         value={formData.state}
                         onChange={(e) => handleFormFieldChange("state", e.target.value)}
-                        className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
-                          formErrors.state ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
-                        }`}
+                        onBlur={() => handleFieldBlur("state")}
+                        aria-required="true"
+                        aria-invalid={Boolean(formErrors.state)}
+                        aria-describedby={formErrors.state ? "chk-state-error" : undefined}
+                        className={addressInputClass(Boolean(formErrors.state))}
                       />
-                      {formErrors.state && (
-                        <p className="mt-1 text-xs text-terracotta">{formErrors.state}</p>
-                      )}
+                      <FieldError id="chk-state-error" message={formErrors.state} />
                     </div>
 
                     <div>
                       <label htmlFor="chk-postal" className="block text-xs font-bold text-deep-brown uppercase tracking-wider mb-1">
-                        Postal Code / PIN *
+                        Postal Code / PIN <RequiredMark />
                       </label>
                       <input
                         id="chk-postal"
                         type="text"
+                        inputMode="numeric"
+                        maxLength={6}
                         placeholder="e.g. 400001"
                         value={formData.postalCode}
                         onChange={(e) => handleFormFieldChange("postalCode", e.target.value)}
-                        className={`w-full rounded-xl border px-3.5 py-2 text-sm text-text-primary focus:outline-none ${
-                          formErrors.postalCode ? "border-terracotta" : "border-deep-brown/20 focus:border-primary-orange"
-                        }`}
+                        onBlur={() => handleFieldBlur("postalCode")}
+                        aria-required="true"
+                        aria-invalid={Boolean(formErrors.postalCode)}
+                        aria-describedby={formErrors.postalCode ? "chk-postal-error" : undefined}
+                        className={addressInputClass(Boolean(formErrors.postalCode))}
                       />
-                      {formErrors.postalCode && (
-                        <p className="mt-1 text-xs text-terracotta">{formErrors.postalCode}</p>
-                      )}
+                      <FieldError id="chk-postal-error" message={formErrors.postalCode} />
                     </div>
 
                     {isAuthenticated && (
@@ -1391,20 +1599,27 @@ export function CheckoutClient() {
                 <h2 className="border-b border-deep-brown/10 pb-4 mb-4 font-baloo text-base font-bold leading-tight text-deep-brown sm:text-lg">
                   Payment Method
                 </h2>
+                {paymentMethodConflict && (
+                  <p role="alert" className="mb-3 rounded-xl border border-terracotta/30 bg-terracotta/5 p-3 text-xs font-semibold text-terracotta">
+                    {paymentMethodConflict.message}
+                  </p>
+                )}
                 <div className="space-y-3" role="radiogroup" aria-label="Payment method">
                   <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${paymentMethod === "payu" ? "border-primary-orange bg-peach-hero/20 ring-1 ring-primary-orange" : "border-deep-brown/15 hover:border-deep-brown/30"}`}>
-                    <input type="radio" name="checkout-payment-method" value="payu" checked={paymentMethod === "payu"} onChange={() => handlePaymentMethodChange("payu")} className="mt-0.5 h-4 w-4 text-primary-orange focus:ring-primary-orange" />
+                    <input type="radio" name="checkout-payment-method" value="payu" checked={paymentMethod === "payu"} disabled={!allowedPaymentMethods.includes("payu")} onChange={() => handlePaymentMethodChange("payu")} className="mt-0.5 h-4 w-4 text-primary-orange focus:ring-primary-orange" />
                     <span>
                       <span className="block text-sm font-bold text-deep-brown">Pay Online</span>
-                      <span className="block text-xs font-medium text-deep-brown/65">Secure payment via PayU</span>
+                      <span className={`block text-xs font-medium ${allowedPaymentMethods.includes("payu") ? "text-deep-brown/65" : "text-terracotta"}`}>
+                        {allowedPaymentMethods.includes("payu") ? "Secure payment via PayU" : "Online payment is not available for one or more products in your cart."}
+                      </span>
                     </span>
                   </label>
                   <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${paymentMethod === "cod" ? "border-primary-orange bg-peach-hero/20 ring-1 ring-primary-orange" : "border-deep-brown/15 hover:border-deep-brown/30"}`}>
-                    <input type="radio" name="checkout-payment-method" value="cod" checked={paymentMethod === "cod"} onChange={() => handlePaymentMethodChange("cod")} className="mt-0.5 h-4 w-4 text-primary-orange focus:ring-primary-orange" />
+                    <input type="radio" name="checkout-payment-method" value="cod" checked={paymentMethod === "cod"} disabled={!allowedPaymentMethods.includes("cod")} onChange={() => handlePaymentMethodChange("cod")} className="mt-0.5 h-4 w-4 text-primary-orange focus:ring-primary-orange" />
                     <span>
                       <span className="block text-sm font-bold text-deep-brown">Cash on Delivery</span>
-                      <span className={`block text-xs font-medium ${paymentMethod === "cod" && serviceabilityKnown && !previewServiceable ? "text-terracotta" : "text-deep-brown/65"}`}>
-                        {paymentMethod === "cod" && serviceabilityKnown && !previewServiceable ? "Not available for this delivery address" : "Pay when your order arrives"}
+                      <span className={`block text-xs font-medium ${!allowedPaymentMethods.includes("cod") || (paymentMethod === "cod" && serviceabilityKnown && !previewServiceable) ? "text-terracotta" : "text-deep-brown/65"}`}>
+                        {!allowedPaymentMethods.includes("cod") ? "Cash on Delivery is not available for one or more products in your cart." : paymentMethod === "cod" && serviceabilityKnown && !previewServiceable ? "Not available for this delivery address" : "Pay when your order arrives"}
                       </span>
                     </span>
                   </label>
@@ -1439,21 +1654,25 @@ export function CheckoutClient() {
                       The ₹X amount comes from the server; the frontend never
                       computes it. Clicking the CTA switches the payment method
                       and triggers a new preview automatically. */}
-                  {alternativeSaving && (
+                  {paymentMethod === "cod" && offerMethod === "payu" && offerSaving && (
                     <div className="mx-0 rounded-xl border border-primary-orange/25 bg-peach-hero/40 px-3.5 py-3 flex flex-col gap-2 text-xs">
                       <p className="font-semibold text-deep-brown leading-snug">
-                        {alternativeSaving.eligiblePaymentMethod === "payu"
-                          ? `Save \u20b9${formatPaise(alternativeSaving.discountAmountPaise)} by paying online`
-                          : `Save \u20b9${formatPaise(alternativeSaving.discountAmountPaise)} with Cash on Delivery`}
+                        {`Pay online to save \u20b9${offerSaving} on this order`}
                       </p>
                       <button
                         type="button"
-                        onClick={() => handlePaymentMethodChange(alternativeSaving.eligiblePaymentMethod)}
+                        onClick={() => handlePaymentMethodChange(offerMethod)}
                         disabled={couponBusy || submittingOrder || previewing}
                         className="self-start rounded-lg bg-primary-orange px-3 py-1.5 text-[11px] font-bold text-white hover:bg-terracotta transition-colors disabled:opacity-50"
                       >
-                        {alternativeSaving.eligiblePaymentMethod === "payu" ? "Pay Online & Save" : "Pay on Delivery & Save"}
+                        {`${offerLabel} & Save \u20b9${offerSaving}`}
                       </button>
+                    </div>
+                  )}
+
+                  {awaitingDiscountPreview && (
+                    <div className="rounded-xl border border-deep-brown/15 bg-cream-bg px-3.5 py-3 text-xs text-text-primary/70">
+                      Complete your delivery address to calculate the Pay Online discount and compare payment options.
                     </div>
                   )}
 
@@ -1461,6 +1680,13 @@ export function CheckoutClient() {
                     <span className="min-w-0">Coupon discount</span>
                     <span className="font-semibold text-deep-brown">-{previewResult?.totals.discountAmount ? `₹${previewResult.totals.discountAmount}` : "₹0.00"}</span>
                   </div>
+
+                  {paymentMethod === "payu" && previewResult?.onlinePaymentDiscount && (
+                    <div className="flex items-baseline justify-between gap-3 text-text-primary">
+                      <span className="min-w-0">Pay Online Discount</span>
+                      <span className="font-semibold text-deep-brown">-₹{previewResult.onlinePaymentDiscount.discountAmount}</span>
+                    </div>
+                  )}
 
                   <div className="flex items-baseline justify-between gap-3 text-xs text-text-primary">
                     <span className="min-w-0">Shipping</span>
@@ -1565,6 +1791,33 @@ export function CheckoutClient() {
                   {/* Real Place Order Action CTA. On compact viewports this moves
                       into the fixed bottom bar (CheckoutStickyCta) — same
                       handler, same disabled gate — so it is hidden here. */}
+                  {!isCompactCheckout && invalidAddressFields.length > 0 && (
+                    <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" aria-hidden="true" />
+                        <div className="min-w-0">
+                          <p className="font-bold">
+                            Almost there! Please complete{" "}
+                            {invalidAddressFields.length === 1 ? "1 field" : `${invalidAddressFields.length} fields`} to place your order.
+                          </p>
+                          <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                            {invalidAddressFields.map((field) => (
+                              <li key={field}>
+                                <button
+                                  type="button"
+                                  onClick={() => focusAddressField(field)}
+                                  className="rounded-md border border-red-200 bg-white px-2 py-0.5 font-semibold text-red-700 transition-colors duration-150 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                                >
+                                  {ADDRESS_FIELD_LABELS[field]}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {!isCompactCheckout && (
                     <button
                       type="button"
@@ -1597,7 +1850,7 @@ export function CheckoutClient() {
           disabled={placeOrderDisabled}
           submitting={submittingOrder}
           label={primaryCtaLabel}
-          error={!isCouponPaymentMethodMismatch && !isOrderStatusUnknown && !isPendingOrderError ? error : null}
+          error={(!isCouponPaymentMethodMismatch && !isOrderStatusUnknown && !isPendingOrderError ? error : null) ?? addressFormMessage}
           couponMismatch={
             isCouponPaymentMethodMismatch
               ? {

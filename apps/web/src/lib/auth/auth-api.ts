@@ -91,7 +91,7 @@ async function performRefresh(): Promise<string | null> {
 
   refreshPromise = (async () => {
     try {
-      const data = await request<{ accessToken: string }>("/auth/refresh", {
+      const data = await request<{ accessToken: string | null }>("/auth/refresh", {
         method: "POST"
       });
       AuthTokenStore.setAccessToken(data.accessToken);

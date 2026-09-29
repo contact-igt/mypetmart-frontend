@@ -235,6 +235,8 @@ export interface CartItem {
   available: boolean;
   availabilityReason: CartAvailabilityReason | null;
   availableQuantity: number;
+  // Presentation only; checkout gets the authoritative allowed methods from the server.
+  paymentMethodEligibility?: "both" | "payu" | "cod";
 }
 
 export interface Cart {

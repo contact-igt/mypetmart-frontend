@@ -87,6 +87,33 @@ describe("Stage 2 consolidated checkout", () => {
 
   afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
+  it("Place Order with a missing required field shows that field's error and focuses it without creating an Order", async () => {
+    const fetchMock = setupFetch(); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address"); fillGuestAddress();
+    fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "" } });
+
+    const placeOrder = screen.getByRole("button", { name: /^Place Order/i });
+    expect(placeOrder).not.toBeDisabled();
+    fireEvent.click(placeOrder);
+
+    expect(await screen.findByText("Phone number is required")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Phone Number/i)).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText(/Phone Number/i)).toHaveFocus();
+    expect(screen.getByText(/Almost there! Please complete 1 field to place your order\./)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Phone number" })).toBeInTheDocument();
+    expect(screen.queryByText("Recipient name is required")).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/storefront/orders"))).toHaveLength(0);
+
+    // Fixing the field clears its message immediately.
+    fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "+91 98765 00000" } });
+    await waitFor(() => expect(screen.queryByText("Phone number is required")).not.toBeInTheDocument());
+  });
+
+  it("shows a required-field error when the shopper leaves an empty field", async () => {
+    setupFetch(); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address");
+    fireEvent.blur(screen.getByLabelText(/^City/i));
+    expect(await screen.findByText("City is required")).toBeInTheDocument();
+  });
+
   it("automatically previews a valid inline address without a Verify button", async () => {
     const fetchMock = setupFetch(); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address"); fillGuestAddress();
     await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("checkout/preview"))).toHaveLength(1), { timeout: 2000 });
