@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Bagel_Fat_One, Baloo_2, Fraunces, Inter } from "next/font/google";
+import { preload } from "react-dom";
+import { Bagel_Fat_One, Fraunces, Inter } from "next/font/google";
 import { AnnouncementBar } from "@/components/announcement-bar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -14,11 +15,9 @@ const bagelFatOne = Bagel_Fat_One({
   weight: "400",
 });
 
-const baloo = Baloo_2({
-  variable: "--font-baloo",
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-});
+// Baloo 2 is self-hosted (see the @font-face rules in globals.css, which also
+// define --font-baloo). Preload the Latin subset, as next/font did.
+const BALOO_LATIN_FONT_URL = "/fonts/baloo2/baloo2-latin.woff2";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -54,10 +53,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  preload(BALOO_LATIN_FONT_URL, { as: "font", type: "font/woff2", crossOrigin: "anonymous" });
+
   return (
     <html
       lang="en"
-      className={`${bagelFatOne.variable} ${baloo.variable} ${fraunces.variable} ${inter.variable} h-full antialiased`}
+      className={`${bagelFatOne.variable} ${fraunces.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <Providers>
