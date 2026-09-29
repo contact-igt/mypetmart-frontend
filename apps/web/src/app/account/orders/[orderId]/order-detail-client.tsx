@@ -445,6 +445,12 @@ export function OrderDetailClient({ orderIdStr }: { orderIdStr: string }) {
                   <span className="font-semibold text-deep-brown">-₹{order.coupon.discountAmount}</span>
                 </div>
               )}
+              {order.onlinePaymentDiscount && (
+                <div className="flex justify-between text-text-primary/80">
+                  <span>Pay Online Discount</span>
+                  <span className="font-semibold text-deep-brown">-₹{order.onlinePaymentDiscount.discountAmount}</span>
+                </div>
+              )}
               <div className="flex justify-between text-text-primary/80">
                 <span>Shipping amount</span>
                 <span className="font-semibold text-deep-brown">₹{order.shippingFee}</span>

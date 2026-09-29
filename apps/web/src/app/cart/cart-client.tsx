@@ -320,6 +320,11 @@ export function CartClient() {
                     <span className="block text-xs text-text-muted mt-0.5 select-all">
                       SKU: {item.sku}
                     </span>
+                    {item.paymentMethodEligibility && item.paymentMethodEligibility !== "both" && (
+                      <span className="mt-1 inline-block rounded-md bg-peach-hero/40 px-1.5 py-0.5 text-[11px] font-semibold text-deep-brown">
+                        {item.paymentMethodEligibility === "payu" ? "Pay Online only" : "Cash on Delivery only"}
+                      </span>
+                    )}
                   </div>
 
                   {/* Pricing info & Remove action */}
