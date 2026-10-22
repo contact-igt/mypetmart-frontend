@@ -7,6 +7,7 @@ import {
   type BreezeInitiatePayload,
   type BreezeSdkEnvelope,
   type BreezeSendOtpPayload,
+  type BreezeStartCheckoutPayload,
   type BreezeStartPaymentPayload,
   type BreezeVerifyOtpPayload,
 } from "./types";
@@ -61,12 +62,17 @@ let initialized = false;
  * page load. `onEvent` receives every SDK callback (initiate / process /
  * eventStream / processResult).
  */
-export function initBreeze(payload: BreezeInitiatePayload, onEvent: (event: BreezeCallbackEvent) => void): void {
+export function initBreeze(payload: BreezeInitiatePayload, onEvent: (event: BreezeCallbackEvent) => void, container: HTMLDivElement | null = null): void {
   if (typeof window === "undefined") return;
   const normalized: BreezeInitiatePayload = { ...payload, environment: normalizeBreezeEnvironment(payload.environment) };
-  BlazeSDK.initiate(envelope(normalized), (raw) => {
-    onEvent(raw as BreezeCallbackEvent);
-  });
+  // `container` is the SDK's typed optional containerLayout argument.
+  BlazeSDK.initiate(
+    envelope(normalized),
+    (raw) => {
+      onEvent(raw as BreezeCallbackEvent);
+    },
+    container
+  );
   initialized = true;
 }
 
@@ -84,6 +90,10 @@ export function breezeVerifyOtp(input: Omit<BreezeVerifyOtpPayload, "action">): 
 
 export function breezeStartPayment(input: Omit<BreezeStartPaymentPayload, "action">): void {
   BlazeSDK.process(envelope<BreezeStartPaymentPayload>({ action: "startPayment", ...input }));
+}
+
+export function breezeStartCheckout(input: Omit<BreezeStartCheckoutPayload, "action">): void {
+  BlazeSDK.process(envelope<BreezeStartCheckoutPayload>({ action: "startCheckout", ...input }));
 }
 
 export function terminateBreeze(): void {

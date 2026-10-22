@@ -7,6 +7,7 @@ import { useCart } from "@/context/cart-context";
 import { ProductImagePlaceholder } from "@/components/image-placeholder";
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import { TrustBadges } from "@/components/checkout/trust-badges";
+import { BreezeCartCheckoutButton } from "@/components/payment/breeze-cart-checkout-button";
 import { CouponField } from "@/components/checkout/coupon-field";
 
 const formatPrice = (priceVal: number | string) => {
@@ -495,6 +496,8 @@ export function CartClient() {
             >
               Buy it now
             </Link>
+
+            <BreezeCartCheckoutButton disabled={isCheckoutDisabled || Boolean(cart.coupon)} onCheckoutClosed={() => void refresh()} />
 
             <button
               type="button"
