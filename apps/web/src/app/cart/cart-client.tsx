@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useCart } from "@/context/cart-context";
 import { ProductImagePlaceholder } from "@/components/image-placeholder";
@@ -488,16 +488,11 @@ export function CartClient() {
           <TrustBadges items={["secure", "tracking", "returns"]} layout="stacked" />
 
           <div className="mt-4 flex flex-col gap-3">
-            <Link
-              href={isCheckoutDisabled ? "#" : "/checkout"}
-              aria-disabled={isCheckoutDisabled}
-              className={`motion-press h-11 inline-flex items-center justify-center rounded-xl bg-primary-orange hover:bg-terracotta text-white font-semibold text-sm tracking-wide transition-all cursor-pointer select-none ${isCheckoutDisabled ? "opacity-40 pointer-events-none" : "opacity-100"
-                }`}
-            >
-              Buy it now
-            </Link>
-
-            <BreezeCartCheckoutButton disabled={isCheckoutDisabled || Boolean(cart.coupon)} onCheckoutClosed={() => void refresh()} />
+            <BreezeCartCheckoutButton
+              disabled={isCheckoutDisabled}
+              breezeEligible={!cart.coupon}
+              onCheckoutClosed={() => void refresh()}
+            />
 
             <button
               type="button"
