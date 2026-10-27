@@ -53,6 +53,16 @@ export type BreezeStartPaymentPayload = {
   paymentMethods?: string[]; // UPI | CARDS | NB | WALLET | COD | EMI | BNPL
 };
 
+// startCheckout (docs.breeze.in/sdk-payload-helper, Independent platform).
+// cart/signature/keyId come ONLY from the backend checkout-session response;
+// the private key and signing never exist in the browser.
+export type BreezeStartCheckoutPayload = {
+  action: "startCheckout";
+  cart: string;
+  signature: string;
+  keyId: string;
+};
+
 // ---- callback event shapes (documented) ----------------------------------
 
 // Generic envelope the SDK delivers to the init callback.

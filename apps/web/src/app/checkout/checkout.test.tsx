@@ -51,7 +51,7 @@ function fillGuestAddress() {
   fireEvent.change(screen.getByLabelText(/Contact Email \*/i), { target: { value: "guest@example.com" } });
 }
 
-function setupFetch(options: { codServiceable?: boolean; initiateFails?: boolean; pendingError?: boolean } = {}) {
+function setupFetch(options: { codServiceable?: boolean; initiateFails?: boolean; pendingError?: boolean; payuBelowMinimum?: boolean } = {}) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.includes("/storefront/addresses")) return { ok: true, json: async () => ({ success: true, data: [{ id: 12, userId: 10, label: "Home", recipientName: "Saved User", phone: "+91 98765 00000", line1: "12 Saved Street", line2: null, city: "Mumbai", state: "Maharashtra", postalCode: "400001", country: "IN", isDefault: true, latitude: null, longitude: null }] }) } as Response;
@@ -59,7 +59,15 @@ function setupFetch(options: { codServiceable?: boolean; initiateFails?: boolean
     if (url.includes("/storefront/checkout/preview")) {
       const body = JSON.parse(String(init?.body ?? "{}"));
       const method = body.paymentMethod === "cod" ? "cod" : "payu";
-      return { ok: true, json: async () => ({ success: true, data: preview(method, method === "cod" ? options.codServiceable !== false : true) }) } as Response;
+      const data = preview(method, method === "cod" ? options.codServiceable !== false : true);
+      if (options.payuBelowMinimum) {
+        data.totals.payableTotal = "0.00";
+        if (method === "payu") {
+          Object.assign(data, { prepaidMinimumPayable: { code: "PREPAID_MINIMUM_PAYABLE_NOT_MET", message: "Online payment requires a minimum payable amount of ₹1.00.", minimumPayable: "1.00", actualPayable: "0.00" } });
+          Object.assign(data.readiness, { paymentReady: false, orderReady: false });
+        }
+      }
+      return { ok: true, json: async () => ({ success: true, data }) } as Response;
     }
     if (url.endsWith("/storefront/orders")) {
       if (options.pendingError) return { ok: false, status: 409, json: async () => ({ success: false, error: { message: "An order is already pending.", code: "ORDER_ALREADY_PENDING", details: { orderId: 777, orderNumber: order.orderNumber } } }) } as Response;
@@ -112,6 +120,19 @@ describe("Stage 2 consolidated checkout", () => {
     setupFetch(); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address");
     fireEvent.blur(screen.getByLabelText(/^City/i));
     expect(await screen.findByText("City is required")).toBeInTheDocument();
+  });
+
+  it("Pay Online below ₹1.00: no 'Pay ₹0.00' CTA, Place Order disabled, COD guidance shown, COD still works", async () => {
+    const fetchMock = setupFetch({ payuBelowMinimum: true }); render(<CheckoutClient />); await screen.findByText("Guest Shipping Address"); fillGuestAddress();
+
+    expect(await screen.findByText(/Online payment requires a minimum payable amount of ₹1\.00\. Choose Cash on Delivery to continue\./, {}, { timeout: 2000 })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Pay ₹0\.00/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Place Order$/ })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Cash on Delivery/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /^Place Order$/ })).not.toBeDisabled(), { timeout: 2000 });
+    expect(screen.queryByText(/Online payment requires a minimum payable amount/)).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/storefront/orders"))).toHaveLength(0);
   });
 
   it("automatically previews a valid inline address without a Verify button", async () => {

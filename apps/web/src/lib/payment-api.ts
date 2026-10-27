@@ -6,9 +6,36 @@ import type {
   InitiatePaymentInput,
   PaymentInitiationResultJSON,
   PaymentStatusResultJSON,
+  BreezeCheckoutSessionJSON,
+  BreezeCheckoutSessionStatusJSON,
 } from "@/types/payment";
 
 export const PaymentApi = {
+  /** Server-controlled capability probe for the Breeze full-checkout button. */
+  async breezeCheckoutConfig(): Promise<{ enabled: boolean }> {
+    return fetchWithAuth<{ enabled: boolean }>("/storefront/payments/breeze/checkout-config", { method: "GET" });
+  },
+
+  /** Server-confirmed state of a Breeze checkout (owner only). */
+  async breezeCheckoutSessionStatus(sessionId: string): Promise<BreezeCheckoutSessionStatusJSON> {
+    return fetchWithAuth<BreezeCheckoutSessionStatusJSON>("/storefront/payments/breeze/checkout-session/status", {
+      method: "POST",
+      body: JSON.stringify({ sessionId }),
+    });
+  },
+
+  /**
+   * Breeze full 1-Click Checkout: the backend validates the live cart, builds
+   * and RSA-signs the Breeze cart, and returns the startCheckout inputs. No
+   * amount or cart content is sent from the browser.
+   */
+  async breezeCheckoutSession(): Promise<BreezeCheckoutSessionJSON> {
+    return fetchWithAuth<BreezeCheckoutSessionJSON>("/storefront/payments/breeze/checkout-session", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
+
   /**
    * Initiates a PayU Hosted Checkout Payment Attempt for an existing pending
    * Order — customer (orderId, session-authenticated) or guest

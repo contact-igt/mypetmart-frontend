@@ -79,6 +79,16 @@ export interface CheckoutPreviewResult {
   // Customer-facing reason when the requested method is not allowed.
   paymentMethodMessage?: string | null;
   serviceability?: CheckoutServiceability | null;
+  // Set when Pay Online is selected and the final total is below ₹1.00 —
+  // online payment can't proceed (readiness.orderReady is false).
+  prepaidMinimumPayable?: CheckoutPrepaidMinimumPayable | null;
+}
+
+export interface CheckoutPrepaidMinimumPayable {
+  code: "PREPAID_MINIMUM_PAYABLE_NOT_MET";
+  message: string;
+  minimumPayable: string;
+  actualPayable: string;
 }
 
 export interface CheckoutPaymentMethodConflict {

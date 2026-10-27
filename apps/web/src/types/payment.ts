@@ -69,3 +69,35 @@ export interface CodConfirmationResultJSON {
   amount: string;
   currency: string;
 }
+
+// Mirrors backend breeze-checkout-session.service.ts BreezeCheckoutSessionJSON.
+// Contains no secret: cart + signature + Breeze-issued keyId are public inputs
+// to startCheckout; the signing private key never leaves the backend.
+export interface BreezeCheckoutSessionJSON {
+  sessionId: string;
+  merchantId: string;
+  environment: string;
+  shopUrl: string;
+  cart: string;
+  signature: string;
+  keyId: string;
+  amountPaise: number;
+  currency: string;
+  expiresAt: string;
+}
+
+// Mirrors backend BreezeOrderCreateService.getSessionStatus. Server-confirmed
+// state only; the Breeze SDK result is never used as proof of payment.
+export interface BreezeCheckoutSessionStatusJSON {
+  sessionId: string;
+  processingStatus: "awaiting_webhook" | "order_created" | "finalized" | "reconciliation_required" | "failed";
+  awaitingWebhook: boolean;
+  order: {
+    id: number;
+    orderNumber: string;
+    status: string;
+    paymentStatus: string;
+    commerceException: string | null;
+  } | null;
+  guestAccessToken: string | null;
+}

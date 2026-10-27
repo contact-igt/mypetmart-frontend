@@ -583,6 +583,11 @@ export function CheckoutClient() {
         );
         return;
       }
+      // The authoritative re-preview says Pay Online can't be used (< ₹1.00).
+      if (finalPreview.prepaidMinimumPayable) {
+        setError(finalPreview.prepaidMinimumPayable.message);
+        return;
+      }
 
       const orderInput: CreateOrderInput = payload.savedAddressId
         ? { savedAddressId: payload.savedAddressId, paymentMethod }
@@ -948,6 +953,11 @@ export function CheckoutClient() {
   const paymentMethodConflict = previewResult?.paymentMethodConflict ?? null;
   const productPaymentBlocked = Boolean(paymentMethodConflict) || !allowedPaymentMethods.includes(paymentMethod);
 
+  // Server-reported: Pay Online selected but the final total is below ₹1.00,
+  // so it can't be paid online. Only trusted from a preview for Pay Online.
+  const prepaidMinimumBlock =
+    paymentMethod === "payu" && previewResult?.paymentMethod === "payu" ? previewResult.prepaidMinimumPayable ?? null : null;
+
   // Single source of truth for the Place Order gate, shared by the in-card
   // button and the mobile sticky bar so they can never drift apart.
   const placeOrderDisabled =
@@ -958,7 +968,8 @@ export function CheckoutClient() {
     isCartEmpty ||
     isOrderStatusUnknown ||
     cartContextUnsynced ||
-    productPaymentBlocked;
+    productPaymentBlocked ||
+    Boolean(prepaidMinimumBlock);
 
   // The payable amount shown in the Order Summary card — mirrored, not recomputed.
   const payableTotalDisplay = previewResult?.totals.payableTotal;
@@ -1070,7 +1081,8 @@ export function CheckoutClient() {
           .join(", ")}.`
       : null;
 
-  const primaryCtaLabel = paymentMethod === "payu" && payableTotalDisplay ? `Place Order & Pay ₹${payableTotalDisplay}` : "Place Order";
+  // Never "Place Order & Pay ₹0.00" (or any sub-₹1 amount) for Pay Online.
+  const primaryCtaLabel = paymentMethod === "payu" && payableTotalDisplay && !prepaidMinimumBlock ? `Place Order & Pay ₹${payableTotalDisplay}` : "Place Order";
   const deliveryMessage = previewing
     ? "Checking delivery availability..."
     : !previewResult || !activePreviewPayload
@@ -1602,6 +1614,14 @@ export function CheckoutClient() {
                 {paymentMethodConflict && (
                   <p role="alert" className="mb-3 rounded-xl border border-terracotta/30 bg-terracotta/5 p-3 text-xs font-semibold text-terracotta">
                     {paymentMethodConflict.message}
+                  </p>
+                )}
+                {prepaidMinimumBlock && (
+                  <p role="alert" className="mb-3 rounded-xl border border-terracotta/30 bg-terracotta/5 p-3 text-xs font-semibold text-terracotta">
+                    {prepaidMinimumBlock.message}{" "}
+                    {allowedPaymentMethods.includes("cod")
+                      ? "Choose Cash on Delivery to continue."
+                      : "Add more items to your cart to continue."}
                   </p>
                 )}
                 <div className="space-y-3" role="radiogroup" aria-label="Payment method">
