@@ -86,6 +86,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   // Frontend double-click lock; the backend additionally retires older sessions.
   const launching = useRef(false);
   const pollToken = useRef(0);
+  const terminating = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -149,6 +150,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   }, [enabled, pollServer]);
 
   const close = useCallback(() => {
+    terminating.current = true;
     terminateBreeze();
     launching.current = false;
     setStarting(false);
@@ -163,11 +165,13 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       if (!payload) return;
       const eventName = typeof payload.eventName === "string" ? payload.eventName.toLowerCase() : "";
       const status = typeof payload.status === "string" ? payload.status.toLowerCase() : "";
+      const providerEvent = typeof payload.event === "string" ? payload.event.toLowerCase() : "";
 
       // Breeze sends close notifications through different callback event names
       // across Hyper bundles. A customer close is not a payment result, so stop
       // polling and allow another server-authorized checkout attempt.
-      if (status === "backpressed" || status === "closeapp" || status === "cancelled" || eventName === "terminate") {
+      if (eventName === "terminate" && terminating.current) return;
+      if (status === "backpressed" || status === "closeapp" || status === "cancelled" || providerEvent === "backpressed" || providerEvent === "closeapp" || providerEvent === "cancelled" || eventName === "terminate") {
         writePending(null);
         setMessage("Checkout closed. No payment was submitted.");
         close();
@@ -205,6 +209,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       return;
     }
     launching.current = true;
+    terminating.current = false;
     setMessage(null);
     setStarting(true);
     try {
@@ -231,7 +236,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         type="button"
         onClick={start}
         disabled={disabled || starting}
-        className="motion-press h-11 inline-flex items-center justify-center rounded-xl border border-primary-orange text-primary-orange font-semibold text-sm tracking-wide hover:bg-primary-orange/10 transition-all cursor-pointer disabled:opacity-40"
+        className="motion-press h-11 inline-flex items-center justify-center rounded-xl bg-primary-orange text-white font-semibold text-sm tracking-wide hover:bg-terracotta transition-all cursor-pointer disabled:opacity-40"
       >
         {starting ? "Opening secure checkout..." : "Buy it now"}
       </button>

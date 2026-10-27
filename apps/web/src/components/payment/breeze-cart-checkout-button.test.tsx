@@ -138,6 +138,18 @@ describe("BreezeCartCheckoutButton", () => {
     expect(terminateMock).toHaveBeenCalled();
   });
 
+  it("clears the pending checkout when Breeze reports a close through its event field", async () => {
+    configMock.mockResolvedValue({ enabled: true });
+    sessionMock.mockResolvedValue(SESSION);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    const onEvent = await launch();
+
+    await act(async () => onEvent({ payload: { eventName: "eventStream", event: "closeApp" } }));
+
+    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
+    expect(screen.getByRole("status").textContent).toMatch(/checkout closed/i);
+  });
+
   it("recovers after a refresh from the remembered session id and clears it once the server confirms", async () => {
     window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
     configMock.mockResolvedValue({ enabled: true });
