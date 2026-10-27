@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import { breezeStartCheckout, initBreeze, terminateBreeze } from "@/lib/breeze/blaze-sdk";
@@ -73,10 +74,12 @@ function describe(status: BreezeCheckoutSessionStatusJSON): { text: string; fina
 
 type Props = {
   disabled: boolean;
+  breezeEligible?: boolean;
   onCheckoutClosed?: () => void;
 };
 
-export function BreezeCartCheckoutButton({ disabled, onCheckoutClosed }: Props) {
+export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCheckoutClosed }: Props) {
+  const router = useRouter();
   const [enabled, setEnabled] = useState(false);
   const [starting, setStarting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -157,7 +160,20 @@ export function BreezeCartCheckoutButton({ disabled, onCheckoutClosed }: Props) 
   const handleEvent = useCallback(
     (event: BreezeCallbackEvent) => {
       const payload = event.payload;
-      if (!payload || payload.eventName !== "processResult") return;
+      if (!payload) return;
+      const eventName = typeof payload.eventName === "string" ? payload.eventName.toLowerCase() : "";
+      const status = typeof payload.status === "string" ? payload.status.toLowerCase() : "";
+
+      // Breeze sends close notifications through different callback event names
+      // across Hyper bundles. A customer close is not a payment result, so stop
+      // polling and allow another server-authorized checkout attempt.
+      if (status === "backpressed" || status === "closeapp" || status === "cancelled" || eventName === "terminate") {
+        writePending(null);
+        setMessage("Checkout closed. No payment was submitted.");
+        close();
+        return;
+      }
+      if (eventName !== "processresult") return;
       if (payload.error === true) {
         const code = typeof payload.errorCode === "string" ? payload.errorCode : "";
         writePending(null);
@@ -165,11 +181,7 @@ export function BreezeCartCheckoutButton({ disabled, onCheckoutClosed }: Props) 
         close();
         return;
       }
-      if (payload.status === "backPressed" || payload.status === "closeApp") {
-        close();
-        return;
-      }
-      if (payload.status === "SUCCESS" || payload.status === "PAYMENT_SUCCESS") {
+      if (status === "success" || status === "payment_success") {
         // UI hint only: never treated as proof of payment. Ask the server.
         setMessage("Payment submitted. We're confirming your order…");
         const pending = readPending();
@@ -186,6 +198,12 @@ export function BreezeCartCheckoutButton({ disabled, onCheckoutClosed }: Props) 
   // server's own message and the remembered session's current state.
   const start = async () => {
     if (launching.current) return;
+    // Standard checkout remains the fallback while Breeze is unavailable or a
+    // coupon makes its signed-cart amount unsuitable for Express checkout.
+    if (enabled !== true || !breezeEligible) {
+      router.push("/checkout");
+      return;
+    }
     launching.current = true;
     setMessage(null);
     setStarting(true);
@@ -207,8 +225,6 @@ export function BreezeCartCheckoutButton({ disabled, onCheckoutClosed }: Props) 
     }
   };
 
-  if (!enabled) return null;
-
   return (
     <>
       <button
@@ -217,7 +233,7 @@ export function BreezeCartCheckoutButton({ disabled, onCheckoutClosed }: Props) 
         disabled={disabled || starting}
         className="motion-press h-11 inline-flex items-center justify-center rounded-xl border border-primary-orange text-primary-orange font-semibold text-sm tracking-wide hover:bg-primary-orange/10 transition-all cursor-pointer disabled:opacity-40"
       >
-        {starting ? "Opening secure checkout..." : "Express checkout"}
+        {starting ? "Opening secure checkout..." : "Buy it now"}
       </button>
       {message ? (
         <p role="status" className="text-xs text-text-muted">

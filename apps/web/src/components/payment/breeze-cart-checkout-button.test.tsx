@@ -18,6 +18,7 @@ vi.mock("@/lib/breeze/blaze-sdk", () => ({
   breezeStartCheckout: startMock,
   terminateBreeze: terminateMock,
 }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import { BreezeCartCheckoutButton } from "./breeze-cart-checkout-button";
@@ -45,7 +46,7 @@ const CONFIRMED = {
 };
 
 async function launch() {
-  const button = await screen.findByRole("button", { name: "Express checkout" });
+  const button = await screen.findByRole("button", { name: "Buy it now" });
   await act(async () => {
     fireEvent.click(button);
   });
@@ -63,18 +64,18 @@ describe("BreezeCartCheckoutButton", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders nothing when the server flag is off", async () => {
+  it("keeps the standard checkout action when the server flag is off", async () => {
     configMock.mockResolvedValue({ enabled: false });
     const { container } = render(<BreezeCartCheckoutButton disabled={false} />);
     await waitFor(() => expect(configMock).toHaveBeenCalled());
-    expect(container.querySelector("button")).toBeNull();
+    expect(container.querySelector("button")?.textContent).toBe("Buy it now");
   });
 
-  it("renders nothing when the capability probe fails", async () => {
+  it("keeps the standard checkout action when the capability probe fails", async () => {
     configMock.mockRejectedValue(new Error("down"));
     const { container } = render(<BreezeCartCheckoutButton disabled={false} />);
     await waitFor(() => expect(configMock).toHaveBeenCalled());
-    expect(container.querySelector("button")).toBeNull();
+    expect(container.querySelector("button")?.textContent).toBe("Buy it now");
   });
 
   it("starts the SDK-controlled checkout using only backend-signed values, with no custom modal", async () => {
@@ -92,7 +93,7 @@ describe("BreezeCartCheckoutButton", () => {
     let release: (value: typeof SESSION) => void = () => undefined;
     sessionMock.mockReturnValue(new Promise((resolve) => (release = resolve)));
     render(<BreezeCartCheckoutButton disabled={false} />);
-    const button = await screen.findByRole("button", { name: "Express checkout" });
+    const button = await screen.findByRole("button", { name: "Buy it now" });
     await act(async () => {
       fireEvent.click(button);
       fireEvent.click(button);
@@ -124,6 +125,19 @@ describe("BreezeCartCheckoutButton", () => {
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Order MPM-1001 is confirmed/));
   });
 
+  it("clears the pending checkout when Breeze closes through a non-processResult callback", async () => {
+    configMock.mockResolvedValue({ enabled: true });
+    sessionMock.mockResolvedValue(SESSION);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    const onEvent = await launch();
+
+    await act(async () => onEvent({ payload: { eventName: "eventStream", status: "closeApp" } }));
+
+    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
+    expect(screen.getByRole("status").textContent).toMatch(/checkout closed/i);
+    expect(terminateMock).toHaveBeenCalled();
+  });
+
   it("recovers after a refresh from the remembered session id and clears it once the server confirms", async () => {
     window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
     configMock.mockResolvedValue({ enabled: true });
@@ -145,7 +159,7 @@ describe("BreezeCartCheckoutButton", () => {
   it("is disabled while the cart is not checkout-ready", async () => {
     configMock.mockResolvedValue({ enabled: true });
     render(<BreezeCartCheckoutButton disabled />);
-    const button = await screen.findByRole("button", { name: "Express checkout" });
+    const button = await screen.findByRole("button", { name: "Buy it now" });
     expect((button as HTMLButtonElement).disabled).toBe(true);
   });
   it("a server refusal (409 BREEZE_PAYMENT_VERIFYING) shows the server's message and does not launch the SDK", async () => {
@@ -153,7 +167,7 @@ describe("BreezeCartCheckoutButton", () => {
     sessionMock.mockRejectedValue(new AppAuthError("Your payment is being verified. Please don't make another payment yet.", "BREEZE_PAYMENT_VERIFYING"));
     statusMock.mockResolvedValue(AWAITING);
     render(<BreezeCartCheckoutButton disabled={false} />);
-    const button = await screen.findByRole("button", { name: "Express checkout" });
+    const button = await screen.findByRole("button", { name: "Buy it now" });
     await act(async () => {
       fireEvent.click(button);
     });
@@ -166,7 +180,7 @@ describe("BreezeCartCheckoutButton", () => {
     configMock.mockResolvedValue({ enabled: true });
     sessionMock.mockRejectedValue(new AppAuthError("A previous Express checkout is still open.", "BREEZE_ATTEMPT_IN_PROGRESS"));
     render(<BreezeCartCheckoutButton disabled={false} />);
-    const button = await screen.findByRole("button", { name: "Express checkout" });
+    const button = await screen.findByRole("button", { name: "Buy it now" });
     await act(async () => {
       fireEvent.click(button);
     });
@@ -181,7 +195,7 @@ describe("BreezeCartCheckoutButton", () => {
     statusMock.mockResolvedValue(AWAITING);
     sessionMock.mockResolvedValue(SESSION);
     render(<BreezeCartCheckoutButton disabled={false} />);
-    const button = await screen.findByRole("button", { name: "Express checkout" });
+    const button = await screen.findByRole("button", { name: "Buy it now" });
     await act(async () => {
       fireEvent.click(button);
     });
