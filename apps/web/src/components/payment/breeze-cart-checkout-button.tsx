@@ -118,19 +118,9 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
           if (described) {
             if (pollToken.current !== token) return;
             setMessage(described.text);
-            if (described.final) {
-              writePending(null);
-              cleanUrlAtomsState();
-              terminateBreeze();
+                        if (described.final) {
               broadcastCartInvalidated("payment-paid");
               onCheckoutClosed?.();
-
-              if (status.order && (status.order.paymentStatus === "paid" || status.processingStatus === "finalized")) {
-                const targetUrl = status.order.id
-                  ? `/order/payment/result?provider=breeze&status=success&orderId=${status.order.id}`
-                  : `/account/orders`;
-                router.push(targetUrl);
-              }
             }
             return;
           }
@@ -285,13 +275,11 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         return;
       }
       if (status === "success" || status === "payment_success") {
-        // UI hint only: never treated as proof of payment. Ask the server.
-        setMessage("Payment submitted. We're confirming your order…");
+        // UI hint only: order confirmed. Invalidate background cart and poll server.
+        // Drawer remains open so customer sees Breeze's confirmation screen.
+        setMessage("Payment submitted. Order confirmed!");
         const pending = readPending();
-        cleanUrlAtomsState();
-        terminateBreeze();
         broadcastCartInvalidated("payment-paid");
-        close();
         if (pending) void pollServer(pending);
       }
     },
