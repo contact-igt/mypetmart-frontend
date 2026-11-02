@@ -44,6 +44,22 @@ function readPending(): string | null {
     return null;
   }
 }
+
+function cleanUrlAtomsState(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("atomsSt")) {
+      url.searchParams.delete("atomsSt");
+      const newQuery = url.searchParams.toString();
+      const newUrl = url.pathname + (newQuery ? "?" + newQuery : "") + url.hash;
+      window.history.replaceState({}, "", newUrl);
+    }
+  } catch {
+    // history unavailable
+  }
+}
+
 function writePending(sessionId: string | null): void {
   try {
     if (sessionId) {
@@ -173,6 +189,8 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   }, [enabled]);
 
   const close = useCallback(() => {
+    writePending(null);
+    cleanUrlAtomsState();
     terminating.current = true;
     terminateBreeze();
     launching.current = false;
@@ -182,20 +200,75 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
 
   useEffect(() => () => terminateBreeze(), []);
 
+  useEffect(() => {
+    const handleWindowMessage = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
+        if (!data || typeof data !== "object") return;
+        const str = JSON.stringify(data).toLowerCase();
+        if (
+          str.includes("cancel") ||
+          str.includes("closeapp") ||
+          str.includes("backpressed") ||
+          str.includes("merchantexit") ||
+          str.includes("dismiss") ||
+          str.includes("user_dropped")
+        ) {
+          writePending(null);
+          cleanUrlAtomsState();
+          launching.current = false;
+          setStarting(false);
+        }
+      } catch {
+        // Non-JSON message, ignore
+      }
+    };
+    window.addEventListener("message", handleWindowMessage);
+    return () => {
+      window.removeEventListener("message", handleWindowMessage);
+    };
+  }, []);
+
+
   const handleEvent = useCallback(
     (event: BreezeCallbackEvent) => {
       const payload = event.payload;
       if (!payload) return;
       const eventName = typeof payload.eventName === "string" ? payload.eventName.toLowerCase() : "";
       const status = typeof payload.status === "string" ? payload.status.toLowerCase() : "";
+      const action = typeof payload.action === "string" ? payload.action.toLowerCase() : "";
       const providerEvent = typeof payload.event === "string" ? payload.event.toLowerCase() : "";
 
       // Breeze sends close notifications through different callback event names
       // across Hyper bundles. A customer close is not a payment result, so stop
       // polling and allow another server-authorized checkout attempt.
       if (eventName === "terminate" && terminating.current) return;
-      if (status === "backpressed" || status === "closeapp" || status === "cancelled" || providerEvent === "backpressed" || providerEvent === "closeapp" || providerEvent === "cancelled" || eventName === "terminate") {
+      const isCloseOrCancel =
+        status === "backpressed" ||
+        status === "closeapp" ||
+        status === "cancelled" ||
+        status === "cancel" ||
+        status === "closed" ||
+        status === "user_cancelled" ||
+        status === "aborted" ||
+        status === "dismiss" ||
+        status === "dismissed" ||
+        providerEvent === "backpressed" ||
+        providerEvent === "closeapp" ||
+        providerEvent === "cancelled" ||
+        providerEvent === "cancel" ||
+        providerEvent === "closed" ||
+        action === "close" ||
+        action === "cancel" ||
+        action === "terminate" ||
+        eventName === "terminate" ||
+        eventName === "close" ||
+        eventName === "cancel" ||
+        eventName === "dismiss";
+
+      if (isCloseOrCancel) {
         writePending(null);
+        cleanUrlAtomsState();
         setMessage("Checkout closed. No payment was submitted.");
         close();
         return;
