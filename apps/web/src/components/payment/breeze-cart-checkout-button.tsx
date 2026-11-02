@@ -118,13 +118,19 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
           if (described) {
             if (pollToken.current !== token) return;
             setMessage(described.text);
-                        if (described.final) {
+            if (described.final) {
               writePending(null);
               cleanUrlAtomsState();
-              launching.current = false;
-              setStarting(false);
+              terminateBreeze();
               broadcastCartInvalidated("payment-paid");
               onCheckoutClosed?.();
+
+              if (status.order && (status.order.paymentStatus === "paid" || status.processingStatus === "finalized")) {
+                const targetUrl = status.order.id
+                  ? `/order/payment/result?provider=breeze&status=success&orderId=${status.order.id}`
+                  : `/account/orders`;
+                router.push(targetUrl);
+              }
             }
             return;
           }
@@ -149,17 +155,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   // if the session has already expired or resolved on the server.
   useEffect(() => {
     if (!enabled) return;
-    const hasAtomsSt = typeof window !== "undefined" && window.location.search.includes("atomsSt");
     const pending = readPending();
-
-    // If URL has no atomsSt parameter, this is a normal visit to /cart (not an in-flight
-    // checkout refresh). Clear any stale pending session so drawer never auto-opens.
-    if (!hasAtomsSt) {
-      if (pending) writePending(null);
-      cleanUrlAtomsState();
-      return;
-    }
-
     if (!pending) {
       cleanUrlAtomsState();
       return;
@@ -171,6 +167,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       try {
         const session = await PaymentApi.breezeResumeCheckoutSession(pending);
         if (cancelled) return;
+        // Session is still open — reopen the drawer seamlessly.
         launching.current = true;
         terminating.current = false;
         setStarting(true);
@@ -179,11 +176,10 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         breezeStartCheckout({ cart: session.cart, signature: session.signature, keyId: session.keyId });
       } catch {
         if (cancelled) return;
-        writePending(null);
+        // Session expired or order already resolved: clean URL immediately so Breeze cannot reopen completed order screens.
         cleanUrlAtomsState();
         terminateBreeze();
-        launching.current = false;
-        setStarting(false);
+        void pollServer(pending, "Checking order status…");
       }
     }, 0);
 
@@ -289,15 +285,13 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         return;
       }
       if (status === "success" || status === "payment_success") {
-        // UI hint only: order confirmed. Invalidate background cart and poll server.
-        // Drawer remains open so customer sees Breeze's confirmation screen.
-        setMessage("Payment submitted. Order confirmed!");
+        // UI hint only: never treated as proof of payment. Ask the server.
+        setMessage("Payment submitted. We're confirming your order…");
         const pending = readPending();
-        writePending(null);
         cleanUrlAtomsState();
-        launching.current = false;
-        setStarting(false);
+        terminateBreeze();
         broadcastCartInvalidated("payment-paid");
+        close();
         if (pending) void pollServer(pending);
       }
     },
