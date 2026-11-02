@@ -8,6 +8,7 @@ import { ProductImagePlaceholder } from "@/components/image-placeholder";
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import { TrustBadges } from "@/components/checkout/trust-badges";
 import { BreezeCartCheckoutButton } from "@/components/payment/breeze-cart-checkout-button";
+import { cleanUrlAtomsState } from "@/lib/breeze/blaze-sdk";
 import { CouponField } from "@/components/checkout/coupon-field";
 
 const formatPrice = (priceVal: number | string) => {
@@ -43,6 +44,18 @@ export function CartClient() {
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const [retrying, setRetrying] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
+  useEffect(() => {
+    // Strip atomsSt query parameter if no pending session is being resumed or when cart becomes empty
+    try {
+      const pending = typeof window !== "undefined" ? window.localStorage.getItem("mpm_breeze_pending_session") : null;
+      if (!pending) {
+        cleanUrlAtomsState();
+      }
+    } catch {
+      // storage unavailable
+    }
+  }, [cart.items.length]);
+
 
   // Reconcile against the authoritative server cart whenever the Cart page is
   // shown — the CartProvider only loads once per auth transition, so a cart
@@ -188,9 +201,16 @@ export function CartClient() {
     );
   }
 
-  if (cart.items.length === 0) {
+    if (cart.items.length === 0) {
     return (
       <div className="site-container py-16 text-center" aria-live="polite">
+        <div className="hidden">
+          <BreezeCartCheckoutButton
+            disabled={true}
+            breezeEligible={true}
+            onCheckoutClosed={() => void refresh()}
+          />
+        </div>
         <div className="motion-enter max-w-md mx-auto rounded-3xl bg-white border border-border-subtle p-10 shadow-[0_8px_20px_rgba(88,51,29,0.02)]">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-peach-hero/40 text-primary-orange">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
