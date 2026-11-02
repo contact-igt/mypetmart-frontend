@@ -45,8 +45,7 @@ export function normalizeBreezeEnvironment(value: string): string {
     case "smbbeta":
       return "smbBeta";
     case "release":
-      // Fallback: mypetmartt is registered on SMB. If backend sent "release", map it to "smbRelease" to prevent 403 on sdk.breeze.in
-      return "smbRelease";
+      return "release";
     case "beta":
       return "beta";
     default:
