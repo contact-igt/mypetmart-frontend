@@ -136,18 +136,41 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     [onCheckoutClosed],
   );
 
-  // Recover after a refresh/close: ask the server about the remembered session.
+  // Recover after a refresh: if a pending session exists, try to reopen the
+  // Breeze drawer with the same signed cart. Falls back to polling (status-only)
+  // if the session has already expired or resolved on the server.
   useEffect(() => {
     if (!enabled) return;
     const pending = readPending();
-    // Deferred (not synchronous in the effect body): this is an external-system
-    // sync (server state), and the poll sets state as results arrive.
-    const timer = pending ? window.setTimeout(() => void pollServer(pending, "Confirming your payment…"), 0) : undefined;
+    if (!pending) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      if (cancelled) return;
+      try {
+        const session = await PaymentApi.breezeResumeCheckoutSession(pending);
+        if (cancelled) return;
+        // Session is still open — reopen the drawer seamlessly.
+        launching.current = true;
+        terminating.current = false;
+        setStarting(true);
+        setMessage(null);
+        initBreeze({ merchantId: session.merchantId, shopUrl: session.shopUrl, environment: session.environment }, handleEvent);
+        breezeStartCheckout({ cart: session.cart, signature: session.signature, keyId: session.keyId });
+      } catch {
+        if (cancelled) return;
+        // Session expired or order already resolved — fall back to polling.
+        void pollServer(pending, "Confirming your payment…");
+      }
+    }, 0);
+
     return () => {
-      if (timer !== undefined) window.clearTimeout(timer);
+      cancelled = true;
+      window.clearTimeout(timer);
       pollToken.current += 1;
     };
-  }, [enabled, pollServer]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
 
   const close = useCallback(() => {
     terminating.current = true;

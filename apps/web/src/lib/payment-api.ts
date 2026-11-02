@@ -58,6 +58,20 @@ export const PaymentApi = {
    * is always Payment.amount (snapshotted from the Order) — never anything
    * the browser sends.
    */
+
+  /**
+   * Re-fetches the signed cart payload for an existing pending session so
+   * the browser can reopen the Breeze drawer after a page refresh without
+   * creating a new session (which would be refused as BREEZE_ATTEMPT_IN_PROGRESS).
+   * Returns null-equivalent (404 -> throws) when the session has expired or resolved.
+   */
+  async breezeResumeCheckoutSession(sessionId: string): Promise<BreezeCheckoutSessionJSON> {
+    return fetchWithAuth<BreezeCheckoutSessionJSON>("/storefront/payments/breeze/checkout-session/resume", {
+      method: "POST",
+      body: JSON.stringify({ sessionId }),
+    });
+  },
+
   async breezeInitiate(input: InitiatePaymentInput): Promise<BreezeStartPaymentParamsJSON> {
     return fetchWithAuth<BreezeStartPaymentParamsJSON>("/storefront/payments/breeze/initiate", {
       method: "POST",
