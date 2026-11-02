@@ -96,6 +96,22 @@ export function breezeStartCheckout(input: Omit<BreezeStartCheckoutPayload, "act
   BlazeSDK.process(envelope<BreezeStartCheckoutPayload>({ action: "startCheckout", ...input }));
 }
 
+
+export function cleanUrlAtomsState(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("atomsSt")) {
+      url.searchParams.delete("atomsSt");
+      const newQuery = url.searchParams.toString();
+      const newUrl = url.pathname + (newQuery ? "?" + newQuery : "") + url.hash;
+      window.history.replaceState({}, "", newUrl);
+    }
+  } catch {
+    // history unavailable
+  }
+}
+
 export function terminateBreeze(): void {
   if (typeof window === "undefined") return;
   try {

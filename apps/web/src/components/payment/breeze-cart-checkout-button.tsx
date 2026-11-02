@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AppAuthError } from "@/lib/auth/auth-errors";
-import { breezeStartCheckout, initBreeze, terminateBreeze } from "@/lib/breeze/blaze-sdk";
+import { breezeStartCheckout, cleanUrlAtomsState, initBreeze, terminateBreeze } from "@/lib/breeze/blaze-sdk";
+import { broadcastCartInvalidated } from "@/lib/cart/cart-sync-channel";
 import type { BreezeCallbackEvent } from "@/lib/breeze/types";
 import { PaymentApi } from "@/lib/payment-api";
 import type { BreezeCheckoutSessionStatusJSON } from "@/types/payment";
@@ -45,20 +46,7 @@ function readPending(): string | null {
   }
 }
 
-function cleanUrlAtomsState(): void {
-  if (typeof window === "undefined") return;
-  try {
-    const url = new URL(window.location.href);
-    if (url.searchParams.has("atomsSt")) {
-      url.searchParams.delete("atomsSt");
-      const newQuery = url.searchParams.toString();
-      const newUrl = url.pathname + (newQuery ? "?" + newQuery : "") + url.hash;
-      window.history.replaceState({}, "", newUrl);
-    }
-  } catch {
-    // history unavailable
-  }
-}
+
 
 function writePending(sessionId: string | null): void {
   try {
@@ -132,7 +120,17 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
             setMessage(described.text);
             if (described.final) {
               writePending(null);
+              cleanUrlAtomsState();
+              terminateBreeze();
+              broadcastCartInvalidated("payment-paid");
               onCheckoutClosed?.();
+
+              if (status.order && (status.order.paymentStatus === "paid" || status.processingStatus === "finalized")) {
+                const targetUrl = status.order.id
+                  ? `/order/payment/result?provider=breeze&status=success&orderId=${status.order.id}`
+                  : `/account/orders`;
+                router.push(targetUrl);
+              }
             }
             return;
           }
@@ -149,7 +147,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         setMessage("We're still confirming your order. You'll receive an email once it is verified.");
       }
     },
-    [onCheckoutClosed],
+    [onCheckoutClosed, router],
   );
 
   // Recover after a refresh: if a pending session exists, try to reopen the
@@ -158,7 +156,10 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   useEffect(() => {
     if (!enabled) return;
     const pending = readPending();
-    if (!pending) return;
+    if (!pending) {
+      cleanUrlAtomsState();
+      return;
+    }
 
     let cancelled = false;
     const timer = window.setTimeout(async () => {
@@ -175,8 +176,10 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         breezeStartCheckout({ cart: session.cart, signature: session.signature, keyId: session.keyId });
       } catch {
         if (cancelled) return;
-        // Session expired or order already resolved — fall back to polling.
-        void pollServer(pending, "Confirming your payment…");
+        // Session expired or order already resolved: clean URL immediately so Breeze cannot reopen completed order screens.
+        cleanUrlAtomsState();
+        terminateBreeze();
+        void pollServer(pending, "Checking order status…");
       }
     }, 0);
 
@@ -285,6 +288,9 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         // UI hint only: never treated as proof of payment. Ask the server.
         setMessage("Payment submitted. We're confirming your order…");
         const pending = readPending();
+        cleanUrlAtomsState();
+        terminateBreeze();
+        broadcastCartInvalidated("payment-paid");
         close();
         if (pending) void pollServer(pending);
       }

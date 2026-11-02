@@ -8,6 +8,7 @@ import { ProductImagePlaceholder } from "@/components/image-placeholder";
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import { TrustBadges } from "@/components/checkout/trust-badges";
 import { BreezeCartCheckoutButton } from "@/components/payment/breeze-cart-checkout-button";
+import { cleanUrlAtomsState } from "@/lib/breeze/blaze-sdk";
 import { CouponField } from "@/components/checkout/coupon-field";
 
 const formatPrice = (priceVal: number | string) => {
@@ -43,6 +44,18 @@ export function CartClient() {
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const [retrying, setRetrying] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
+  useEffect(() => {
+    // Strip atomsSt query parameter if no pending session is being resumed or when cart becomes empty
+    try {
+      const pending = typeof window !== "undefined" ? window.localStorage.getItem("mpm_breeze_pending_session") : null;
+      if (!pending || cart.items.length === 0) {
+        cleanUrlAtomsState();
+      }
+    } catch {
+      // storage unavailable
+    }
+  }, [cart.items.length]);
+
 
   // Reconcile against the authoritative server cart whenever the Cart page is
   // shown — the CartProvider only loads once per auth transition, so a cart
