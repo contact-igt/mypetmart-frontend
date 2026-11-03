@@ -20,6 +20,10 @@ const formatPrice = (priceVal: number | string) => {
   return num.toLocaleString("en-IN", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 };
 
+const isBrowserReload = () => performance.getEntriesByType("navigation").some(
+  (entry) => (entry as PerformanceNavigationTiming).type === "reload",
+);
+
 export function CartClient() {
   const {
     cart,
@@ -45,10 +49,10 @@ export function CartClient() {
   const [retrying, setRetrying] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   useEffect(() => {
-    // Strip atomsSt query parameter if no pending session is being resumed or when cart becomes empty
+    // Provider URL state may restore a closed checkout on ordinary Cart navigation.
     try {
       const pending = typeof window !== "undefined" ? window.localStorage.getItem("mpm_breeze_pending_session") : null;
-      if (!pending || cart.items.length === 0) {
+      if (!isBrowserReload() || !pending || cart.items.length === 0) {
         cleanUrlAtomsState();
       }
     } catch {
