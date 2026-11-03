@@ -558,6 +558,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
         <BreezeCartCheckoutButton
           autoStart
           autoStartKey={breezeCheckoutAttempt}
+          resumePending={false}
           hideButton
           disabled={false}
           onCheckoutClosed={() => setBreezeCheckoutRequested(false)}
