@@ -11,6 +11,7 @@ import { ProductReviewsSection } from "@/components/product-reviews-section";
 import { ProductCard } from "@/components/product-card";
 import { PdpGallery } from "@/components/pdp/pdp-gallery";
 import { PdpPurchasePanel } from "@/components/pdp/pdp-purchase-panel";
+import { BreezeCartCheckoutButton } from "@/components/payment/breeze-cart-checkout-button";
 import { PdpStickyCta } from "@/components/pdp/pdp-sticky-cta";
 import { PdpFeaturesGrid } from "@/components/pdp/pdp-features-grid";
 import { PdpInfoTabs } from "@/components/pdp/pdp-info-tabs";
@@ -156,6 +157,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
   const { status } = useCustomerAuth();
   const { isWishlisted, isPending, add, remove } = useWishlist();
   const { cart, add: addToCart } = useCart();
+  const [breezeCheckoutRequested, setBreezeCheckoutRequested] = useState(false);
 
   // Defaults to the first listed option (matches the order Select option
   // renders) so a Variant Product never lands on an ambiguous "choose an
@@ -309,7 +311,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
       (item.variantId ?? null) === (selectedVariant?.id ?? null) &&
       item.quantity >= 1 && item.available
     )) {
-      router.push("/checkout");
+      setBreezeCheckoutRequested(true);
       return;
     }
 
@@ -323,7 +325,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
         product.hasVariants ? selectedVariant?.id : undefined
       );
       setCartStatus("success");
-      if (checkout) router.push("/checkout");
+      if (checkout) setBreezeCheckoutRequested(true);
     } catch (error) {
       setCartStatus("error");
       if (error instanceof AppAuthError) {
@@ -547,6 +549,14 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
         cartStatus={cartStatus}
         onAddToCart={() => handleAddToCart()}
       />
+      {breezeCheckoutRequested && (
+        <BreezeCartCheckoutButton
+          autoStart
+          hideButton
+          disabled={false}
+          onCheckoutClosed={() => setBreezeCheckoutRequested(false)}
+        />
+      )}
     </div>
   );
 }
