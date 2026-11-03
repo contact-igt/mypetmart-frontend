@@ -158,6 +158,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
   const { isWishlisted, isPending, add, remove } = useWishlist();
   const { cart, add: addToCart } = useCart();
   const [breezeCheckoutRequested, setBreezeCheckoutRequested] = useState(false);
+  const [breezeCheckoutAttempt, setBreezeCheckoutAttempt] = useState(0);
 
   // Defaults to the first listed option (matches the order Select option
   // renders) so a Variant Product never lands on an ambiguous "choose an
@@ -312,6 +313,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
       item.quantity >= 1 && item.available
     )) {
       setBreezeCheckoutRequested(true);
+      setBreezeCheckoutAttempt((attempt) => attempt + 1);
       return;
     }
 
@@ -325,7 +327,10 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
         product.hasVariants ? selectedVariant?.id : undefined
       );
       setCartStatus("success");
-      if (checkout) setBreezeCheckoutRequested(true);
+      if (checkout) {
+        setBreezeCheckoutRequested(true);
+        setBreezeCheckoutAttempt((attempt) => attempt + 1);
+      }
     } catch (error) {
       setCartStatus("error");
       if (error instanceof AppAuthError) {
@@ -552,6 +557,7 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
       {breezeCheckoutRequested && (
         <BreezeCartCheckoutButton
           autoStart
+          autoStartKey={breezeCheckoutAttempt}
           hideButton
           disabled={false}
           onCheckoutClosed={() => setBreezeCheckoutRequested(false)}

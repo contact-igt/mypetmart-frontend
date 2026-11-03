@@ -86,10 +86,11 @@ type Props = {
   breezeEligible?: boolean;
   onCheckoutClosed?: () => void;
   autoStart?: boolean;
+  autoStartKey?: number;
   hideButton?: boolean;
 };
 
-export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCheckoutClosed, autoStart = false, hideButton = false }: Props) {
+export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCheckoutClosed, autoStart = false, autoStartKey = 0, hideButton = false }: Props) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -98,7 +99,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   const launching = useRef(false);
   const pollToken = useRef(0);
   const terminating = useRef(false);
-  const autoStarted = useRef(false);
+  const lastAutoStartKey = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -350,10 +351,10 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   };
 
   useEffect(() => {
-    if (!autoStart || disabled || !enabled || autoStarted.current) return;
-    autoStarted.current = true;
+    if (!autoStart || disabled || !enabled || lastAutoStartKey.current === autoStartKey) return;
+    lastAutoStartKey.current = autoStartKey;
     void start();
-  }, [autoStart, disabled, enabled, start]);
+  }, [autoStart, autoStartKey, disabled, enabled, start]);
 
   return (
     <>
