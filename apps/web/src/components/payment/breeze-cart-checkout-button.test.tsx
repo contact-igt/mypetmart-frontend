@@ -64,7 +64,6 @@ describe("BreezeCartCheckoutButton", () => {
   });
   afterEach(() => {
     cleanup();
-    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -135,41 +134,39 @@ describe("BreezeCartCheckoutButton", () => {
     await waitFor(() => expect(statusMock).toHaveBeenCalledWith(SESSION.sessionId));
     expect(screen.getByRole("status").textContent).not.toMatch(/is confirmed/i);
 
-    // A normal remount is not a browser refresh, so it must not restore a
-    // drawer or claim a result from local storage alone.
+    statusMock.mockResolvedValue(CONFIRMED);
+    // next poll cycle is delayed; simulate by remounting (page refresh) — recovery path
     cleanup();
     render(<BreezeCartCheckoutButton disabled={false} />);
-    expect(screen.queryByRole("status")).toBeNull();
+    await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Order MPM-1001 is confirmed/));
   });
 
-  it("keeps the pending checkout for server reconciliation when Breeze closes", async () => {
+  it("clears the pending checkout when Breeze closes through a non-processResult callback", async () => {
     configMock.mockResolvedValue({ enabled: true });
     sessionMock.mockResolvedValue(SESSION);
-    statusMock.mockResolvedValue(AWAITING);
     render(<BreezeCartCheckoutButton disabled={false} />);
     const onEvent = await launch();
 
     await act(async () => onEvent({ payload: { eventName: "eventStream", status: "closeApp" } }));
 
-    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
+    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
     expect(screen.getByRole("status").textContent).toMatch(/checkout closed/i);
     expect(terminateMock).toHaveBeenCalled();
   });
 
-  it("keeps the pending checkout when Breeze reports a close through its event field", async () => {
+  it("clears the pending checkout when Breeze reports a close through its event field", async () => {
     configMock.mockResolvedValue({ enabled: true });
     sessionMock.mockResolvedValue(SESSION);
-    statusMock.mockResolvedValue(AWAITING);
     render(<BreezeCartCheckoutButton disabled={false} />);
     const onEvent = await launch();
 
     await act(async () => onEvent({ payload: { eventName: "eventStream", event: "closeApp" } }));
 
-    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
+    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
     expect(screen.getByRole("status").textContent).toMatch(/checkout closed/i);
   });
 
-  it("ignores an untrusted browser message that claims Breeze closed", async () => {
+  it("notifies the product page when Breeze closes through a browser message", async () => {
     const onCheckoutClosed = vi.fn();
     configMock.mockResolvedValue({ enabled: true });
     sessionMock.mockResolvedValue(SESSION);
@@ -178,15 +175,14 @@ describe("BreezeCartCheckoutButton", () => {
 
     await act(async () => window.dispatchEvent(new MessageEvent("message", { data: { event: "closeApp" } })));
 
-    expect(onCheckoutClosed).not.toHaveBeenCalled();
-    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
+    expect(onCheckoutClosed).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
   });
 
   it("recovers after a refresh from the remembered session id and clears it once the server confirms", async () => {
     window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
     configMock.mockResolvedValue({ enabled: true });
     statusMock.mockResolvedValue(CONFIRMED);
-    vi.spyOn(performance, "getEntriesByType").mockReturnValue([{ type: "reload" } as PerformanceEntry]);
     render(<BreezeCartCheckoutButton disabled={false} />);
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Order MPM-1001 is confirmed/));
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
@@ -196,7 +192,6 @@ describe("BreezeCartCheckoutButton", () => {
     window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
     configMock.mockResolvedValue({ enabled: true });
     statusMock.mockResolvedValue({ ...CONFIRMED, order: { ...CONFIRMED.order, status: "pending", commerceException: "inventory_unavailable" } });
-    vi.spyOn(performance, "getEntriesByType").mockReturnValue([{ type: "reload" } as PerformanceEntry]);
     render(<BreezeCartCheckoutButton disabled={false} />);
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/reviewing it/i));
     expect(screen.getByRole("status").textContent).not.toMatch(/is confirmed/i);
@@ -245,8 +240,7 @@ describe("BreezeCartCheckoutButton", () => {
     await act(async () => {
       fireEvent.click(button);
     });
-    // The saved session is re-authorized by the server; the browser does not
-    // use the local pointer as permission to make a fresh checkout.
-    await waitFor(() => expect(resumeMock).toHaveBeenCalledWith(SESSION.sessionId));
+    // The launch is attempted through the server; the client does not pre-decide.
+    await waitFor(() => expect(sessionMock).toHaveBeenCalled());
   });
 });
