@@ -11,7 +11,14 @@ import { CartProvider } from "@/context/cart-context";
 import type { ProductDetail } from "@/types/storefront";
 import { act } from "react";
 
-const mockPush = vi.fn();
+const { mockPush, breezeStartMock } = vi.hoisted(() => ({ mockPush: vi.fn(), breezeStartMock: vi.fn() }));
+
+vi.mock("@/lib/breeze/blaze-sdk", () => ({
+  cleanUrlAtomsState: vi.fn(),
+  initBreeze: vi.fn(),
+  terminateBreeze: vi.fn(),
+  breezeStartCheckout: breezeStartMock,
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -531,7 +538,7 @@ describe("ProductDetail Storefront Component", () => {
     expect(categoryLink).toHaveAttribute("href", "/shop?category=dog-essentials");
   });
 
-  it.each([false, true])("Buy it now opens checkout with an existing cart item: %s", async (alreadyAdded) => {
+  it.each([false, true])("Buy it now opens Breeze checkout with an existing cart item: %s", async (alreadyAdded) => {
     const cart = { id: 42, status: "active", itemCount: 1, subtotal: "499.00", items: [{ productId: 101, variantId: null, quantity: 1, available: true }] };
     const fetchMock = setupMockFetch(async (url, init) => {
       if (url.includes("/auth/refresh") || url.includes("/auth/me")) {
@@ -543,11 +550,18 @@ describe("ProductDetail Storefront Component", () => {
       if (url.includes("/storefront/cart/items") && init?.method === "POST") {
         return jsonResponse({ success: true, data: cart });
       }
+      if (url.includes("/storefront/payments/breeze/checkout-config")) {
+        return jsonResponse({ success: true, data: { enabled: true } });
+      }
+      if (url.includes("/storefront/payments/breeze/checkout-session") && init?.method === "POST") {
+        return jsonResponse({ success: true, data: { sessionId: "a".repeat(32), merchantId: "merchant", shopUrl: "https://mypetmart.in", environment: "smb-release", cart: "{}", signature: "signature", keyId: "key", amountPaise: 49900, currency: "INR", expiresAt: "2030-01-01T00:00:00.000Z" } });
+      }
     });
     renderProductDetail(mockSimpleProduct);
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => String(url).includes("/storefront/cart") && init?.method === "GET")).toBe(true));
     fireEvent.click(inPanel().getByRole("button", { name: "Buy it now" }));
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/checkout"));
+    await waitFor(() => expect(breezeStartMock).toHaveBeenCalledWith({ cart: "{}", signature: "signature", keyId: "key" }));
+    expect(mockPush).not.toHaveBeenCalledWith("/checkout");
     const adds = fetchMock.mock.calls.filter(([url, init]) => String(url).includes("/storefront/cart/items") && init?.method === "POST");
     expect(adds).toHaveLength(alreadyAdded ? 0 : 1);
     if (!alreadyAdded) expect(JSON.parse(adds[0][1].body as string)).toMatchObject({ productId: 101, quantity: 1 });

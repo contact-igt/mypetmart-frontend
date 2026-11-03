@@ -8,7 +8,7 @@ import { breezeStartCheckout, cleanUrlAtomsState, initBreeze, terminateBreeze } 
 import { broadcastCartInvalidated } from "@/lib/cart/cart-sync-channel";
 import type { BreezeCallbackEvent } from "@/lib/breeze/types";
 import { PaymentApi } from "@/lib/payment-api";
-import type { BreezeCheckoutSessionStatusJSON } from "@/types/payment";
+import type { BreezeCheckoutSessionJSON, BreezeCheckoutSessionStatusJSON } from "@/types/payment";
 
 // Breeze full 1-Click Checkout launcher for the cart page.
 //
@@ -46,6 +46,11 @@ function readPending(): string | null {
   }
 }
 
+function isBrowserReload(): boolean {
+  return performance.getEntriesByType("navigation").some(
+    (entry) => (entry as PerformanceNavigationTiming).type === "reload",
+  );
+}
 
 
 function writePending(sessionId: string | null): void {
@@ -80,9 +85,11 @@ type Props = {
   disabled: boolean;
   breezeEligible?: boolean;
   onCheckoutClosed?: () => void;
+  autoStart?: boolean;
+  hideButton?: boolean;
 };
 
-export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCheckoutClosed }: Props) {
+export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCheckoutClosed, autoStart = false, hideButton = false }: Props) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -91,6 +98,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   const launching = useRef(false);
   const pollToken = useRef(0);
   const terminating = useRef(false);
+  const autoStarted = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,7 +162,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   // Breeze drawer with the same signed cart. Falls back to polling (status-only)
   // if the session has already expired or resolved on the server.
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !isBrowserReload()) return;
     const pending = readPending();
     if (!pending) {
       cleanUrlAtomsState();
@@ -315,7 +323,19 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     setMessage(null);
     setStarting(true);
     try {
-      const session = await PaymentApi.breezeCheckoutSession();
+      const pending = readPending();
+      let session: BreezeCheckoutSessionJSON;
+      if (pending) {
+        try {
+          session = await PaymentApi.breezeResumeCheckoutSession(pending);
+        } catch (err) {
+          if (!(err instanceof AppAuthError) || err.code !== "BREEZE_SESSION_NOT_FOUND") throw err;
+          writePending(null);
+          session = await PaymentApi.breezeCheckoutSession();
+        }
+      } else {
+        session = await PaymentApi.breezeCheckoutSession();
+      }
       writePending(session.sessionId);
       initBreeze({ merchantId: session.merchantId, shopUrl: session.shopUrl, environment: session.environment }, handleEvent);
       breezeStartCheckout({ cart: session.cart, signature: session.signature, keyId: session.keyId });
@@ -332,16 +352,24 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     }
   };
 
+  useEffect(() => {
+    if (!autoStart || disabled || !enabled || autoStarted.current) return;
+    autoStarted.current = true;
+    void start();
+  }, [autoStart, disabled, enabled, start]);
+
   return (
     <>
-      <button
-        type="button"
-        onClick={start}
-        disabled={disabled || starting}
-        className="motion-press h-11 inline-flex items-center justify-center rounded-xl bg-primary-orange text-white font-semibold text-sm tracking-wide hover:bg-terracotta transition-all cursor-pointer disabled:opacity-40"
-      >
-        {starting ? "Opening secure checkout..." : "Buy it now"}
-      </button>
+      {!hideButton && (
+        <button
+          type="button"
+          onClick={start}
+          disabled={disabled || starting}
+          className="motion-press h-11 inline-flex items-center justify-center rounded-xl bg-primary-orange text-white font-semibold text-sm tracking-wide hover:bg-terracotta transition-all cursor-pointer disabled:opacity-40"
+        >
+          {starting ? "Opening secure checkout..." : "Buy it now"}
+        </button>
+      )}
       {message ? (
         <p role="status" className="text-xs text-text-muted">
           {message}

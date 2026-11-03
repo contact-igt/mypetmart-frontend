@@ -1,22 +1,25 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { configMock, sessionMock, statusMock, initMock, startMock, terminateMock } = vi.hoisted(() => ({
+const { configMock, sessionMock, resumeMock, statusMock, initMock, startMock, terminateMock, cleanMock } = vi.hoisted(() => ({
   configMock: vi.fn(),
   sessionMock: vi.fn(),
+  resumeMock: vi.fn(),
   statusMock: vi.fn(),
   initMock: vi.fn(),
   startMock: vi.fn(),
   terminateMock: vi.fn(),
+  cleanMock: vi.fn(),
 }));
 
 vi.mock("@/lib/payment-api", () => ({
-  PaymentApi: { breezeCheckoutConfig: configMock, breezeCheckoutSession: sessionMock, breezeCheckoutSessionStatus: statusMock },
+  PaymentApi: { breezeCheckoutConfig: configMock, breezeCheckoutSession: sessionMock, breezeResumeCheckoutSession: resumeMock, breezeCheckoutSessionStatus: statusMock },
 }));
 vi.mock("@/lib/breeze/blaze-sdk", () => ({
   initBreeze: initMock,
   breezeStartCheckout: startMock,
   terminateBreeze: terminateMock,
+  cleanUrlAtomsState: cleanMock,
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
@@ -76,6 +79,19 @@ describe("BreezeCartCheckoutButton", () => {
     const { container } = render(<BreezeCartCheckoutButton disabled={false} />);
     await waitFor(() => expect(configMock).toHaveBeenCalled());
     expect(container.querySelector("button")?.textContent).toBe("Buy it now");
+  });
+
+  it("resumes a saved Breeze session only after an explicit Buy it now click", async () => {
+    window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
+    configMock.mockResolvedValue({ enabled: true });
+    resumeMock.mockResolvedValue(SESSION);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    await waitFor(() => expect(configMock).toHaveBeenCalled());
+    expect(resumeMock).not.toHaveBeenCalled();
+
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Buy it now" })));
+    await waitFor(() => expect(resumeMock).toHaveBeenCalledWith(SESSION.sessionId));
+    expect(startMock).toHaveBeenCalledWith({ cart: SESSION.cart, signature: SESSION.signature, keyId: SESSION.keyId });
   });
 
   it("starts the SDK-controlled checkout using only backend-signed values, with no custom modal", async () => {
