@@ -199,4 +199,20 @@ describe("PaymentResultClient (real backend reconciliation, never trusts the bro
     expect(screen.queryByRole("link", { name: /View Order Status/i })).not.toBeInTheDocument();
     await waitFor(() => expect(readGuestPaymentToken()).toBeNull());
   });
+
+  it("recovers a Breeze guest result through the ownership-protected checkout session, without a guest token in the URL", async () => {
+    vi.spyOn(AuthApi, "refresh").mockResolvedValue(null);
+    vi.mocked(fetch).mockImplementation((input) => {
+      if (String(input).includes("/storefront/payments/breeze/checkout-session/status")) {
+        return Promise.resolve(jsonResponse({ success: true, data: { sessionId: "a".repeat(32), processingStatus: "finalized", awaitingWebhook: false, order: { id: 42, orderNumber: "MPM-42", status: "confirmed", paymentStatus: "paid", commerceException: null }, guestAccessToken: null } }));
+      }
+      return Promise.resolve(jsonResponse({ success: true, data: null }));
+    });
+
+    render(<CustomerAuthProvider><PaymentResultClient status="success" txnid={null} orderId={null} provider="breeze" breezeSessionId={"a".repeat(32)} /></CustomerAuthProvider>);
+
+    await waitFor(() => expect(screen.getByText(/Payment confirmed/i)).toBeInTheDocument());
+    const call = vi.mocked(fetch).mock.calls.find((item) => String(item[0]).includes("/breeze/checkout-session/status"));
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({ sessionId: "a".repeat(32) });
+  });
 });

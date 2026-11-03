@@ -10,11 +10,11 @@ export const metadata = {
 };
 
 type Props = {
-  searchParams: Promise<{ status?: string; txnid?: string; orderId?: string; provider?: string }>;
+  searchParams: Promise<{ status?: string; txnid?: string; orderId?: string; provider?: string; sessionId?: string }>;
 };
 
 export default async function PaymentResultPage({ searchParams }: Props) {
-  const { status, txnid, orderId, provider } = await searchParams;
+  const { status, txnid, orderId, provider, sessionId } = await searchParams;
 
   return (
     <main className="flex-1 bg-cream-bg py-8 md:py-12 min-h-[calc(100vh-144px)] flex items-center">
@@ -25,6 +25,7 @@ export default async function PaymentResultPage({ searchParams }: Props) {
             txnid={txnid ?? null}
             orderId={orderId ?? null}
             provider={provider === "breeze" ? "breeze" : "payu"}
+            breezeSessionId={provider === "breeze" ? sessionId ?? null : null}
           />
         </div>
       </div>

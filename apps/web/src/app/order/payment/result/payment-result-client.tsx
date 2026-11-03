@@ -21,6 +21,7 @@ type PaymentResultClientProps = {
   txnid: string | null;
   orderId: string | null;
   provider?: "payu" | "breeze";
+  breezeSessionId?: string | null;
 };
 
 type ReconciliationState =
@@ -51,7 +52,7 @@ function ReferenceBox({ orderId, txnid }: { orderId: string | number | null; txn
   );
 }
 
-export function PaymentResultClient({ status, txnid, orderId, provider = "payu" }: PaymentResultClientProps) {
+export function PaymentResultClient({ status, txnid, orderId, provider = "payu", breezeSessionId = null }: PaymentResultClientProps) {
   const providerLabel = provider === "breeze" ? "Breeze" : "PayU";
   const { status: authStatus, customer } = useCustomerAuth();
   const { refresh } = useCart();
@@ -83,6 +84,23 @@ export function PaymentResultClient({ status, txnid, orderId, provider = "payu" 
     let cancelled = false;
 
     async function runReconciliation() {
+      if (provider === "breeze" && breezeSessionId) {
+        try {
+          const breeze = await PaymentApi.breezeCheckoutSessionStatus(breezeSessionId);
+          const order = breeze.order;
+          const result: PaymentStatusResultJSON = order
+            ? { paymentStatus: order.paymentStatus, orderId: order.id, orderStatus: order.status, amount: "", currency: "", commerceException: order.commerceException }
+            : { paymentStatus: "pending", orderId: 0, orderStatus: breeze.processingStatus, amount: "", currency: "", commerceException: null };
+          if (result.paymentStatus === "paid" && !result.commerceException) {
+            broadcastCartInvalidated("payment-paid");
+            void refreshRef.current();
+          }
+          if (!cancelled) setState({ kind: "resolved", result, retryInput: null });
+        } catch {
+          if (!cancelled) setState({ kind: "error" });
+        }
+        return;
+      }
       const input: InitiatePaymentInput | null =
         isAuthenticated && orderId
           ? { orderId: Number(orderId) }
@@ -122,7 +140,7 @@ export function PaymentResultClient({ status, txnid, orderId, provider = "payu" 
     return () => {
       cancelled = true;
     };
-  }, [authStatus, isAuthenticated, orderId, retryToken]);
+  }, [authStatus, breezeSessionId, isAuthenticated, orderId, provider, retryToken]);
 
   if (state.kind === "loading" || authStatus === "loading") {
     return (
@@ -229,7 +247,7 @@ export function PaymentResultClient({ status, txnid, orderId, provider = "payu" 
         <div>
           <h1 className="font-baloo text-2xl font-extrabold text-deep-brown">Payment confirmed</h1>
           <p className="mt-2 text-sm text-text-primary/75 max-w-md mx-auto">
-            Thank you! Your payment of {result.currency} {result.amount} was successful and your order is confirmed.
+            {result.amount ? `Thank you! Your payment of ${result.currency} ${result.amount} was successful and your order is confirmed.` : "Thank you! Your payment was successful and your order is confirmed."}
           </p>
         </div>
         <ReferenceBox orderId={result.orderId} txnid={txnid} />
