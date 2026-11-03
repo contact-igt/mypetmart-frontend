@@ -24,6 +24,7 @@ import {
 import Link from "next/link";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useCart } from "@/context/cart-context";
+import { cleanUrlAtomsState } from "@/lib/breeze/blaze-sdk";
 
 const subscribeNoop = () => () => {};
 
@@ -254,6 +255,7 @@ export function SiteHeader() {
           </details>
           <Link
             href="/cart"
+            onClick={cleanUrlAtomsState}
             className="inline-flex h-11 shrink-0 items-center gap-2.5 rounded-lg bg-deep-brown px-4 text-sm font-semibold text-white transition-opacity duration-150 hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
             aria-label={itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"}
           >
@@ -268,6 +270,7 @@ export function SiteHeader() {
         <div className="flex items-center justify-self-end lg:hidden">
           <Link
             href="/cart"
+            onClick={cleanUrlAtomsState}
             aria-label={itemCount > 0 ? `Cart, ${itemCount} items` : "Cart"}
             className="-mr-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-text-primary transition-colors duration-150 ease-out hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-brown/30"
           >

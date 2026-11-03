@@ -225,10 +225,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
           str.includes("dismiss") ||
           str.includes("user_dropped")
         ) {
-          writePending(null);
-          cleanUrlAtomsState();
-          launching.current = false;
-          setStarting(false);
+          close();
         }
       } catch {
         // Non-JSON message, ignore
@@ -238,7 +235,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     return () => {
       window.removeEventListener("message", handleWindowMessage);
     };
-  }, []);
+  }, [close]);
 
 
   const handleEvent = useCallback(

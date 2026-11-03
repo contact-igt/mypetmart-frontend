@@ -166,6 +166,19 @@ describe("BreezeCartCheckoutButton", () => {
     expect(screen.getByRole("status").textContent).toMatch(/checkout closed/i);
   });
 
+  it("notifies the product page when Breeze closes through a browser message", async () => {
+    const onCheckoutClosed = vi.fn();
+    configMock.mockResolvedValue({ enabled: true });
+    sessionMock.mockResolvedValue(SESSION);
+    render(<BreezeCartCheckoutButton disabled={false} onCheckoutClosed={onCheckoutClosed} />);
+    await launch();
+
+    await act(async () => window.dispatchEvent(new MessageEvent("message", { data: { event: "closeApp" } })));
+
+    expect(onCheckoutClosed).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
+  });
+
   it("recovers after a refresh from the remembered session id and clears it once the server confirms", async () => {
     window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
     configMock.mockResolvedValue({ enabled: true });
