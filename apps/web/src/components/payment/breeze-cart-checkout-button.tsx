@@ -37,36 +37,6 @@ const PENDING_KEY = "mpm_breeze_pending_session";
 const BLOCKING_CODES = ["BREEZE_ATTEMPT_IN_PROGRESS", "BREEZE_PAYMENT_VERIFYING", "BREEZE_RECONCILIATION_REQUIRED"];
 const POLL_INTERVAL_MS = 3000;
 const POLL_MAX_ATTEMPTS = 20;
-const BREEZE_CLOSE_SIGNALS = new Set([
-  "backpressed", "closeapp", "cancelled", "cancel", "closed", "user_cancelled", "aborted", "dismiss", "dismissed", "terminate", "close"
-]);
-
-function isBreezeClosePayload(payload: Record<string, unknown>): boolean {
-  const value = (key: string) => typeof payload[key] === "string" ? payload[key].toLowerCase() : "";
-  return [value("eventName"), value("status"), value("action"), value("event")].some((signal) => BREEZE_CLOSE_SIGNALS.has(signal));
-}
-
-function isTrustedBreezeOrigin(origin: string): boolean {
-  if (typeof window === "undefined") return false;
-  if (origin === window.location.origin) return true;
-  try {
-    const host = new URL(origin).hostname;
-    return host === "breeze.in" || host.endsWith(".breeze.in");
-  } catch {
-    return false;
-  }
-}
-
-function messagePayload(data: unknown): Record<string, unknown> | null {
-  try {
-    const parsed = typeof data === "string" ? JSON.parse(data) : data;
-    if (!parsed || typeof parsed !== "object") return null;
-    const candidate = parsed as { payload?: unknown };
-    return candidate.payload && typeof candidate.payload === "object" ? candidate.payload as Record<string, unknown> : parsed as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
 
 function readPending(): string | null {
   try {
@@ -271,12 +241,35 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       if (!payload) return;
       const eventName = typeof payload.eventName === "string" ? payload.eventName.toLowerCase() : "";
       const status = typeof payload.status === "string" ? payload.status.toLowerCase() : "";
+      const action = typeof payload.action === "string" ? payload.action.toLowerCase() : "";
+      const providerEvent = typeof payload.event === "string" ? payload.event.toLowerCase() : "";
 
       // Breeze sends close notifications through different callback event names
       // across Hyper bundles. A customer close is not a payment result, so stop
       // polling and allow another server-authorized checkout attempt.
       if (eventName === "terminate" && terminating.current) return;
-      const isCloseOrCancel = isBreezeClosePayload(payload);
+      const isCloseOrCancel =
+        status === "backpressed" ||
+        status === "closeapp" ||
+        status === "cancelled" ||
+        status === "cancel" ||
+        status === "closed" ||
+        status === "user_cancelled" ||
+        status === "aborted" ||
+        status === "dismiss" ||
+        status === "dismissed" ||
+        providerEvent === "backpressed" ||
+        providerEvent === "closeapp" ||
+        providerEvent === "cancelled" ||
+        providerEvent === "cancel" ||
+        providerEvent === "closed" ||
+        action === "close" ||
+        action === "cancel" ||
+        action === "terminate" ||
+        eventName === "terminate" ||
+        eventName === "close" ||
+        eventName === "cancel" ||
+        eventName === "dismiss";
 
       if (isCloseOrCancel) {
         setMessage("Checkout closed. If you made a payment, we’ll verify it before another checkout.");
@@ -303,18 +296,6 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     },
     [close, pollServer],
   );
-
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (!isTrustedBreezeOrigin(event.origin)) return;
-      const payload = messagePayload(event.data);
-      if (!payload || !isBreezeClosePayload(payload)) return;
-      setMessage("Checkout closed. If you made a payment, we'll verify it before another checkout.");
-      close();
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [close]);
 
   // Server-authoritative launch. The backend refuses a new session while an
   // earlier attempt may still be paid (409 with a machine-readable reason). No

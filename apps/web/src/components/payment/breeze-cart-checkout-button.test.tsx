@@ -182,24 +182,6 @@ describe("BreezeCartCheckoutButton", () => {
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
   });
 
-  it("cleans SDK URL state for a trusted Breeze close message", async () => {
-    const onCheckoutClosed = vi.fn();
-    configMock.mockResolvedValue({ enabled: true });
-    sessionMock.mockResolvedValue(SESSION);
-    render(<BreezeCartCheckoutButton disabled={false} onCheckoutClosed={onCheckoutClosed} />);
-    await launch();
-
-    await act(async () => window.dispatchEvent(new MessageEvent("message", {
-      origin: "https://sdk.breeze.in",
-      data: { payload: { eventName: "eventStream", status: "closeApp" } }
-    })));
-
-    expect(cleanMock).toHaveBeenCalled();
-    expect(terminateMock).toHaveBeenCalled();
-    expect(onCheckoutClosed).toHaveBeenCalledTimes(1);
-    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
-  });
-
   it("recovers after a refresh from the remembered session id and clears it once the server confirms", async () => {
     window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
     configMock.mockResolvedValue({ enabled: true });
