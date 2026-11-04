@@ -39,6 +39,7 @@ const SESSION = {
   currency: "INR",
   expiresAt: "2030-01-01T00:00:00.000Z",
 };
+const CLOSED_KEY = "mpm_breeze_drawer_closed_session";
 
 const AWAITING = { sessionId: SESSION.sessionId, processingStatus: "awaiting_webhook", awaitingWebhook: true, order: null, guestAccessToken: null };
 const CONFIRMED = {
@@ -169,6 +170,7 @@ describe("BreezeCartCheckoutButton", () => {
     await act(async () => onEvent({ payload: { eventName: "eventStream", status: "closeApp" } }));
 
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
+    expect(window.localStorage.getItem(CLOSED_KEY)).toBe(SESSION.sessionId);
     expect(screen.getByRole("status").textContent).toMatch(/checkout closed/i);
     expect(terminateMock).toHaveBeenCalled();
   });
@@ -198,6 +200,7 @@ describe("BreezeCartCheckoutButton", () => {
 
     await waitFor(() => expect(resumeMock).toHaveBeenCalledWith(SESSION.sessionId));
     expect(sessionMock).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.getItem(CLOSED_KEY)).toBeNull();
   });
 
   it("ignores an untrusted browser message that claims Breeze closed", async () => {
@@ -211,6 +214,35 @@ describe("BreezeCartCheckoutButton", () => {
 
     expect(onCheckoutClosed).not.toHaveBeenCalled();
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
+  });
+
+  it("does not reopen a drawer the customer explicitly closed after refresh", async () => {
+    window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
+    window.localStorage.setItem(CLOSED_KEY, SESSION.sessionId);
+    configMock.mockResolvedValue({ enabled: true });
+    statusMock.mockResolvedValue(AWAITING);
+    vi.spyOn(performance, "getEntriesByType").mockReturnValue([{ type: "reload" } as PerformanceEntry]);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+
+    await waitFor(() => expect(cleanMock).toHaveBeenCalled());
+    expect(resumeMock).not.toHaveBeenCalled();
+    expect(startMock).not.toHaveBeenCalled();
+  });
+
+  it("handles a trusted Breeze Close App message", async () => {
+    configMock.mockResolvedValue({ enabled: true });
+    sessionMock.mockResolvedValue(SESSION);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    await launch();
+
+    await act(async () => window.dispatchEvent(new MessageEvent("message", {
+      origin: "https://sdk.breeze.in",
+      data: { payload: { eventName: "eventStream", status: "closeApp" } },
+    })));
+
+    expect(cleanMock).toHaveBeenCalled();
+    expect(terminateMock).toHaveBeenCalled();
+    expect(window.localStorage.getItem(CLOSED_KEY)).toBe(SESSION.sessionId);
   });
 
   it("recovers after a refresh from the remembered session id and clears it once the server confirms", async () => {
