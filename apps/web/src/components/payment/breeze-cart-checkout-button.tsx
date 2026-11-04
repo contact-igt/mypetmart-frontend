@@ -33,10 +33,14 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 const PENDING_KEY = "mpm_breeze_pending_session";
+const CLOSED_KEY = "mpm_breeze_drawer_closed_session";
 // Machine-readable refusal codes from POST /storefront/payments/breeze/checkout-session.
 const BLOCKING_CODES = ["BREEZE_ATTEMPT_IN_PROGRESS", "BREEZE_PAYMENT_VERIFYING", "BREEZE_RECONCILIATION_REQUIRED"];
 const POLL_INTERVAL_MS = 3000;
 const POLL_MAX_ATTEMPTS = 20;
+const BREEZE_CLOSE_SIGNALS = new Set([
+  "backpressed", "closeapp", "cancelled", "cancel", "closed", "user_cancelled", "aborted", "dismiss", "dismissed", "terminate", "close",
+]);
 
 function readPending(): string | null {
   try {
@@ -57,11 +61,58 @@ function writePending(sessionId: string | null): void {
   try {
     if (sessionId) {
       window.localStorage.setItem(PENDING_KEY, sessionId);
+      window.localStorage.removeItem(CLOSED_KEY);
     } else {
       window.localStorage.removeItem(PENDING_KEY);
+      window.localStorage.removeItem(CLOSED_KEY);
     }
   } catch {
     // storage unavailable: the server remains the source of truth
+  }
+}
+
+function markDrawerClosed(): void {
+  try {
+    const pending = readPending();
+    if (pending) window.localStorage.setItem(CLOSED_KEY, pending);
+  } catch {
+    // storage unavailable: the server remains the source of truth
+  }
+}
+
+function wasDrawerClosed(sessionId: string): boolean {
+  try {
+    return window.localStorage.getItem(CLOSED_KEY) === sessionId;
+  } catch {
+    return false;
+  }
+}
+
+function isBreezeClosePayload(payload: Record<string, unknown>): boolean {
+  return ["eventName", "status", "action", "event"].some((key) => {
+    const value = payload[key];
+    return typeof value === "string" && BREEZE_CLOSE_SIGNALS.has(value.toLowerCase());
+  });
+}
+
+function isTrustedBreezeOrigin(origin: string): boolean {
+  if (origin === window.location.origin) return true;
+  try {
+    const host = new URL(origin).hostname;
+    return host === "breeze.in" || host.endsWith(".breeze.in");
+  } catch {
+    return false;
+  }
+}
+
+function messagePayload(data: unknown): Record<string, unknown> | null {
+  try {
+    const parsed = typeof data === "string" ? JSON.parse(data) : data;
+    if (!parsed || typeof parsed !== "object") return null;
+    const candidate = parsed as { payload?: unknown };
+    return candidate.payload && typeof candidate.payload === "object" ? candidate.payload as Record<string, unknown> : parsed as Record<string, unknown>;
+  } catch {
+    return null;
   }
 }
 
@@ -177,6 +228,16 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       cleanUrlAtomsState();
       return;
     }
+    if (wasDrawerClosed(pending)) {
+      // The customer explicitly closed the drawer. Preserve the session for an
+      // explicit retry, but never let a reload or stale atomsSt reopen it.
+      cleanUrlAtomsState();
+      terminateBreeze();
+      void pollServer(pending);
+      return () => {
+        pollToken.current += 1;
+      };
+    }
 
     let cancelled = false;
     const timer = window.setTimeout(async () => {
@@ -232,6 +293,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   }, [enabled, onCheckoutClosed, pollServer, router]);
 
   const close = useCallback(() => {
+    markDrawerClosed();
     cleanUrlAtomsState();
     terminating.current = true;
     terminateBreeze();
@@ -241,6 +303,18 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   }, [onCheckoutClosed]);
 
   useEffect(() => () => terminateBreeze(), []);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (!isTrustedBreezeOrigin(event.origin)) return;
+      const payload = messagePayload(event.data);
+      if (!payload || !isBreezeClosePayload(payload)) return;
+      setMessage("Checkout closed. If you made a payment, we'll verify it before another checkout.");
+      close();
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [close]);
 
   const handleEvent = useCallback(
     (event: BreezeCallbackEvent) => {
@@ -255,28 +329,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       // across Hyper bundles. A customer close is not a payment result, so stop
       // polling and allow another server-authorized checkout attempt.
       if (eventName === "terminate" && terminating.current) return;
-      const isCloseOrCancel =
-        status === "backpressed" ||
-        status === "closeapp" ||
-        status === "cancelled" ||
-        status === "cancel" ||
-        status === "closed" ||
-        status === "user_cancelled" ||
-        status === "aborted" ||
-        status === "dismiss" ||
-        status === "dismissed" ||
-        providerEvent === "backpressed" ||
-        providerEvent === "closeapp" ||
-        providerEvent === "cancelled" ||
-        providerEvent === "cancel" ||
-        providerEvent === "closed" ||
-        action === "close" ||
-        action === "cancel" ||
-        action === "terminate" ||
-        eventName === "terminate" ||
-        eventName === "close" ||
-        eventName === "cancel" ||
-        eventName === "dismiss";
+      const isCloseOrCancel = isBreezeClosePayload({ eventName, status, action, event: providerEvent });
 
       if (isCloseOrCancel) {
         setMessage("Checkout closed. If you made a payment, we’ll verify it before another checkout.");
