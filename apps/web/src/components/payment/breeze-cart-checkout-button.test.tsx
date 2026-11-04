@@ -258,6 +258,21 @@ describe("BreezeCartCheckoutButton", () => {
     expect(window.localStorage.getItem(CLOSED_KEY)).toBe(SESSION.sessionId);
   });
 
+  it("handles a plain-text cancellation from the Breeze SMB SDK host", async () => {
+    configMock.mockResolvedValue({ enabled: true });
+    sessionMock.mockResolvedValue(SESSION);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    await launch();
+
+    await act(async () => window.dispatchEvent(new MessageEvent("message", {
+      origin: "https://sdk.breezesdk.store",
+      data: "user_dropped",
+    })));
+
+    expect(screen.getByRole("button", { name: "Buy it now" })).not.toBeDisabled();
+    expect(window.localStorage.getItem(CLOSED_KEY)).toBe(SESSION.sessionId);
+  });
+
   it("recovers after a refresh from the remembered session id and clears it once the server confirms", async () => {
     window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
     configMock.mockResolvedValue({ enabled: true });

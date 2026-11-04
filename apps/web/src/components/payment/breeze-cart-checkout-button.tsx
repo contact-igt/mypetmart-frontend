@@ -99,7 +99,7 @@ function isTrustedBreezeOrigin(origin: string): boolean {
   if (origin === window.location.origin) return true;
   try {
     const host = new URL(origin).hostname;
-    return host === "breeze.in" || host.endsWith(".breeze.in");
+    return host === "breeze.in" || host.endsWith(".breeze.in") || host === "breezesdk.store" || host.endsWith(".breezesdk.store");
   } catch {
     return false;
   }
@@ -107,7 +107,14 @@ function isTrustedBreezeOrigin(origin: string): boolean {
 
 function messagePayload(data: unknown): Record<string, unknown> | null {
   try {
-    const parsed = typeof data === "string" ? JSON.parse(data) : data;
+    let parsed = data;
+    if (typeof data === "string") {
+      try {
+        parsed = JSON.parse(data);
+      } catch {
+        return { event: data };
+      }
+    }
     if (!parsed || typeof parsed !== "object") return null;
     const candidate = parsed as { payload?: unknown };
     return candidate.payload && typeof candidate.payload === "object" ? candidate.payload as Record<string, unknown> : parsed as Record<string, unknown>;
