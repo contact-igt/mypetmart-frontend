@@ -39,7 +39,7 @@ const BLOCKING_CODES = ["BREEZE_ATTEMPT_IN_PROGRESS", "BREEZE_PAYMENT_VERIFYING"
 const POLL_INTERVAL_MS = 3000;
 const POLL_MAX_ATTEMPTS = 20;
 const BREEZE_CLOSE_SIGNALS = new Set([
-  "backpressed", "closeapp", "cancelled", "cancel", "closed", "user_cancelled", "aborted", "dismiss", "dismissed", "terminate", "close",
+  "backpressed", "closeapp", "cancelled", "cancel", "cancelpurchase", "cancel_purchase", "closed", "user_cancelled", "user_dropped", "userdropped", "aborted", "dismiss", "dismissed", "terminate", "close",
 ]);
 
 function readPending(): string | null {
@@ -297,6 +297,8 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     cleanUrlAtomsState();
     terminating.current = true;
     terminateBreeze();
+    // The SDK can write atomsSt as it tears down; remove that late state too.
+    window.setTimeout(cleanUrlAtomsState, 0);
     launching.current = false;
     setStarting(false);
     onCheckoutClosed?.();

@@ -188,6 +188,19 @@ describe("BreezeCartCheckoutButton", () => {
     expect(screen.getByRole("status").textContent).toMatch(/checkout closed/i);
   });
 
+  it("unlocks the button when Breeze reports Cancel purchase as user_dropped", async () => {
+    configMock.mockResolvedValue({ enabled: true });
+    sessionMock.mockResolvedValue(SESSION);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    const onEvent = await launch();
+
+    await act(async () => onEvent({ payload: { eventName: "processResult", status: "user_dropped" } }));
+
+    expect(screen.getByRole("button", { name: "Buy it now" })).not.toBeDisabled();
+    expect(cleanMock).toHaveBeenCalled();
+    expect(terminateMock).toHaveBeenCalled();
+  });
+
   it("resumes the same eligible session after the customer closes and explicitly retries", async () => {
     configMock.mockResolvedValue({ enabled: true });
     sessionMock.mockResolvedValue(SESSION);
