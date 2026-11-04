@@ -175,6 +175,20 @@ describe("BreezeCartCheckoutButton", () => {
     expect(terminateMock).toHaveBeenCalled();
   });
 
+  it("unlocks the button for Breeze's documented processResult backPressed callback", async () => {
+    configMock.mockResolvedValue({ enabled: true });
+    sessionMock.mockResolvedValue(SESSION);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    const onEvent = await launch();
+
+    await act(async () => onEvent({ payload: { eventName: "processResult", status: "backPressed" } }));
+
+    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
+    expect(window.localStorage.getItem(CLOSED_KEY)).toBe(SESSION.sessionId);
+    expect(screen.getByRole("button", { name: "Buy it now" })).not.toBeDisabled();
+    expect(cleanMock).toHaveBeenCalled();
+  });
+
   it("keeps the pending checkout when Breeze reports a close through its event field", async () => {
     configMock.mockResolvedValue({ enabled: true });
     sessionMock.mockResolvedValue(SESSION);
