@@ -87,10 +87,11 @@ type Props = {
   onCheckoutClosed?: () => void;
   autoStart?: boolean;
   autoStartKey?: number;
+  resumePending?: boolean;
   hideButton?: boolean;
 };
 
-export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCheckoutClosed, autoStart = false, autoStartKey = 0, hideButton = false }: Props) {
+export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCheckoutClosed, autoStart = false, autoStartKey = 0, resumePending = true, hideButton = false }: Props) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -136,7 +137,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
 
               if (status.order && (status.order.paymentStatus === "paid" || status.processingStatus === "finalized")) {
                 const targetUrl = status.order.id
-                  ? `/order/payment/result?provider=breeze&status=success&orderId=${status.order.id}`
+                  ? `/order/payment/result?provider=breeze&status=success&orderId=${status.order.id}&sessionId=${sessionId}`
                   : `/account/orders`;
                 router.push(targetUrl);
               }
@@ -174,6 +175,29 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     const timer = window.setTimeout(async () => {
       if (cancelled) return;
       try {
+        // Never restore the SDK solely because a browser remembers atomsSt.
+        // The owner-authorized server state decides whether this session can
+        // still be presented as a checkout.
+        const status = await PaymentApi.breezeCheckoutSessionStatus(pending);
+        const described = describe(status);
+        if (described || status.processingStatus !== "awaiting_webhook" || !status.awaitingWebhook) {
+          if (described) {
+            setMessage(described.text);
+            if (described.final) {
+              writePending(null);
+              cleanUrlAtomsState();
+              terminateBreeze();
+              broadcastCartInvalidated("payment-paid");
+              onCheckoutClosed?.();
+              if (status.order && (status.order.paymentStatus === "paid" || status.processingStatus === "finalized")) {
+                router.push(status.order.id ? `/order/payment/result?provider=breeze&status=success&orderId=${status.order.id}&sessionId=${pending}` : "/account/orders");
+              }
+            }
+          } else {
+            void pollServer(pending, "Checking order status…");
+          }
+          return;
+        }
         const session = await PaymentApi.breezeResumeCheckoutSession(pending);
         if (cancelled) return;
         // Session is still open — reopen the drawer seamlessly.
@@ -198,10 +222,9 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       pollToken.current += 1;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, onCheckoutClosed, pollServer, router]);
 
   const close = useCallback(() => {
-    writePending(null);
     cleanUrlAtomsState();
     terminating.current = true;
     terminateBreeze();
@@ -211,33 +234,6 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   }, [onCheckoutClosed]);
 
   useEffect(() => () => terminateBreeze(), []);
-
-  useEffect(() => {
-    const handleWindowMessage = (e: MessageEvent) => {
-      try {
-        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-        if (!data || typeof data !== "object") return;
-        const str = JSON.stringify(data).toLowerCase();
-        if (
-          str.includes("cancel") ||
-          str.includes("closeapp") ||
-          str.includes("backpressed") ||
-          str.includes("merchantexit") ||
-          str.includes("dismiss") ||
-          str.includes("user_dropped")
-        ) {
-          close();
-        }
-      } catch {
-        // Non-JSON message, ignore
-      }
-    };
-    window.addEventListener("message", handleWindowMessage);
-    return () => {
-      window.removeEventListener("message", handleWindowMessage);
-    };
-  }, [close]);
-
 
   const handleEvent = useCallback(
     (event: BreezeCallbackEvent) => {
@@ -276,16 +272,13 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         eventName === "dismiss";
 
       if (isCloseOrCancel) {
-        writePending(null);
-        cleanUrlAtomsState();
-        setMessage("Checkout closed. No payment was submitted.");
+        setMessage("Checkout closed. If you made a payment, we’ll verify it before another checkout.");
         close();
         return;
       }
       if (eventName !== "processresult") return;
       if (payload.error === true) {
         const code = typeof payload.errorCode === "string" ? payload.errorCode : "";
-        writePending(null);
         setMessage(ERROR_MESSAGES[code] ?? "We couldn't start checkout. Please try again.");
         close();
         return;
@@ -321,7 +314,12 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     setMessage(null);
     setStarting(true);
     try {
-      const pending = readPending();
+      const pending = resumePending ? readPending() : null;
+      if (!resumePending) {
+        writePending(null);
+        cleanUrlAtomsState();
+        terminateBreeze();
+      }
       let session: BreezeCheckoutSessionJSON;
       if (pending) {
         try {
