@@ -329,6 +329,16 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     (event: BreezeCallbackEvent) => {
       const payload = event.payload;
       if (!payload) return;
+      // Temporary provider-integration diagnostic. Do not log the raw payload:
+      // it can contain customer and checkout data.
+      console.info("[Breeze] checkout callback", {
+        eventName: payload.eventName,
+        status: payload.status,
+        action: payload.action,
+        event: payload.event,
+        error: payload.error,
+        errorCode: payload.errorCode,
+      });
       const eventName = typeof payload.eventName === "string" ? payload.eventName.toLowerCase() : "";
       const status = typeof payload.status === "string" ? payload.status.toLowerCase() : "";
       const action = typeof payload.action === "string" ? payload.action.toLowerCase() : "";
