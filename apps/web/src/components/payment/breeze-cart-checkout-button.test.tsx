@@ -21,7 +21,8 @@ vi.mock("@/lib/breeze/blaze-sdk", () => ({
   terminateBreeze: terminateMock,
   cleanUrlAtomsState: cleanMock,
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+const { routerPushMock } = vi.hoisted(() => ({ routerPushMock: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: routerPushMock }) }));
 
 import { AppAuthError } from "@/lib/auth/auth-errors";
 import { BreezeCartCheckoutButton } from "./breeze-cart-checkout-button";
@@ -50,6 +51,7 @@ const CONFIRMED = {
 
 async function launch() {
   const button = await screen.findByRole("button", { name: "Buy it now" });
+  await waitFor(() => expect(button).not.toBeDisabled());
   await act(async () => {
     fireEvent.click(button);
   });
@@ -80,6 +82,21 @@ describe("BreezeCartCheckoutButton", () => {
     const { container } = render(<BreezeCartCheckoutButton disabled={false} />);
     await waitFor(() => expect(configMock).toHaveBeenCalled());
     expect(container.querySelector("button")?.textContent).toBe("Buy it now");
+  });
+
+  it("does not open legacy checkout while the Breeze capability probe is loading", async () => {
+    let resolveConfig: (value: { enabled: boolean }) => void = () => undefined;
+    configMock.mockReturnValue(new Promise((resolve) => (resolveConfig = resolve)));
+    render(<BreezeCartCheckoutButton disabled={false} />);
+
+    const button = await screen.findByRole("button", { name: "Preparing secure checkout..." });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(routerPushMock).not.toHaveBeenCalled();
+    expect(sessionMock).not.toHaveBeenCalled();
+
+    await act(async () => resolveConfig({ enabled: true }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Buy it now" })).not.toBeDisabled());
   });
 
   it("resumes a saved Breeze session only after an explicit Buy it now click", async () => {
@@ -167,6 +184,20 @@ describe("BreezeCartCheckoutButton", () => {
 
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
     expect(screen.getByRole("status").textContent).toMatch(/checkout closed/i);
+  });
+
+  it("resumes the same eligible session after the customer closes and explicitly retries", async () => {
+    configMock.mockResolvedValue({ enabled: true });
+    sessionMock.mockResolvedValue(SESSION);
+    resumeMock.mockResolvedValue(SESSION);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    const onEvent = await launch();
+
+    await act(async () => onEvent({ payload: { eventName: "eventStream", status: "closeApp" } }));
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: "Buy it now" })));
+
+    await waitFor(() => expect(resumeMock).toHaveBeenCalledWith(SESSION.sessionId));
+    expect(sessionMock).toHaveBeenCalledTimes(1);
   });
 
   it("ignores an untrusted browser message that claims Breeze closed", async () => {
