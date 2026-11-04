@@ -94,6 +94,7 @@ type Props = {
 export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCheckoutClosed, autoStart = false, autoStartKey = 0, resumePending = true, hideButton = false }: Props) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(false);
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [starting, setStarting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   // Frontend double-click lock; the backend additionally retires older sessions.
@@ -106,10 +107,16 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     let cancelled = false;
     PaymentApi.breezeCheckoutConfig()
       .then((config) => {
-        if (!cancelled) setEnabled(config.enabled === true);
+        if (!cancelled) {
+          setEnabled(config.enabled === true);
+          setConfigLoaded(true);
+        }
       })
       .catch(() => {
-        if (!cancelled) setEnabled(false);
+        if (!cancelled) {
+          setEnabled(false);
+          setConfigLoaded(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -303,6 +310,9 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   // server's own message and the remembered session's current state.
   const start = async () => {
     if (launching.current) return;
+    // A click before the capability probe completes must never fall through to
+    // legacy checkout. Wait until the server tells us which checkout is valid.
+    if (!configLoaded) return;
     // Standard checkout remains the fallback while Breeze is unavailable or a
     // coupon makes its signed-cart amount unsuitable for Express checkout.
     if (enabled !== true || !breezeEligible) {
@@ -352,7 +362,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     if (!autoStart || disabled || !enabled || lastAutoStartKey.current === autoStartKey) return;
     lastAutoStartKey.current = autoStartKey;
     void start();
-  }, [autoStart, autoStartKey, disabled, enabled, start]);
+  }, [autoStart, autoStartKey, configLoaded, disabled, enabled, start]);
 
   return (
     <>
@@ -360,10 +370,10 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         <button
           type="button"
           onClick={start}
-          disabled={disabled || starting}
+          disabled={disabled || starting || !configLoaded}
           className="motion-press h-11 inline-flex items-center justify-center rounded-xl bg-primary-orange text-white font-semibold text-sm tracking-wide hover:bg-terracotta transition-all cursor-pointer disabled:opacity-40"
         >
-          {starting ? "Opening secure checkout..." : "Buy it now"}
+          {starting ? "Opening secure checkout..." : !configLoaded ? "Preparing secure checkout..." : "Buy it now"}
         </button>
       )}
       {message ? (
