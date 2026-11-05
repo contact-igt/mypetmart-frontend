@@ -90,7 +90,7 @@ export interface BreezeCheckoutSessionJSON {
 // state only; the Breeze SDK result is never used as proof of payment.
 export interface BreezeCheckoutSessionStatusJSON {
   sessionId: string;
-  processingStatus: "awaiting_webhook" | "order_created" | "finalized" | "reconciliation_required" | "failed";
+  processingStatus: "awaiting_webhook" | "order_created" | "finalized" | "reconciliation_required" | "failed" | "released";
   awaitingWebhook: boolean;
   order: {
     id: number;

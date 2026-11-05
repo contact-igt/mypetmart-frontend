@@ -145,6 +145,9 @@ function describe(status: BreezeCheckoutSessionStatusJSON): { text: string; fina
   if (status.processingStatus === "failed") {
     return { text: "Your payment did not complete. You have not been charged for an order — please try again.", final: true };
   }
+  if (status.processingStatus === "released") {
+    return { text: "", final: true };
+  }
   return null; // still waiting for the server-side confirmation
 }
 
@@ -192,9 +195,8 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   }, []);
 
   const pollServer = useCallback(
-    async (sessionId: string, announce?: string) => {
+    async (sessionId: string) => {
       const token = ++pollToken.current;
-      if (announce) setMessage(announce);
       for (let attempt = 0; attempt < POLL_MAX_ATTEMPTS; attempt++) {
         if (pollToken.current !== token) return;
         try {
@@ -207,7 +209,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
               writePending(null);
               cleanUrlAtomsState();
               terminateBreeze();
-              broadcastCartInvalidated("payment-paid");
+              if (status.order?.paymentStatus === "paid") broadcastCartInvalidated("payment-paid");
               onCheckoutClosed?.();
 
               if (status.order && (status.order.paymentStatus === "paid" || status.processingStatus === "finalized")) {
@@ -227,9 +229,6 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
           // transient: keep polling
         }
         await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-      }
-      if (pollToken.current === token) {
-        setMessage("We're still confirming your order. You'll receive an email once it is verified.");
       }
     },
     [onCheckoutClosed, router],
@@ -272,14 +271,14 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
               writePending(null);
               cleanUrlAtomsState();
               terminateBreeze();
-              broadcastCartInvalidated("payment-paid");
+              if (status.order?.paymentStatus === "paid") broadcastCartInvalidated("payment-paid");
               onCheckoutClosed?.();
               if (status.order && (status.order.paymentStatus === "paid" || status.processingStatus === "finalized")) {
                 router.push(status.order.id ? `/order/payment/result?provider=breeze&status=success&orderId=${status.order.id}&sessionId=${pending}` : "/account/orders");
               }
             }
           } else {
-            void pollServer(pending, "Checking order status…");
+            void pollServer(pending);
           }
           return;
         }
@@ -297,7 +296,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         // Session expired or order already resolved: clean URL immediately so Breeze cannot reopen completed order screens.
         cleanUrlAtomsState();
         terminateBreeze();
-        void pollServer(pending, "Checking order status…");
+        void pollServer(pending);
       }
     }, 0);
 
@@ -376,7 +375,6 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       }
       if (status === "success" || status === "payment_success") {
         // UI hint only: never treated as proof of payment. Ask the server.
-        setMessage("Payment submitted. We're confirming your order…");
         const pending = readPending();
         cleanUrlAtomsState();
         terminateBreeze();
