@@ -108,16 +108,25 @@ function isTrustedBreezeOrigin(origin: string): boolean {
 function messagePayload(data: unknown): Record<string, unknown> | null {
   try {
     let parsed = data;
-    if (typeof data === "string") {
-      try {
-        parsed = JSON.parse(data);
-      } catch {
-        return { event: data };
+    // Breeze sends callbackEvent as a JSON string whose payload is another
+    // JSON string containing the documented processResult object.
+    for (let depth = 0; depth < 3; depth++) {
+      if (typeof parsed === "string") {
+        try {
+          parsed = JSON.parse(parsed);
+        } catch {
+          return depth === 0 ? { event: parsed } : null;
+        }
       }
+      if (!parsed || typeof parsed !== "object") return null;
+      const candidate = parsed as { payload?: unknown };
+      if (candidate.payload && typeof candidate.payload === "object") {
+        return candidate.payload as Record<string, unknown>;
+      }
+      if (typeof candidate.payload !== "string") return candidate as Record<string, unknown>;
+      parsed = candidate.payload;
     }
-    if (!parsed || typeof parsed !== "object") return null;
-    const candidate = parsed as { payload?: unknown };
-    return candidate.payload && typeof candidate.payload === "object" ? candidate.payload as Record<string, unknown> : parsed as Record<string, unknown>;
+    return null;
   } catch {
     return null;
   }
