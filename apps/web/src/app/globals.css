@@ -43,6 +43,9 @@
 
 :root {
   --font-baloo: "Baloo 2";
+  --font-bagel-fat-one: "Baloo 2", ui-rounded, system-ui, sans-serif;
+  --font-fraunces: Georgia, serif;
+  --font-inter: system-ui, sans-serif;
 }
 
 /*
