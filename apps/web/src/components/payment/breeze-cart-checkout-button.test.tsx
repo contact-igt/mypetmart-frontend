@@ -272,6 +272,31 @@ describe("BreezeCartCheckoutButton", () => {
     expect(window.localStorage.getItem(CLOSED_KEY)).toBe(SESSION.sessionId);
   });
 
+  it("handles Breeze's nested callbackEvent backPressed message", async () => {
+    configMock.mockResolvedValue({ enabled: true });
+    sessionMock.mockResolvedValue(SESSION);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    await launch();
+
+    await act(async () => window.dispatchEvent(new MessageEvent("message", {
+      origin: "https://app.breeze.in",
+      data: JSON.stringify({
+        source: "breeze",
+        message: "callbackEvent",
+        payload: JSON.stringify({
+          requestId: "request-1",
+          service: "in.breeze.onecco",
+          payload: { eventName: "processResult", action: "startCheckout", status: "backPressed" },
+        }),
+      }),
+    })));
+
+    expect(cleanMock).toHaveBeenCalled();
+    expect(terminateMock).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Buy it now" })).not.toBeDisabled();
+    expect(window.localStorage.getItem(CLOSED_KEY)).toBe(SESSION.sessionId);
+  });
+
   it("handles a plain-text cancellation from the Breeze SMB SDK host", async () => {
     configMock.mockResolvedValue({ enabled: true });
     sessionMock.mockResolvedValue(SESSION);
