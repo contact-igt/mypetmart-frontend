@@ -167,6 +167,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   // Frontend double-click lock; the backend additionally retires older sessions.
   const launching = useRef(false);
   const pollToken = useRef(0);
+  const releasePromise = useRef<Promise<void> | null>(null);
   const terminating = useRef(false);
   const lastAutoStartKey = useRef<number | null>(null);
 
@@ -309,12 +310,16 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   }, [enabled, onCheckoutClosed, pollServer, router]);
 
   const close = useCallback(() => {
+    const pending = readPending();
     markDrawerClosed();
     cleanUrlAtomsState();
     terminating.current = true;
     terminateBreeze();
     // The SDK can write atomsSt as it tears down; remove that late state too.
     window.setTimeout(cleanUrlAtomsState, 0);
+    if (pending) {
+      releasePromise.current = PaymentApi.breezeReleaseCheckoutSession(pending).then(() => undefined).catch(() => undefined);
+    }
     launching.current = false;
     setStarting(false);
     onCheckoutClosed?.();
@@ -403,6 +408,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     setMessage(null);
     setStarting(true);
     try {
+      await releasePromise.current;
       const pending = resumePending ? readPending() : null;
       if (!resumePending) {
         writePending(null);

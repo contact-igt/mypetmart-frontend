@@ -1,10 +1,11 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { configMock, sessionMock, resumeMock, statusMock, initMock, startMock, terminateMock, cleanMock } = vi.hoisted(() => ({
+const { configMock, sessionMock, resumeMock, releaseMock, statusMock, initMock, startMock, terminateMock, cleanMock } = vi.hoisted(() => ({
   configMock: vi.fn(),
   sessionMock: vi.fn(),
   resumeMock: vi.fn(),
+  releaseMock: vi.fn(),
   statusMock: vi.fn(),
   initMock: vi.fn(),
   startMock: vi.fn(),
@@ -13,7 +14,7 @@ const { configMock, sessionMock, resumeMock, statusMock, initMock, startMock, te
 }));
 
 vi.mock("@/lib/payment-api", () => ({
-  PaymentApi: { breezeCheckoutConfig: configMock, breezeCheckoutSession: sessionMock, breezeResumeCheckoutSession: resumeMock, breezeCheckoutSessionStatus: statusMock },
+  PaymentApi: { breezeCheckoutConfig: configMock, breezeCheckoutSession: sessionMock, breezeResumeCheckoutSession: resumeMock, breezeReleaseCheckoutSession: releaseMock, breezeCheckoutSessionStatus: statusMock },
 }));
 vi.mock("@/lib/breeze/blaze-sdk", () => ({
   initBreeze: initMock,
@@ -64,6 +65,7 @@ describe("BreezeCartCheckoutButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    releaseMock.mockResolvedValue({ released: true });
   });
   afterEach(() => {
     cleanup();
@@ -171,6 +173,7 @@ describe("BreezeCartCheckoutButton", () => {
 
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
     expect(window.localStorage.getItem(CLOSED_KEY)).toBe(SESSION.sessionId);
+    expect(releaseMock).toHaveBeenCalledWith(SESSION.sessionId);
     expect(screen.queryByRole("status")).toBeNull();
     expect(terminateMock).toHaveBeenCalled();
   });
@@ -228,6 +231,25 @@ describe("BreezeCartCheckoutButton", () => {
     await waitFor(() => expect(resumeMock).toHaveBeenCalledWith(SESSION.sessionId));
     expect(sessionMock).toHaveBeenCalledTimes(1);
     expect(window.localStorage.getItem(CLOSED_KEY)).toBeNull();
+  });
+
+  it("creates S2 when a released S1 is no longer resumable", async () => {
+    const secondSession = { ...SESSION, sessionId: "b".repeat(32), cart: '{"id":"s2"}' };
+    window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
+    window.localStorage.setItem(CLOSED_KEY, SESSION.sessionId);
+    configMock.mockResolvedValue({ enabled: true });
+    resumeMock.mockRejectedValue(new AppAuthError("No resumable session found.", "BREEZE_SESSION_NOT_FOUND"));
+    sessionMock.mockResolvedValue(secondSession);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+
+    const button = await screen.findByRole("button", { name: "Buy it now" });
+    await waitFor(() => expect(button).not.toBeDisabled());
+    await act(async () => fireEvent.click(button));
+
+    await waitFor(() => expect(resumeMock).toHaveBeenCalledWith(SESSION.sessionId));
+    expect(sessionMock).toHaveBeenCalledTimes(1);
+    expect(startMock).toHaveBeenCalledWith({ cart: secondSession.cart, signature: secondSession.signature, keyId: secondSession.keyId });
+    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(secondSession.sessionId);
   });
 
   it("ignores an untrusted browser message that claims Breeze closed", async () => {
