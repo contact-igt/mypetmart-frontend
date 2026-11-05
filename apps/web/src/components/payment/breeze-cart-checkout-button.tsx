@@ -145,6 +145,9 @@ function describe(status: BreezeCheckoutSessionStatusJSON): { text: string; fina
   if (status.processingStatus === "failed") {
     return { text: "Your payment did not complete. You have not been charged for an order — please try again.", final: true };
   }
+  if (status.processingStatus === "released") {
+    return { text: "", final: true };
+  }
   return null; // still waiting for the server-side confirmation
 }
 
@@ -207,7 +210,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
               writePending(null);
               cleanUrlAtomsState();
               terminateBreeze();
-              broadcastCartInvalidated("payment-paid");
+              if (status.order?.paymentStatus === "paid") broadcastCartInvalidated("payment-paid");
               onCheckoutClosed?.();
 
               if (status.order && (status.order.paymentStatus === "paid" || status.processingStatus === "finalized")) {
@@ -272,7 +275,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
               writePending(null);
               cleanUrlAtomsState();
               terminateBreeze();
-              broadcastCartInvalidated("payment-paid");
+              if (status.order?.paymentStatus === "paid") broadcastCartInvalidated("payment-paid");
               onCheckoutClosed?.();
               if (status.order && (status.order.paymentStatus === "paid" || status.processingStatus === "finalized")) {
                 router.push(status.order.id ? `/order/payment/result?provider=breeze&status=success&orderId=${status.order.id}&sessionId=${pending}` : "/account/orders");

@@ -43,6 +43,7 @@ const SESSION = {
 const CLOSED_KEY = "mpm_breeze_drawer_closed_session";
 
 const AWAITING = { sessionId: SESSION.sessionId, processingStatus: "awaiting_webhook", awaitingWebhook: true, order: null, guestAccessToken: null };
+const RELEASED = { sessionId: SESSION.sessionId, processingStatus: "released", awaitingWebhook: false, order: null, guestAccessToken: null };
 const CONFIRMED = {
   sessionId: SESSION.sessionId,
   processingStatus: "finalized",
@@ -342,6 +343,18 @@ describe("BreezeCartCheckoutButton", () => {
     render(<BreezeCartCheckoutButton disabled={false} />);
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Order MPM-1001 is confirmed/));
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
+  });
+
+  it("silently stops checking a released checkout and clears its stale session pointer", async () => {
+    window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
+    configMock.mockResolvedValue({ enabled: true });
+    statusMock.mockResolvedValue(RELEASED);
+    vi.spyOn(performance, "getEntriesByType").mockReturnValue([{ type: "reload" } as PerformanceEntry]);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+
+    await waitFor(() => expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull());
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(startMock).not.toHaveBeenCalled();
   });
 
   it("shows a review message (not 'confirmed') for a paid order with a commerce exception", async () => {
