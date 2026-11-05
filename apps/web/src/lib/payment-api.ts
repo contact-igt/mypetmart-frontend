@@ -72,6 +72,13 @@ export const PaymentApi = {
     });
   },
 
+  async breezeReleaseCheckoutSession(sessionId: string): Promise<{ released: boolean }> {
+    return fetchWithAuth<{ released: boolean }>("/storefront/payments/breeze/checkout-session/release", {
+      method: "POST",
+      body: JSON.stringify({ sessionId }),
+    });
+  },
+
   async breezeInitiate(input: InitiatePaymentInput): Promise<BreezeStartPaymentParamsJSON> {
     return fetchWithAuth<BreezeStartPaymentParamsJSON>("/storefront/payments/breeze/initiate", {
       method: "POST",
