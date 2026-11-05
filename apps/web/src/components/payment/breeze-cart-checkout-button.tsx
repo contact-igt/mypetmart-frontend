@@ -327,7 +327,6 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       if (!isTrustedBreezeOrigin(event.origin)) return;
       const payload = messagePayload(event.data);
       if (!payload || !isBreezeClosePayload(payload)) return;
-      setMessage("Checkout closed. If you made a payment, we'll verify it before another checkout.");
       close();
     };
     window.addEventListener("message", onMessage);
@@ -360,7 +359,6 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       const isCloseOrCancel = isBreezeClosePayload({ eventName, status, action, event: providerEvent });
 
       if (isCloseOrCancel) {
-        setMessage("Checkout closed. If you made a payment, we’ll verify it before another checkout.");
         close();
         return;
       }

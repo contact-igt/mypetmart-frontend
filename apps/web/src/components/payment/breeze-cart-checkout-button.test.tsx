@@ -171,7 +171,7 @@ describe("BreezeCartCheckoutButton", () => {
 
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
     expect(window.localStorage.getItem(CLOSED_KEY)).toBe(SESSION.sessionId);
-    expect(screen.getByRole("status").textContent).toMatch(/checkout closed/i);
+    expect(screen.queryByRole("status")).toBeNull();
     expect(terminateMock).toHaveBeenCalled();
   });
 
@@ -199,7 +199,7 @@ describe("BreezeCartCheckoutButton", () => {
     await act(async () => onEvent({ payload: { eventName: "eventStream", event: "closeApp" } }));
 
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBe(SESSION.sessionId);
-    expect(screen.getByRole("status").textContent).toMatch(/checkout closed/i);
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("unlocks the button when Breeze reports Cancel purchase as user_dropped", async () => {
