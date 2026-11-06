@@ -77,7 +77,7 @@ function CouponOffer({ code, dark }: { code: string; dark?: boolean }) {
     }
   }
 
-  return <div className={`mt-4 border p-3 ${dark ? "border-white/20 text-white" : "border-deep-brown/20 text-text-primary"}`}><p className="text-xs font-medium">Coupon code</p><div className="mt-2 flex items-center gap-2"><code className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-base font-bold" aria-label={`Coupon code ${code}`}>{code}</code><button type="button" onClick={copyCode} className="shrink-0 text-xs font-semibold underline underline-offset-4">Copy</button></div><button type="button" onClick={applyInCart} disabled={isUpdatingCoupon} className={`mt-3 h-10 w-full px-3 text-sm font-bold disabled:opacity-60 ${dark ? "bg-white text-deep-brown" : "bg-deep-brown text-white"}`}>{isUpdatingCoupon ? "Checking..." : "Apply in cart"}</button><p className={`mt-2 text-[11px] ${dark ? "text-white/70" : "text-text-primary/60"}`}>{status || "Eligibility and savings are confirmed from your cart."}</p></div>;
+  return null;
 }
 
 function TemplateOne({ popup, onDismiss, action, showConsent }: ContentProps) {

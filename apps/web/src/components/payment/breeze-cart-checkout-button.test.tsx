@@ -41,6 +41,7 @@ const SESSION = {
   expiresAt: "2030-01-01T00:00:00.000Z",
 };
 const CLOSED_KEY = "mpm_breeze_drawer_closed_session";
+const RELEASE_ON_RETURN_KEY = "mpm_breeze_release_on_return_session";
 
 const AWAITING = { sessionId: SESSION.sessionId, processingStatus: "awaiting_webhook", awaitingWebhook: true, order: null, guestAccessToken: null };
 const RELEASED = { sessionId: SESSION.sessionId, processingStatus: "released", awaitingWebhook: false, order: null, guestAccessToken: null };
@@ -177,6 +178,24 @@ describe("BreezeCartCheckoutButton", () => {
     expect(releaseMock).toHaveBeenCalledWith(SESSION.sessionId);
     expect(screen.queryByRole("status")).toBeNull();
     expect(terminateMock).toHaveBeenCalled();
+  });
+
+  it("releases an active checkout on page exit and retries that release after a network failure", async () => {
+    configMock.mockResolvedValue({ enabled: true });
+    sessionMock.mockResolvedValue(SESSION);
+    releaseMock.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ released: true });
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    await launch();
+
+    await act(async () => window.dispatchEvent(new Event("pagehide")));
+    expect(window.localStorage.getItem(RELEASE_ON_RETURN_KEY)).toBe(SESSION.sessionId);
+    expect(releaseMock).toHaveBeenCalledWith(SESSION.sessionId, true);
+
+    cleanup();
+    render(<BreezeCartCheckoutButton disabled={false} />);
+    await waitFor(() => expect(releaseMock).toHaveBeenCalledTimes(2));
+    expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
+    expect(window.localStorage.getItem(RELEASE_ON_RETURN_KEY)).toBeNull();
   });
 
   it("unlocks the button for Breeze's documented processResult backPressed callback", async () => {

@@ -23,7 +23,6 @@ import { storeGuestPaymentToken } from "@/app/order/payment/guest-payment-token"
 import { readGuestPaymentToken } from "@/app/order/payment/guest-payment-token";
 import { TrustBadges } from "@/components/checkout/trust-badges";
 import { CheckoutStickyCta } from "@/components/checkout/checkout-sticky-cta";
-import { CouponField } from "@/components/checkout/coupon-field";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { CancelPendingOrderButton, getPendingOrderCancellationMessage } from "@/components/order/cancel-pending-order-button";
 
@@ -1659,15 +1658,6 @@ export function CheckoutClient() {
                       ₹{previewResult?.totals.merchandiseSubtotal || cart.subtotal}
                     </span>
                   </div>
-
-                  <CouponField
-                    coupon={displayedCoupon}
-                    busy={couponBusy}
-                    disabled={previewing || submittingOrder || cartContextUnsynced}
-                    error={couponError}
-                    onApply={handleApplyCoupon}
-                    onRemove={handleRemoveCoupon}
-                  />
 
                   {/* Alternative payment method saving banner — only shown when
                       the applied coupon is blocked solely by payment method.

@@ -9,7 +9,6 @@ import { AppAuthError } from "@/lib/auth/auth-errors";
 import { TrustBadges } from "@/components/checkout/trust-badges";
 import { BreezeCartCheckoutButton } from "@/components/payment/breeze-cart-checkout-button";
 import { cleanUrlAtomsState } from "@/lib/breeze/blaze-sdk";
-import { CouponField } from "@/components/checkout/coupon-field";
 
 const formatPrice = (priceVal: number | string) => {
   const num = typeof priceVal === "number" ? priceVal : parseFloat(priceVal);
@@ -36,9 +35,6 @@ export function CartClient() {
     update,
     remove,
     clear,
-    applyCoupon,
-    removeCoupon,
-    isUpdatingCoupon,
     refresh,
     revalidate,
     setMergeReport,
@@ -47,7 +43,6 @@ export function CartClient() {
   const [lineErrors, setLineErrors] = useState<Record<number, string>>({});
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const [retrying, setRetrying] = useState(false);
-  const [couponError, setCouponError] = useState<string | null>(null);
   useEffect(() => {
     // Provider URL state may restore a closed checkout on ordinary Cart navigation.
     try {
@@ -141,24 +136,6 @@ export function CartClient() {
       await clear();
     } catch {
       alert("Failed to clear cart. Please try again.");
-    }
-  };
-
-  const handleApplyCoupon = async (code: string) => {
-    setCouponError(null);
-    try {
-      await applyCoupon(code);
-    } catch (err: unknown) {
-      setCouponError(err instanceof AppAuthError ? err.message : "We couldn't apply that coupon. Please try again.");
-    }
-  };
-
-  const handleRemoveCoupon = async () => {
-    setCouponError(null);
-    try {
-      await removeCoupon();
-    } catch (err: unknown) {
-      setCouponError(err instanceof AppAuthError ? err.message : "We couldn't remove that coupon. Please try again.");
     }
   };
 
@@ -487,17 +464,8 @@ export function CartClient() {
             </span>
           </div>
 
-          <CouponField
-            coupon={cart.coupon}
-            busy={isUpdatingCoupon}
-            disabled={isClearing || updatingItemIds.size > 0 || removingItemIds.size > 0}
-            error={couponError}
-            onApply={handleApplyCoupon}
-            onRemove={handleRemoveCoupon}
-          />
-
           <div className="space-y-3 border-b border-border-subtle py-4 text-sm">
-            <div className="flex justify-between gap-3"><span className="text-text-muted">Coupon discount</span><span className="font-semibold text-deep-brown">-{cart.coupon?.eligible ? `₹${formatPrice(cart.coupon.discountAmount)}` : "₹0"}</span></div>
+            <p className="text-text-muted">Offers and coupon codes are available in Breeze checkout.</p>
             <div className="flex justify-between gap-3"><span className="text-text-muted">Shipping</span><span className="text-right text-xs font-medium text-text-muted">Calculated at checkout</span></div>
             <div className="flex justify-between gap-3 font-bold text-text-primary"><span>Final payable total</span><span className="text-right text-xs text-text-muted">Calculated at checkout</span></div>
           </div>
@@ -507,7 +475,7 @@ export function CartClient() {
           <div className="mt-4 flex flex-col gap-3">
             <BreezeCartCheckoutButton
               disabled={isCheckoutDisabled}
-              breezeEligible={!cart.coupon}
+              breezeEligible
               onCheckoutClosed={() => void refresh()}
             />
 
