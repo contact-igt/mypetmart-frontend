@@ -23,6 +23,12 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+vi.mock("@/components/payment/breeze-cart-checkout-button", () => ({
+  BreezeCartCheckoutButton: ({ breezeEligible, disabled }: { breezeEligible?: boolean; disabled: boolean }) => (
+    <button type="button" disabled={disabled} data-testid="breeze-checkout" data-breeze-eligible={String(breezeEligible)}>Buy it now</button>
+  ),
+}));
+
 // Mock customer auth
 let mockAuthStatus = "unauthenticated";
 let mockAccessToken: string | null = null;
@@ -963,6 +969,24 @@ describe("Cart UI Components", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /Buy it now/i })).toBeDisabled();
     });
+  });
+
+  it("uses standard checkout for a cart with an applied coupon so COD remains available", async () => {
+    const cartWithCoupon: Cart = {
+      ...mockLoadedCart,
+      coupon: { code: "SAVE100", discountAmount: "100.00", eligible: true, eligibleMerchandiseSubtotal: "1497.00", message: null },
+    };
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ success: true, data: cartWithCoupon }));
+
+    render(
+      <CartProvider>
+        <CartClient />
+      </CartProvider>
+    );
+
+    const checkout = await screen.findByTestId("breeze-checkout");
+    expect(checkout).toHaveAttribute("data-breeze-eligible", "false");
+    expect(screen.getByText("Your coupon will be applied in standard checkout.")).toBeInTheDocument();
   });
 
   it("28. Product Detail Add updates Cart context/header count", async () => {
