@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { useCustomerAuth } from "@/context/customer-auth-context";
 import { useOptionalCart } from "@/context/cart-context";
@@ -193,6 +194,7 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 }
 
 export function CheckoutClient() {
+  const router = useRouter();
   const { status, customer } = useCustomerAuth();
   const cartContext = useOptionalCart();
   // Latest context in a ref so async flows (COD confirmation, error reconcile)
@@ -863,6 +865,7 @@ export function CheckoutClient() {
                       onConfirmed={(result) => {
                         setCodConfirmation(result);
                         void reconcileCartAfterCommerce("cod-confirmed");
+                        router.replace(`/account/orders/${createdOrder.id}`);
                       }}
                       onFailure={() => setPostOrderError("cod")}
                     />
@@ -873,6 +876,7 @@ export function CheckoutClient() {
                       onConfirmed={(result) => {
                         setCodConfirmation(result);
                         void reconcileCartAfterCommerce("cod-confirmed");
+                        router.replace(`/order/guest/${createdOrder.guestAccessToken}`);
                       }}
                       onFailure={() => setPostOrderError("cod")}
                     />
