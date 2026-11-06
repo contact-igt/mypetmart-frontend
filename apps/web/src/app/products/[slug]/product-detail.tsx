@@ -160,10 +160,10 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
   const [breezeCheckoutRequested, setBreezeCheckoutRequested] = useState(false);
   const [breezeCheckoutAttempt, setBreezeCheckoutAttempt] = useState(0);
 
-  // Defaults to the first listed option (matches the order Select option
-  // renders) so a Variant Product never lands on an ambiguous "choose an
-  // option" state when it has one obvious first choice.
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(product.variants[0] ?? null);
+  // Prefer an available option, while preserving the backend's display order.
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
+    product.variants.find((variant) => variant.stock > 0) ?? product.variants[0] ?? null,
+  );
   const [quantity, setQuantity] = useState(1);
 
   // Cart interaction states
@@ -554,15 +554,13 @@ export function ProductDetailClient({ product, testimonials }: { product: Produc
         cartStatus={cartStatus}
         onAddToCart={() => handleAddToCart()}
       />
-      {breezeCheckoutRequested && (
-        <BreezeCartCheckoutButton
-          autoStart
-          autoStartKey={breezeCheckoutAttempt}
-          hideButton
-          disabled={false}
-          onCheckoutClosed={() => setBreezeCheckoutRequested(false)}
-        />
-      )}
+      <BreezeCartCheckoutButton
+        autoStart={breezeCheckoutRequested}
+        autoStartKey={breezeCheckoutAttempt}
+        hideButton
+        disabled={false}
+        onCheckoutClosed={() => setBreezeCheckoutRequested(false)}
+      />
     </div>
   );
 }

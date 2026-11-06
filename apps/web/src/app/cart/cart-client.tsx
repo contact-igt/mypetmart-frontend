@@ -19,10 +19,6 @@ const formatPrice = (priceVal: number | string) => {
   return num.toLocaleString("en-IN", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 };
 
-const isBrowserReload = () => performance.getEntriesByType("navigation").some(
-  (entry) => (entry as PerformanceNavigationTiming).type === "reload",
-);
-
 export function CartClient() {
   const {
     cart,
@@ -44,16 +40,9 @@ export function CartClient() {
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const [retrying, setRetrying] = useState(false);
   useEffect(() => {
-    // Provider URL state may restore a closed checkout on ordinary Cart navigation.
-    try {
-      const pending = typeof window !== "undefined" ? window.localStorage.getItem("mpm_breeze_pending_session") : null;
-      if (!isBrowserReload() || !pending || cart.items.length === 0) {
-        cleanUrlAtomsState();
-      }
-    } catch {
-      // storage unavailable
-    }
-  }, [cart.items.length]);
+    // Cart never restores an Express checkout; only its explicit Buy it now can open one.
+    cleanUrlAtomsState();
+  }, []);
 
 
   // Reconcile against the authoritative server cart whenever the Cart page is
@@ -465,7 +454,7 @@ export function CartClient() {
           </div>
 
           <div className="space-y-3 border-b border-border-subtle py-4 text-sm">
-            <p className="text-text-muted">Offers and coupon codes are available in Breeze checkout.</p>
+            <p className="text-text-muted">{cart.coupon ? "Your coupon will be applied in standard checkout." : "Offers and coupon codes are available in Breeze checkout."}</p>
             <div className="flex justify-between gap-3"><span className="text-text-muted">Shipping</span><span className="text-right text-xs font-medium text-text-muted">Calculated at checkout</span></div>
             <div className="flex justify-between gap-3 font-bold text-text-primary"><span>Final payable total</span><span className="text-right text-xs text-text-muted">Calculated at checkout</span></div>
           </div>
@@ -475,7 +464,7 @@ export function CartClient() {
           <div className="mt-4 flex flex-col gap-3">
             <BreezeCartCheckoutButton
               disabled={isCheckoutDisabled}
-              breezeEligible
+              breezeEligible={!cart.coupon}
               onCheckoutClosed={() => void refresh()}
             />
 

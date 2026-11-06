@@ -296,6 +296,25 @@ describe("ProductDetail Storefront Component", () => {
     expect(addToCartButton).not.toBeDisabled();
   });
 
+  it("2a. Variant Product defaults to the first in-stock option", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
+    );
+
+    const product = {
+      ...mockVariantProduct,
+      variants: [
+        { ...mockVariantProduct.variants[0], name: "S", stock: 0 },
+        { ...mockVariantProduct.variants[1], name: "XL" },
+      ],
+    };
+    renderProductDetail(product);
+
+    expect(inPanel().getByRole("button", { name: "XL" })).toHaveAttribute("aria-pressed", "true");
+    expect(inPanel().getByText("In Stock (40 available)")).toBeInTheDocument();
+    expect(inPanel().getByRole("button", { name: /Add to Cart/i })).toBeEnabled();
+  });
+
   it("3. Variant selection changes price display", async () => {
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse({ success: false, error: { code: "UNAUTHENTICATED", message: "Not authenticated" } }, false, 401)
@@ -565,6 +584,27 @@ describe("ProductDetail Storefront Component", () => {
     const adds = fetchMock.mock.calls.filter(([url, init]) => String(url).includes("/storefront/cart/items") && init?.method === "POST");
     expect(adds).toHaveLength(alreadyAdded ? 0 : 1);
     if (!alreadyAdded) expect(JSON.parse(adds[0][1].body as string)).toMatchObject({ productId: 101, quantity: 1 });
+  });
+
+  it("restores an active Buy it now drawer after refreshing the product page", async () => {
+    const sessionId = "a".repeat(32);
+    window.localStorage.setItem("mpm_breeze_pending_session", sessionId);
+    vi.spyOn(performance, "getEntriesByType").mockReturnValue([{ type: "reload" } as unknown as PerformanceEntry]);
+    setupMockFetch(async (url) => {
+      if (url.includes("/storefront/payments/breeze/checkout-config")) {
+        return jsonResponse({ success: true, data: { enabled: true } });
+      }
+      if (url.includes("/storefront/payments/breeze/checkout-session/status")) {
+        return jsonResponse({ success: true, data: { sessionId, processingStatus: "awaiting_webhook", awaitingWebhook: true, order: null, guestAccessToken: null } });
+      }
+      if (url.includes("/storefront/payments/breeze/checkout-session/resume")) {
+        return jsonResponse({ success: true, data: { sessionId, merchantId: "merchant", shopUrl: "https://mypetmart.in", environment: "smb-release", cart: "{}", signature: "signature", keyId: "key", amountPaise: 49900, currency: "INR", expiresAt: "2030-01-01T00:00:00.000Z" } });
+      }
+    });
+
+    renderProductDetail(mockSimpleProduct);
+
+    await waitFor(() => expect(breezeStartMock).toHaveBeenCalledWith({ cart: "{}", signature: "signature", keyId: "key" }));
   });
 
   it("Buy it now stays on the product page when adding fails", async () => {
