@@ -10,8 +10,9 @@ import * as CustomerAuthContext from "@/context/customer-auth-context";
 process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:5000/api/v1";
 
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush, replace: vi.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
   usePathname: () => "/checkout",
 }));
 
@@ -89,6 +90,7 @@ describe("Stage 2 consolidated checkout", () => {
     vi.spyOn(CustomerAuthContext, "useCustomerAuth").mockReturnValue(auth());
     AuthTokenStore.setAccessToken(null);
     mockPush.mockReset();
+    mockReplace.mockReset();
     vi.spyOn(HTMLFormElement.prototype, "submit").mockImplementation(() => undefined);
     window.sessionStorage.clear();
   });
@@ -186,7 +188,7 @@ describe("Stage 2 consolidated checkout", () => {
     fireEvent.click(screen.getByRole("radio", { name: /Cash on Delivery/i }));
     await waitFor(() => expect(screen.getByRole("button", { name: /^Place Order$/i })).not.toBeDisabled(), { timeout: 2000 });
     fireEvent.click(screen.getByRole("button", { name: /^Place Order$/i }));
-    await waitFor(() => expect(screen.getByText("Order confirmed")).toBeInTheDocument());
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(`/order/guest/${order.guestAccessToken}`));
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/storefront/orders"))).toHaveLength(1);
     expect(JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url).endsWith("/storefront/orders"))?.[1]?.body)).paymentMethod).toBe("cod");
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("payments/cod"))).toHaveLength(1);
