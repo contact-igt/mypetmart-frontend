@@ -183,10 +183,11 @@ type Props = {
   autoStart?: boolean;
   autoStartKey?: number;
   resumePending?: boolean;
+  resumeDrawerOnReload?: boolean;
   hideButton?: boolean;
 };
 
-export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCheckoutClosed, autoStart = false, autoStartKey = 0, resumePending = true, hideButton = false }: Props) {
+export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCheckoutClosed, autoStart = false, autoStartKey = 0, resumePending = true, resumeDrawerOnReload = true, hideButton = false }: Props) {
   const router = useRouter();
   const [enabled, setEnabled] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
@@ -327,6 +328,12 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
           }
           return;
         }
+        if (!resumeDrawerOnReload) {
+          // Cart checks final status after refresh but must never reopen checkout.
+          cleanUrlAtomsState();
+          terminateBreeze();
+          return;
+        }
         const session = await PaymentApi.breezeResumeCheckoutSession(pending);
         if (cancelled) return;
         // Session is still open — reopen the drawer seamlessly.
@@ -352,7 +359,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       pollToken.current += 1;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, onCheckoutClosed, pollServer, router]);
+  }, [enabled, onCheckoutClosed, pollServer, resumeDrawerOnReload, router]);
 
   const close = useCallback(() => {
     const pending = readPending();

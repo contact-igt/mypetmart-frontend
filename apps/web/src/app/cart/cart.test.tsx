@@ -24,9 +24,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/components/payment/breeze-cart-checkout-button", () => ({
-  BreezeCartCheckoutButton: ({ breezeEligible, disabled }: { breezeEligible?: boolean; disabled: boolean }) => (
-    <button type="button" disabled={disabled} data-testid="breeze-checkout" data-breeze-eligible={String(breezeEligible)}>Buy it now</button>
-  ),
+  BreezeCartCheckoutButton: ({ breezeEligible, disabled, hideButton }: { breezeEligible?: boolean; disabled: boolean; hideButton?: boolean }) =>
+    hideButton ? null : <button type="button" disabled={disabled} data-testid="breeze-checkout" data-breeze-eligible={String(breezeEligible)}>Buy it now</button>,
 }));
 
 // Mock customer auth
