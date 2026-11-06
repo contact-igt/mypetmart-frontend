@@ -174,6 +174,12 @@ export function CartClient() {
   if (cart.items.length === 0) {
     return (
       <div className="site-container py-16 text-center" aria-live="polite">
+        <BreezeCartCheckoutButton
+          disabled
+          hideButton
+          resumeDrawerOnReload={false}
+          onCheckoutClosed={() => void refresh()}
+        />
         <div className="motion-enter max-w-md mx-auto rounded-3xl bg-white border border-border-subtle p-10 shadow-[0_8px_20px_rgba(88,51,29,0.02)]">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-peach-hero/40 text-primary-orange">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

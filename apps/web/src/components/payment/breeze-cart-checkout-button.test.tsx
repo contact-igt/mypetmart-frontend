@@ -141,7 +141,7 @@ describe("BreezeCartCheckoutButton", () => {
     await act(async () => release(SESSION));
   });
 
-  it("a success event is only a hint: it shows 'confirming' and claims confirmation ONLY after the server does", async () => {
+  it("a success event is only a hint: it does not claim confirmation before the server does", async () => {
     configMock.mockResolvedValue({ enabled: true });
     sessionMock.mockResolvedValue(SESSION);
     statusMock.mockResolvedValue(AWAITING);
@@ -149,13 +149,12 @@ describe("BreezeCartCheckoutButton", () => {
     const onEvent = await launch();
 
     await act(async () => onEvent({ payload: { eventName: "processResult", action: "startCheckout", status: "SUCCESS" } }));
-    expect(screen.getByRole("status").textContent).toMatch(/confirming your order/i);
-    expect(screen.getByRole("status").textContent).not.toMatch(/is confirmed|paid/i);
+    expect(screen.queryByRole("status")).toBeNull();
     expect(terminateMock).toHaveBeenCalled();
 
-    // The server says it is still awaiting the webhook: text must not change to "confirmed".
+    // The server says it is still awaiting the webhook: do not claim a result.
     await waitFor(() => expect(statusMock).toHaveBeenCalledWith(SESSION.sessionId));
-    expect(screen.getByRole("status").textContent).not.toMatch(/is confirmed/i);
+    expect(screen.queryByRole("status")).toBeNull();
 
     // A normal remount is not a browser refresh, so it must not restore a
     // drawer or claim a result from local storage alone.
@@ -375,6 +374,19 @@ describe("BreezeCartCheckoutButton", () => {
     render(<BreezeCartCheckoutButton disabled={false} />);
     await waitFor(() => expect(screen.getByRole("status").textContent).toMatch(/Order MPM-1001 is confirmed/));
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
+    expect(routerPushMock).toHaveBeenCalledWith(`/order/payment/result?provider=breeze&status=success&orderId=7&sessionId=${SESSION.sessionId}`);
+  });
+
+  it("checks a pending session on Cart refresh without reopening its drawer", async () => {
+    window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
+    configMock.mockResolvedValue({ enabled: true });
+    statusMock.mockResolvedValue(AWAITING);
+    vi.spyOn(performance, "getEntriesByType").mockReturnValue([{ type: "reload" } as unknown as PerformanceEntry]);
+    render(<BreezeCartCheckoutButton disabled hideButton resumeDrawerOnReload={false} />);
+
+    await waitFor(() => expect(statusMock).toHaveBeenCalledWith(SESSION.sessionId));
+    expect(resumeMock).not.toHaveBeenCalled();
+    expect(startMock).not.toHaveBeenCalled();
   });
 
   it("silently stops checking a released checkout and clears its stale session pointer", async () => {
