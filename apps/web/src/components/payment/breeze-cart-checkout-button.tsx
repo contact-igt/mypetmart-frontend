@@ -220,12 +220,16 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     };
   }, []);
 
-  // A page exit has no dependable Breeze callback. Persist the release intent
-  // first, then retry it when the customer returns if the browser drops it.
+  // A reload resumes its session; a later ordinary visit releases the session
+  // left by a closed tab or lost connection.
   useEffect(() => {
     if (!enabled) return;
     const pending = readPending();
     if (!pending || releaseOnReturn() !== pending) return;
+    if (isBrowserReload()) {
+      clearReleaseOnReturn();
+      return;
+    }
     releasePromise.current = PaymentApi.breezeReleaseCheckoutSession(pending)
       .then(() => {
         writePending(null);
@@ -368,19 +372,17 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   }, [onCheckoutClosed]);
 
   useEffect(() => {
-    const releaseOnPageExit = () => {
+    const markAbandonedCheckout = () => {
       const sessionId = activeSessionId.current;
       if (!sessionId) return;
       markReleaseOnReturn(sessionId);
-      releasePromise.current = PaymentApi.breezeReleaseCheckoutSession(sessionId, true)
-        .then(() => {
-          writePending(null);
-          clearReleaseOnReturn();
-        })
-        .catch(() => undefined);
     };
-    window.addEventListener("pagehide", releaseOnPageExit);
-    return () => window.removeEventListener("pagehide", releaseOnPageExit);
+    window.addEventListener("pagehide", markAbandonedCheckout);
+    window.addEventListener("offline", markAbandonedCheckout);
+    return () => {
+      window.removeEventListener("pagehide", markAbandonedCheckout);
+      window.removeEventListener("offline", markAbandonedCheckout);
+    };
   }, []);
 
   useEffect(() => () => terminateBreeze(), []);

@@ -180,21 +180,34 @@ describe("BreezeCartCheckoutButton", () => {
     expect(terminateMock).toHaveBeenCalled();
   });
 
-  it("releases an active checkout on page exit and retries that release after a network failure", async () => {
+  it("releases an abandoned checkout after a tab exit or network failure", async () => {
     configMock.mockResolvedValue({ enabled: true });
     sessionMock.mockResolvedValue(SESSION);
-    releaseMock.mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ released: true });
     render(<BreezeCartCheckoutButton disabled={false} />);
     await launch();
 
     await act(async () => window.dispatchEvent(new Event("pagehide")));
     expect(window.localStorage.getItem(RELEASE_ON_RETURN_KEY)).toBe(SESSION.sessionId);
-    expect(releaseMock).toHaveBeenCalledWith(SESSION.sessionId, true);
+    expect(releaseMock).not.toHaveBeenCalled();
 
     cleanup();
     render(<BreezeCartCheckoutButton disabled={false} />);
-    await waitFor(() => expect(releaseMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(releaseMock).toHaveBeenCalledWith(SESSION.sessionId));
     expect(window.localStorage.getItem("mpm_breeze_pending_session")).toBeNull();
+    expect(window.localStorage.getItem(RELEASE_ON_RETURN_KEY)).toBeNull();
+  });
+
+  it("resumes an active checkout after refresh instead of releasing it", async () => {
+    window.localStorage.setItem("mpm_breeze_pending_session", SESSION.sessionId);
+    window.localStorage.setItem(RELEASE_ON_RETURN_KEY, SESSION.sessionId);
+    configMock.mockResolvedValue({ enabled: true });
+    statusMock.mockResolvedValue(AWAITING);
+    resumeMock.mockResolvedValue(SESSION);
+    vi.spyOn(performance, "getEntriesByType").mockReturnValue([{ type: "reload" } as unknown as PerformanceEntry]);
+    render(<BreezeCartCheckoutButton disabled={false} />);
+
+    await waitFor(() => expect(resumeMock).toHaveBeenCalledWith(SESSION.sessionId));
+    expect(releaseMock).not.toHaveBeenCalled();
     expect(window.localStorage.getItem(RELEASE_ON_RETURN_KEY)).toBeNull();
   });
 
