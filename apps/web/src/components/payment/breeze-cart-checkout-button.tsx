@@ -34,6 +34,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 const PENDING_KEY = "mpm_breeze_pending_session";
 const CLOSED_KEY = "mpm_breeze_drawer_closed_session";
+const RELEASE_ON_RETURN_KEY = "mpm_breeze_release_on_return_session";
 // Machine-readable refusal codes from POST /storefront/payments/breeze/checkout-session.
 const BLOCKING_CODES = ["BREEZE_ATTEMPT_IN_PROGRESS", "BREEZE_PAYMENT_VERIFYING", "BREEZE_RECONCILIATION_REQUIRED"];
 const POLL_INTERVAL_MS = 3000;
@@ -68,6 +69,30 @@ function writePending(sessionId: string | null): void {
     }
   } catch {
     // storage unavailable: the server remains the source of truth
+  }
+}
+
+function releaseOnReturn(): string | null {
+  try {
+    return window.localStorage.getItem(RELEASE_ON_RETURN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function markReleaseOnReturn(sessionId: string): void {
+  try {
+    window.localStorage.setItem(RELEASE_ON_RETURN_KEY, sessionId);
+  } catch {
+    // storage unavailable: page-exit release remains best-effort
+  }
+}
+
+function clearReleaseOnReturn(): void {
+  try {
+    window.localStorage.removeItem(RELEASE_ON_RETURN_KEY);
+  } catch {
+    // storage unavailable
   }
 }
 
@@ -173,6 +198,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   const releasePromise = useRef<Promise<void> | null>(null);
   const terminating = useRef(false);
   const lastAutoStartKey = useRef<number | null>(null);
+  const activeSessionId = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -193,6 +219,20 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
       cancelled = true;
     };
   }, []);
+
+  // A page exit has no dependable Breeze callback. Persist the release intent
+  // first, then retry it when the customer returns if the browser drops it.
+  useEffect(() => {
+    if (!enabled) return;
+    const pending = readPending();
+    if (!pending || releaseOnReturn() !== pending) return;
+    releasePromise.current = PaymentApi.breezeReleaseCheckoutSession(pending)
+      .then(() => {
+        writePending(null);
+        clearReleaseOnReturn();
+      })
+      .catch(() => undefined);
+  }, [enabled]);
 
   const pollServer = useCallback(
     async (sessionId: string) => {
@@ -240,6 +280,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
   useEffect(() => {
     if (!enabled || !isBrowserReload()) return;
     const pending = readPending();
+    if (pending && releaseOnReturn() === pending) return;
     if (!pending) {
       cleanUrlAtomsState();
       return;
@@ -286,6 +327,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         if (cancelled) return;
         // Session is still open — reopen the drawer seamlessly.
         launching.current = true;
+        activeSessionId.current = session.sessionId;
         terminating.current = false;
         setStarting(true);
         setMessage(null);
@@ -319,10 +361,27 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
     if (pending) {
       releasePromise.current = PaymentApi.breezeReleaseCheckoutSession(pending).then(() => undefined).catch(() => undefined);
     }
+    activeSessionId.current = null;
     launching.current = false;
     setStarting(false);
     onCheckoutClosed?.();
   }, [onCheckoutClosed]);
+
+  useEffect(() => {
+    const releaseOnPageExit = () => {
+      const sessionId = activeSessionId.current;
+      if (!sessionId) return;
+      markReleaseOnReturn(sessionId);
+      releasePromise.current = PaymentApi.breezeReleaseCheckoutSession(sessionId, true)
+        .then(() => {
+          writePending(null);
+          clearReleaseOnReturn();
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener("pagehide", releaseOnPageExit);
+    return () => window.removeEventListener("pagehide", releaseOnPageExit);
+  }, []);
 
   useEffect(() => () => terminateBreeze(), []);
 
@@ -426,6 +485,7 @@ export function BreezeCartCheckoutButton({ disabled, breezeEligible = true, onCh
         session = await PaymentApi.breezeCheckoutSession();
       }
       writePending(session.sessionId);
+      activeSessionId.current = session.sessionId;
       initBreeze({ merchantId: session.merchantId, shopUrl: session.shopUrl, environment: session.environment }, handleEvent);
       breezeStartCheckout({ cart: session.cart, signature: session.signature, keyId: session.keyId });
     } catch (err: unknown) {
